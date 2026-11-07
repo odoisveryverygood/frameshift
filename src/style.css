@@ -1343,7 +1343,7 @@ body::before {
   gap: 40px;
   width: min(1240px, 100%);
   margin: 0 auto;
-  padding: clamp(24px, 4vw, 48px) clamp(14px, 3vw, 32px) 96px;
+  padding: clamp(16px, 2.4vw, 28px) clamp(14px, 3vw, 32px) 64px;
 }
 .block {
   display: grid;

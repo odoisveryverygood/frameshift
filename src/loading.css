@@ -7,14 +7,14 @@
 
 .loading-inner {
   display: grid;
-  gap: 26px;
+  gap: 16px;
   padding: clamp(20px, 3vw, 32px);
 }
 
 .loading-copy {
   grid-column: 1 / -1;
   display: grid;
-  gap: 12px;
+  gap: 6px;
   align-content: center;
 }
 

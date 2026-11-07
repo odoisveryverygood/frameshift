@@ -8,180 +8,7 @@
 .field-wrap.has-detail {
   grid-template-columns: minmax(0, 1fr) 330px;
 }
-.field-wrap > .agent-field {
-  transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-.agent-field {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 1000 / 560;
-}
-.field-links {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-.link {
-  fill: none;
-  stroke-linecap: round;
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  animation: draw 0.9s cubic-bezier(0.3, 0.7, 0.2, 1) forwards;
-  animation-delay: var(--d, 0s);
-  transition:
-    opacity 0.35s ease,
-    stroke-width 0.35s ease;
-}
-@keyframes draw {
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-.spoke {
-  stroke: color-mix(in srgb, var(--c) 35%, #d2d8e4);
-  stroke-width: 1.6;
-}
-.spoke.working,
-.spoke.chosen {
-  stroke: var(--c);
-  stroke-width: 2.6;
-}
-.spoke.waiting {
-  stroke: #dfe3ec;
-}
-.handoff {
-  stroke: #e3e7ef;
-  stroke-width: 1.4;
-}
-.handoff.lit {
-  stroke: color-mix(in srgb, var(--c) 55%, #fff);
-  stroke-width: 2;
-}
-.flow {
-  fill: none;
-  stroke: var(--c);
-  stroke-width: 3;
-  stroke-linecap: round;
-  stroke-dasharray: 0.03 0.07;
-  opacity: 0.55;
-  animation: flow 1.4s linear infinite;
-}
-@keyframes flow {
-  to {
-    stroke-dashoffset: -0.1;
-  }
-}
-.packet {
-  filter: drop-shadow(0 0 6px currentColor);
-}
-.field-links .dim,
-.link.dim {
-  opacity: 0.25;
-}
 
-/* The project in the middle */
-.core {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 25%;
-  min-width: 150px;
-  padding: 16px 18px;
-  transform: translate(-50%, -50%);
-  border: 1px solid var(--line-strong);
-  border-radius: 16px;
-  background: #fff;
-  box-shadow: 0 18px 50px rgb(10 12 20 / 9%);
-  text-align: center;
-  animation: core-in 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
-}
-@keyframes core-in {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.85);
-  }
-}
-.core b {
-  display: block;
-  font-family: var(--font);
-  font-size: 17px;
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.core ul {
-  margin: 8px 0 0;
-  padding: 0;
-  list-style: none;
-  font-family: var(--mono);
-  font-size: 11.5px;
-  color: var(--muted);
-}
-.core li {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.core-ring {
-  position: absolute;
-  inset: -8px;
-  border: 1px solid rgb(31 75 255 / 25%);
-  border-radius: 22px;
-  opacity: 0;
-}
-.core.busy .core-ring {
-  animation: core-pulse 2.2s ease-out infinite;
-}
-@keyframes core-pulse {
-  0% {
-    opacity: 0.9;
-    transform: scale(0.96);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(1.12);
-  }
-}
-
-/* Agents */
-.agent-node {
-  position: absolute;
-  display: grid;
-  justify-items: center;
-  gap: 4px;
-  width: 128px;
-  padding: 8px 6px 10px;
-  border-radius: 18px;
-  transform: translate(-50%, -50%);
-  animation: agent-in 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
-  animation-delay: calc(0.15s + var(--i) * 0.1s);
-  transition:
-    background 0.25s ease,
-    opacity 0.3s ease,
-    filter 0.3s ease;
-}
-@keyframes agent-in {
-  from {
-    opacity: 0;
-    filter: blur(6px);
-    transform: translate(-50%, -50%) scale(0.4);
-  }
-}
-.agent-node:hover {
-  background: color-mix(in srgb, var(--c) 8%, transparent);
-}
-.agent-node.selected {
-  background: color-mix(in srgb, var(--c) 12%, transparent);
-}
-.has-detail .agent-node:not(.selected) {
-  opacity: 0.55;
-}
-.agent-node.waiting .avatar {
-  filter: saturate(0.35) opacity(0.75);
-}
 .avatar-wrap {
   display: block;
   width: 76px;
@@ -472,27 +299,75 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* The 3D factory */
+.agent-scene {
+  position: relative;
+  width: 100%;
+  height: clamp(420px, calc(100dvh - 290px), 760px);
+  overflow: hidden;
+  border-radius: 14px;
+  background: radial-gradient(70% 70% at 50% 55%, #fff, #f7f8fb);
+}
+.agent-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+.scene-label,
+.scene-tag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  will-change: transform;
+}
+.scene-label {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 4px 10px 6px;
+  border-radius: 12px;
+  background: rgb(255 255 255 / 86%);
+  box-shadow: 0 6px 18px rgb(10 12 20 / 10%);
+  border: 1px solid transparent;
+}
+.scene-label b {
+  font-size: 15px;
+  font-weight: 500;
+}
+.scene-label .agent-state {
+  font-size: 11.5px;
+}
+.scene-label.selected {
+  border-color: var(--c);
+}
+.scene-tag {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 13px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.scene-help {
+  position: absolute;
+  left: 14px;
+  bottom: 10px;
+  color: var(--muted);
+  font-size: 12.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
 @media (max-width: 640px) {
-  .agent-field {
-    aspect-ratio: auto;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
+  .agent-scene {
+    height: 70vh;
   }
-  .field-links {
+  .scene-help {
     display: none;
-  }
-  .core {
-    position: static;
-    grid-column: 1 / -1;
-    width: auto;
-    transform: none;
-    animation: none;
-  }
-  .agent-node {
-    position: static;
-    width: auto;
-    transform: none;
-    animation: none;
   }
 }

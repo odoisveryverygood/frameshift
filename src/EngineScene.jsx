@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import geometry from "./engineGeometry.json";
+import { registerEngine } from "./engineBus.js";
 
 // The Raptor 2 test-stand drawing from wheresryan22/anatomy (MIT), left as a plain
 // sketch on the page. It sways a little; hovering lifts pieces of it the way the rest of
@@ -22,6 +23,10 @@ const HEAT = {
   topX: [0.35, 0.65],
   bottomX: [0.325, 0.675],
 };
+// The part that lifts off: the engine below the stand's top beam (fractions).
+const ROCKET = [0.255, 0.095, 0.745, 0.618];
+const IGNITION = 0.32; // seconds the engine fires in the stand before it moves
+const FLIGHT = 1.75; // seconds until it has left the screen
 
 const rand = (a, b) => a + Math.random() * (b - a);
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -71,6 +76,9 @@ export default function EngineScene() {
     const source = new Image();
     // Everything is drawn into `scene`, then copied to the visible canvas.
     let scene = null, // the finished picture
+      stand = null, // the stand with the engine gone
+      rocket = null, // the engine on its own, for the flight
+      rocketHot = null,
       sg = null,
       paper = null, // the sketch itself
       heat = null, // the orange glow, shaped to the nozzle and masked to the sketch
@@ -94,6 +102,16 @@ export default function EngineScene() {
       paper = layer(W, H);
       const pc = paper.getContext("2d");
       pc.drawImage(source, 0, 0, W, H);
+      const rx = ROCKET[0] * W,
+        ry = ROCKET[1] * H,
+        rw = (ROCKET[2] - ROCKET[0]) * W,
+        rh = (ROCKET[3] - ROCKET[1]) * H;
+      stand = layer(W, H);
+      const stc = stand.getContext("2d");
+      stc.drawImage(paper, 0, 0);
+      stc.clearRect(rx, ry, rw, rh);
+      rocket = layer(Math.ceil(rw), Math.ceil(rh));
+      rocket.getContext("2d").drawImage(paper, rx, ry, rw, rh, 0, 0, rw, rh);
       // The glow: a trapezoid over the lower engine, brighter toward the nozzle exit.
       heat = layer(W, H);
       const hc = heat.getContext("2d");
@@ -116,6 +134,13 @@ export default function EngineScene() {
       hc.fill();
       hc.globalCompositeOperation = "destination-in";
       hc.drawImage(paper, 0, 0);
+      rocketHot = layer(rocket.width, rocket.height);
+      const rhc = rocketHot.getContext("2d");
+      rhc.drawImage(rocket, 0, 0);
+      rhc.globalCompositeOperation = "multiply";
+      rhc.drawImage(heat, rx, ry, rw, rh, 0, 0, rw, rh);
+      rhc.globalCompositeOperation = "destination-in";
+      rhc.drawImage(rocket, 0, 0);
       pit = layer(W, H);
       pg = pit.getContext("2d");
       cw = W / CELLS_X;
@@ -168,6 +193,42 @@ export default function EngineScene() {
 
     // ---- Burn state, flame particles and the pieces lifted by the cursor.
     const burn = { on: false, t: 0, power: 0, radius: 0 };
+    // Liftoff: the engine fires in place, then a full-page overlay carries it away.
+    let flight = null,
+      gone = false,
+      overlay = null,
+      og = null;
+    const trail = [];
+    const dropOverlay = () => {
+      overlay?.remove();
+      overlay = og = null;
+      trail.length = 0;
+    };
+    const unregister = registerEngine({
+      launch: () =>
+        new Promise((resolve) => {
+          if (gone || flight) return resolve();
+          if (still || !scene) {
+            gone = true;
+            return resolve();
+          }
+          hover = null;
+          burn.on = true;
+          burn.t = 0;
+          burn.launch = true;
+          setFiring(true);
+          flight = { t: 0, resolve };
+        }),
+      reset: () => {
+        if (flight) flight.resolve();
+        flight = null;
+        gone = false;
+        burn.on = false;
+        burn.launch = false;
+        setFiring(false);
+        dropOverlay();
+      },
+    });
     const parts = [];
     const lifts = new Map();
     let hover = null;
@@ -243,6 +304,111 @@ export default function EngineScene() {
       sg.drawImage(tile, -cw / 2 - 1, -ch / 2 - 1);
       sg.restore();
     }
+    function drawFlight(dt) {
+      const t = flight.t - IGNITION;
+      if (!overlay) {
+        overlay = document.createElement("canvas");
+        overlay.className = "flight-overlay";
+        overlay.setAttribute("aria-hidden", "true");
+        document.body.appendChild(overlay);
+        og = overlay.getContext("2d");
+      }
+      const od = Math.min(devicePixelRatio, 2);
+      if (overlay.width !== Math.round(innerWidth * od)) {
+        overlay.width = Math.round(innerWidth * od);
+        overlay.height = Math.round(innerHeight * od);
+      }
+      const r = canvas.current.getBoundingClientRect();
+      const shake = t < 0.25 ? (1 - t / 0.25) * 2 : 0;
+      const dy = -(760 * t * t + 70 * t);
+      const rx = r.left + ROCKET[0] * r.width + rand(-shake, shake),
+        ry = r.top + ROCKET[1] * r.height + dy + rand(-shake, shake),
+        rw = (ROCKET[2] - ROCKET[0]) * r.width,
+        rh = (ROCKET[3] - ROCKET[1]) * r.height;
+      const ex = r.left + EXIT[0] * r.width,
+        ey = r.top + EXIT[1] * r.height + dy,
+        nozzle = EXIT_HALF * r.width;
+      const padY = r.top + PAD[1] * r.height;
+      // Fire and smoke are left behind in the air as the engine climbs.
+      for (let n = 0; n < 14; n++)
+        trail.push({
+          fire: true,
+          x: ex + rand(-1, 1) * nozzle * 0.55,
+          y: ey + rand(0, 10),
+          vx: rand(-25, 25),
+          vy: rand(380, 820),
+          life: 0,
+          max: rand(0.45, 0.85),
+          size: rand(16, 34) * (r.width / 400),
+        });
+      if (t < 0.7)
+        for (let n = 0; n < 5; n++)
+          trail.push({
+            fire: false,
+            x: ex + rand(-1, 1) * nozzle * 1.6,
+            y: padY + rand(-6, 6),
+            vx: rand(-1, 1) * 220,
+            vy: rand(-40, 10),
+            life: 0,
+            max: rand(1.1, 1.8),
+            size: rand(20, 36) * (r.width / 400),
+          });
+      og.setTransform(od, 0, 0, od, 0, 0);
+      og.clearRect(0, 0, innerWidth, innerHeight);
+      for (let n = trail.length - 1; n >= 0; n--) {
+        const p = trail[n];
+        p.life += dt;
+        if (p.life >= p.max) {
+          trail.splice(n, 1);
+          continue;
+        }
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        if (p.fire && p.y > padY - 8) {
+          p.vy *= -0.15;
+          p.vx = (p.x >= ex ? 1 : -1) * rand(120, 360);
+          p.fire = "splash";
+        }
+        const k = p.life / p.max;
+        let r1, g1, b1, a1, size;
+        if (p.fire) {
+          [r1, g1, b1, a1] = ramp(k);
+          size = p.size * (1 - k * 0.4);
+        } else {
+          [r1, g1, b1, a1] = [196, 190, 186, 0.32 * (1 - k)];
+          size = p.size * (1 + k * 2.4);
+        }
+        const grad = og.createRadialGradient(p.x, p.y, 0, p.x, p.y, size);
+        grad.addColorStop(0, `rgba(${r1 | 0},${g1 | 0},${b1 | 0},${a1})`);
+        grad.addColorStop(1, `rgba(${r1 | 0},${g1 | 0},${b1 | 0},0)`);
+        og.fillStyle = grad;
+        og.fillRect(p.x - size, p.y - size, size * 2, size * 2);
+      }
+      // A bright core right under the nozzle.
+      const core = og.createRadialGradient(
+        ex,
+        ey + nozzle * 0.6,
+        0,
+        ex,
+        ey + nozzle * 0.6,
+        nozzle * 1.6,
+      );
+      core.addColorStop(0, "rgba(255,246,214,0.95)");
+      core.addColorStop(0.5, "rgba(255,170,60,0.55)");
+      core.addColorStop(1, "rgba(255,120,30,0)");
+      og.fillStyle = core;
+      og.fillRect(ex - nozzle * 1.6, ey - nozzle, nozzle * 3.2, nozzle * 3.4);
+      og.drawImage(rocketHot, rx, ry, rw, rh);
+      if (flight.t >= FLIGHT) {
+        const done = flight.resolve;
+        flight = null;
+        gone = true;
+        burn.launch = false;
+        setFiring(false);
+        dropOverlay();
+        done();
+      }
+    }
     function frame(now) {
       // React clears the refs before it runs this effect's cleanup, so a frame can land in between.
       if (!card.current || !canvas.current) return;
@@ -254,7 +420,11 @@ export default function EngineScene() {
         return;
       }
       // The sketch sways in 3D, following the pointer a little.
-      if (!still) {
+      if (flight || gone) {
+        sway[0] *= 0.6;
+        sway[1] *= 0.6;
+        card.current.style.transform = `perspective(1500px) rotateY(${sway[0].toFixed(3)}deg) rotateX(${sway[1].toFixed(3)}deg)`;
+      } else if (!still) {
         sway[0] += (Math.sin(clock * 0.5) * 11 + aim.x * 6 - sway[0]) * 0.08;
         sway[1] += (-aim.y * 4 + Math.sin(clock * 0.37) * 2 - sway[1]) * 0.08;
         card.current.style.transform = `perspective(1500px) rotateY(${sway[0].toFixed(2)}deg) rotateX(${sway[1].toFixed(2)}deg)`;
@@ -269,18 +439,30 @@ export default function EngineScene() {
       burn.power +=
         ((burn.on ? 1 : 0) - burn.power) *
         Math.min(1, dt * (burn.on ? 3.4 : 4));
-      burn.radius = burn.on
-        ? lerp(
-            burn.radius,
-            1 - Math.pow(1 - Math.min(1, burn.t / 2.2), 3),
-            Math.min(1, dt * 2.6),
-          )
-        : Math.max(0, burn.radius - dt * 0.7);
+      burn.radius = burn.launch
+        ? 0
+        : burn.on
+          ? lerp(
+              burn.radius,
+              1 - Math.pow(1 - Math.min(1, burn.t / 2.2), 3),
+              Math.min(1, dt * 2.6),
+            )
+          : Math.max(0, burn.radius - dt * 0.7);
 
+      const away = gone || (flight && flight.t >= IGNITION);
+      if (flight) {
+        flight.t += dt;
+        if (flight.t >= IGNITION && burn.on) {
+          // Hand the fire over to the overlay with the engine.
+          burn.on = false;
+          burn.power = 0;
+          parts.length = 0;
+        }
+      }
       sg.clearRect(0, 0, W, H);
-      sg.drawImage(paper, 0, 0);
+      sg.drawImage(away ? stand : paper, 0, 0);
       // The lower engine glows orange while it fires.
-      if (burn.power > 0.01) {
+      if (burn.power > 0.01 && !away) {
         sg.save();
         sg.globalCompositeOperation = "multiply";
         sg.globalAlpha = clamp(
@@ -413,7 +595,7 @@ export default function EngineScene() {
       ctx.clearRect(0, 0, W, H);
       ctx.drawImage(scene, 0, 0);
       const reach = hw * 1.9;
-      if (hover) {
+      if (hover && !flight && !gone) {
         const rows = Math.round(H / hw);
         const i0 = clamp(Math.floor((hover[0] - reach) / hw), 0, LIFT_COLS - 1),
           i1 = clamp(Math.floor((hover[0] + reach) / hw), 0, LIFT_COLS - 1),
@@ -477,11 +659,15 @@ export default function EngineScene() {
         ctx.drawImage(scene, x, y, hw, hh, -hw / 2, -hh / 2, hw, hh);
         ctx.restore();
       });
+      if (flight && flight.t >= IGNITION) drawFlight(dt);
       raf = requestAnimationFrame(frame);
     }
     raf = requestAnimationFrame(frame);
     return () => {
       cancelAnimationFrame(raf);
+      unregister();
+      flight?.resolve();
+      dropOverlay();
       removeEventListener("pointermove", look);
       watcher.disconnect();
       const c = canvas.current;

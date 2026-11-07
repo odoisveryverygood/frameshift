@@ -42,6 +42,7 @@ import Loading from "./Loading.jsx";
 import Hero from "./Hero.jsx";
 import Rip, { revokeSnapshots, snapshotHtml } from "./Rip.jsx";
 import Slices from "./Slices.jsx";
+import { launchEngine, resetEngine } from "./engineBus.js";
 import "./style.css";
 const liveStatuses = ["queued", "running", "recovering"];
 const terminalStatuses = [
@@ -299,7 +300,7 @@ function App() {
   // In a preview the steps cycle so the progress screen can be seen moving.
   useEffect(() => {
     if (!previewing || phase === "hero" || phase === "results") return;
-    const timer = setInterval(() => setPreviewStep((n) => (n + 1) % 4), 2400);
+    const timer = setInterval(() => setPreviewStep((n) => (n + 1) % 4), 4500);
     return () => clearInterval(timer);
   }, [previewing, phase]);
   // Never leave the page on a progress screen with nothing running.
@@ -469,13 +470,26 @@ function App() {
   }
   // Starts an optimization from the hero. The rip transition plays only once a
   // run really exists, so a refused request never tears the page apart.
-  async function beginOptimize(getProject, origin) {
+  // Copy the hero for the rip transition, as it looks right now.
+  function heroSnapshot() {
     const el = heroRef.current;
-    const html = el ? snapshotHtml(el) : "";
     const box = el
       ? el.getBoundingClientRect()
       : { left: 0, top: 0, width: innerWidth, height: innerHeight };
+    return {
+      html: el ? snapshotHtml(el) : "",
+      rect: {
+        left: box.left,
+        top: box.top,
+        width: box.width,
+        height: box.height,
+      },
+    };
+  }
+  async function beginOptimize(getProject, origin) {
     starting.current = true;
+    // The rocket lifts off while the request is made; the rip follows both.
+    const flight = launchEngine();
     const goal = mission.trim();
     const result = await act(async () => {
       const p = await getProject();
@@ -499,8 +513,10 @@ function App() {
     });
     if (!result.ok || !result.value) {
       starting.current = false;
+      resetEngine();
       return;
     }
+    await flight;
     if (result.value.preview) {
       setNotice(
         "Previewing the transition. Connect a model to run it for real.",
@@ -509,13 +525,7 @@ function App() {
       setPreviewStep(0);
     }
     setRip({
-      html,
-      rect: {
-        left: box.left,
-        top: box.top,
-        width: box.width,
-        height: box.height,
-      },
+      ...heroSnapshot(),
       origin: origin || { x: innerWidth / 2, y: innerHeight / 2 },
     });
     setPhase("rip");
@@ -523,22 +533,12 @@ function App() {
   }
   // No project to run: play the transition anyway so it can be seen.
   async function beginPreview(origin) {
-    const el = heroRef.current;
-    const html = el ? snapshotHtml(el) : "";
-    const box = el
-      ? el.getBoundingClientRect()
-      : { left: 0, top: 0, width: innerWidth, height: innerHeight };
     starting.current = true;
+    await launchEngine();
     setPreviewing(true);
     setPreviewStep(0);
     setRip({
-      html,
-      rect: {
-        left: box.left,
-        top: box.top,
-        width: box.width,
-        height: box.height,
-      },
+      ...heroSnapshot(),
       origin: origin || { x: innerWidth / 2, y: innerHeight / 2 },
     });
     setPhase("rip");
@@ -890,6 +890,7 @@ function App() {
             {phase !== "results" ? (
               projectJob ? (
                 <Loading
+                  revealed={phase !== "rip"}
                   job={projectJob}
                   project={project}
                   goal={mission}
@@ -903,6 +904,7 @@ function App() {
                 />
               ) : previewing ? (
                 <Loading
+                  revealed={phase !== "rip"}
                   preview
                   job={previewJob}
                   project={project}

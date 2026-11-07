@@ -33,6 +33,11 @@ const Hero = forwardRef(function Hero(
   ref,
 ) {
   const wide = useWide();
+  // Start loading the 3D agents screen early so it is ready when the rip ends.
+  useEffect(() => {
+    const t = setTimeout(() => import("./AgentScene.jsx"), 1200);
+    return () => clearTimeout(t);
+  }, []);
   return (
     <div className="hero" ref={ref}>
       <header className="hero-top">

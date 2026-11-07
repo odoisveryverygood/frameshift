@@ -1,7 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { Suspense, lazy, useEffect, useState } from "react";
 import { flushSync } from "react-dom";
 import { X } from "lucide-react";
 import "./agents.css";
+
+// three.js only loads for this screen.
+const AgentScene = lazy(() => import("./AgentScene.jsx"));
 
 // The four kinds of work in a Sift run, each drawn as an agent. Every agent's state,
 // task and log come from the run itself: which events it has logged and what the run
@@ -14,7 +17,6 @@ const AGENTS = [
     color: "#2f6bff",
     types: ["build", "recovery"],
     waiting: "Will read your source and build it.",
-    at: [170, 120],
   },
   {
     id: "gauge",
@@ -23,7 +25,6 @@ const AGENTS = [
     color: "#0fa58c",
     types: ["profile", "benchmark", "complete"],
     waiting: "Will measure the scene on this machine.",
-    at: [830, 120],
   },
   {
     id: "smith",
@@ -32,7 +33,6 @@ const AGENTS = [
     color: "#7a52ff",
     types: ["agent", "repair", "inconclusive"],
     waiting: "Will read the measurements and propose a fix.",
-    at: [830, 440],
   },
   {
     id: "warden",
@@ -41,10 +41,8 @@ const AGENTS = [
     color: "#e0602c",
     types: ["verify", "accepted", "rejected"],
     waiting: "Will compare frames, objects and picking.",
-    at: [170, 440],
   },
 ];
-const CENTER = [500, 280];
 const owner = (type) => AGENTS.find((a) => a.types.includes(type))?.id;
 
 // Which agent is busy right now, from the run's own state.
@@ -58,21 +56,6 @@ function activeAgent(job) {
   if (!job.baseline) return last?.type === "profile" ? "gauge" : "scout";
   return owner(last?.type) || "smith";
 }
-
-// A curved spoke from an agent to the project in the middle.
-const spoke = ([x, y]) => {
-  const [cx, cy] = CENTER,
-    mx = (x + cx) / 2;
-  return `M${x} ${y} C ${mx} ${y}, ${mx} ${cy}, ${cx + (x < cx ? -120 : 120)} ${cy}`;
-};
-// A hand-off arc between two neighbouring agents, bowed away from the centre.
-const handoff = ([x1, y1], [x2, y2]) => {
-  const mx = (x1 + x2) / 2,
-    my = (y1 + y2) / 2,
-    bx = mx + (mx - CENTER[0]) * 0.35,
-    by = my + (my - CENTER[1]) * 0.35;
-  return `M${x1} ${y1} Q ${bx} ${by} ${x2} ${y2}`;
-};
 
 function Avatar({ id, working }) {
   const cls = "avatar " + (working ? "working" : "");
@@ -233,7 +216,13 @@ function Avatar({ id, working }) {
   );
 }
 
-export default function AgentField({ job, project, baselineSrc, preview }) {
+export default function AgentField({
+  job,
+  project,
+  baselineSrc,
+  preview,
+  revealed = true,
+}) {
   const [selected, setSelected] = useState(null);
   const active = activeAgent(job);
   const events = job.events || [];
@@ -272,114 +261,15 @@ export default function AgentField({ job, project, baselineSrc, preview }) {
   const statusText = { working: "Working", done: "Done", waiting: "Waiting" };
   return (
     <div className={"field-wrap " + (chosen ? "has-detail" : "")}>
-      <div className="agent-field">
-        <svg className="field-links" viewBox="0 0 1000 560" aria-hidden="true">
-          {info.map((a, i) => {
-            const next = info[(i + 1) % info.length];
-            if (i === info.length - 1) return null;
-            const lit = a.state === "done" && next.state !== "waiting";
-            return (
-              <path
-                key={"h" + a.id}
-                className={
-                  "link handoff " +
-                  (lit ? "lit " : "") +
-                  (chosen && chosen.id !== a.id && chosen.id !== next.id
-                    ? "dim"
-                    : "")
-                }
-                d={handoff(a.at, next.at)}
-                pathLength="1"
-                style={{ "--c": next.color, "--d": `${0.5 + i * 0.12}s` }}
-              />
-            );
-          })}
-          {info.map((a, i) => (
-            <g
-              key={"s" + a.id}
-              className={chosen && chosen.id !== a.id ? "dim" : ""}
-            >
-              <path
-                className={
-                  "link spoke " +
-                  a.state +
-                  (chosen?.id === a.id ? " chosen" : "")
-                }
-                d={spoke(a.at)}
-                pathLength="1"
-                style={{ "--c": a.color, "--d": `${0.3 + i * 0.1}s` }}
-              />
-              {a.state === "working" && (
-                <>
-                  <path
-                    className="flow"
-                    d={spoke(a.at)}
-                    pathLength="1"
-                    style={{ "--c": a.color }}
-                  />
-                  {[0, 0.6, 1.2].map((b) => (
-                    <circle
-                      key={b}
-                      r="5"
-                      className="packet"
-                      style={{ fill: a.color }}
-                    >
-                      <animateMotion
-                        dur="1.8s"
-                        begin={`${b}s`}
-                        repeatCount="indefinite"
-                        path={spoke(a.at)}
-                      />
-                    </circle>
-                  ))}
-                </>
-              )}
-            </g>
-          ))}
-        </svg>
-        <div className={"core " + (active ? "busy" : "")}>
-          <span className="core-ring" aria-hidden="true" />
-          <b>{project?.name || "Your project"}</b>
-          <ul>
-            {(files.length ? files.slice(0, 4) : ["source files"]).map((f) => (
-              <li key={f}>{f}</li>
-            ))}
-            {files.length > 4 && <li>+{files.length - 4} more</li>}
-          </ul>
-        </div>
-        {info.map((a, i) => (
-          <button
-            key={a.id}
-            type="button"
-            className={
-              "agent-node " + a.state + (selected === a.id ? " selected" : "")
-            }
-            style={{
-              left: `${a.at[0] / 10}%`,
-              top: `${(a.at[1] / 560) * 100}%`,
-              "--c": a.color,
-              "--i": i,
-            }}
-            aria-pressed={selected === a.id}
-            aria-label={`${a.name}, ${a.role}. ${statusText[a.state]}. Show what ${a.name} is working on.`}
-            onClick={() => pick(a.id)}
-          >
-            <span
-              className="avatar-wrap"
-              style={{
-                viewTransitionName:
-                  selected === a.id ? "none" : `agent-${a.id}`,
-              }}
-            >
-              <Avatar id={a.id} working={a.state === "working"} />
-            </span>
-            <span className="agent-name">{a.name}</span>
-            <span className={"agent-state " + a.state}>
-              {statusText[a.state]}
-            </span>
-          </button>
-        ))}
-      </div>
+      <Suspense fallback={<div className="agent-scene" />}>
+        <AgentScene
+          agents={info}
+          selected={selected}
+          onPick={pick}
+          revealed={revealed}
+          projectName={project?.name || "Your project"}
+        />
+      </Suspense>
       {chosen && (
         <aside
           className="agent-detail"

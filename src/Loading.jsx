@@ -11,6 +11,7 @@ export default function Loading({
   inert,
   goal,
   preview,
+  revealed,
 }) {
   return (
     <section className="loading" aria-label="Sift is working" inert={inert}>
@@ -42,15 +43,13 @@ export default function Loading({
               {job.mission || goal}
             </blockquote>
           )}
-          <p className="loading-hint">
-            Click an agent to see what it is working on.
-          </p>
         </div>
         <AgentField
           job={job}
           project={project}
           baselineSrc={baselineSrc}
           preview={preview}
+          revealed={revealed}
         />
       </div>
     </section>
