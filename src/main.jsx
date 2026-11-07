@@ -54,12 +54,16 @@ const terminalStatuses = [
   "failed",
   "interrupted",
 ];
+// Preview steps follow the backend pipeline's own order and event types:
+// investigator → optimizer → verifier (risk step) → verify.
 const previewPhases = [
-  "Reading your files",
-  "Measuring the baseline",
-  "Trying a patch",
-  "Checking the patch",
+  "Investigator: inspecting source and measured bottlenecks",
+  "Optimizer: implementing one focused change in the isolated candidate",
+  "Verifier: assessing patch risks",
+  "Checking visuals, object transforms and picking",
 ];
+const previewEvents = ["investigator", "optimizer", "verifier", "verify"];
+const previewStatus = [null, "building", "building", "verifying"];
 const steps = ["Ready", "Measure", "Patch", "Check", "Result"];
 async function api(url, body) {
   const response = await fetch(
@@ -707,23 +711,13 @@ function App() {
     status: "running",
     mission: mission.trim(),
     phase: previewPhases[previewStep],
-    baseline: previewStep >= 2 ? {} : null,
-    events: [
-      { type: "build", message: "Reading your project files" },
-      ...(previewStep >= 1
-        ? [{ type: "profile", message: "Measuring the baseline" }]
-        : []),
-      ...(previewStep >= 2
-        ? [{ type: "agent", message: "Trying a patch" }]
-        : []),
-      ...(previewStep >= 3
-        ? [{ type: "verify", message: "Checking the patch" }]
-        : []),
-    ],
-    experiments:
-      previewStep >= 2
-        ? [{ status: previewStep === 2 ? "reasoning" : "checking" }]
-        : [],
+    baseline: {},
+    events: previewEvents
+      .slice(0, previewStep + 1)
+      .map((type, i) => ({ type, message: previewPhases[i] })),
+    experiments: previewStatus[previewStep]
+      ? [{ status: previewStatus[previewStep] }]
+      : [{ status: "reasoning" }],
   };
   return (
     <div className={"app " + (phase === "hero" ? "is-hero" : "")}>

@@ -301,3 +301,9 @@
     display: none;
   }
 }
+.activity-agents .agent-sub {
+  margin-left: 4px;
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}

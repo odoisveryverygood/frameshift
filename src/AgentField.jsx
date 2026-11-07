@@ -1,4 +1,5 @@
 import React, { Suspense, lazy, useEffect, useState } from "react";
+import { NAMES } from "./agentNames.js";
 import "./agents.css";
 
 // three.js only loads for this screen.
@@ -7,38 +8,48 @@ const SolarScene = lazy(() => import("./SolarScene.jsx"));
 // The four kinds of work in a Sift run, each shown as an agent. Every agent's state,
 // task and log come from the run itself: which events it has logged and what the run
 // is doing now. They are the stages of one run, not separate AI models.
+// The planets keep their internal ids (orbit and colour); each one is a real role
+// in the backend pipeline, in order: find → patch → assess risk → prove.
 const AGENTS = [
   {
     id: "scout",
-    name: "Scout",
-    role: "Reads and builds your project",
+    ...NAMES.investigator,
+    role: NAMES.investigator.description,
     color: "#2f6bff",
-    types: ["build", "recovery"],
-    waiting: "Will read your source and build it.",
+    types: ["build", "recovery", "investigator"],
+    waiting: "Will read your scene and source and find the slowdown.",
   },
   {
     id: "gauge",
-    name: "Gauge",
-    role: "Measures how it runs",
-    color: "#0fa58c",
-    types: ["profile", "benchmark", "complete"],
-    waiting: "Will measure the scene on this machine.",
+    ...NAMES.optimizer,
+    role: NAMES.optimizer.description,
+    color: "#7a52ff",
+    types: ["optimizer", "agent", "repair", "inconclusive"],
+    waiting: "Will write one focused fix in an isolated copy.",
   },
   {
     id: "smith",
-    name: "Smith",
-    role: "Rebuilds it with a patch",
-    color: "#7a52ff",
-    types: ["agent", "repair", "inconclusive"],
-    waiting: "Will propose a fix and rebuild the parts it touches.",
+    ...NAMES.risk,
+    role: NAMES.risk.description,
+    color: "#e0602c",
+    types: ["verifier"],
+    waiting: "Will predict what the fix could break.",
   },
   {
     id: "warden",
-    name: "Warden",
-    role: "Checks it looks and behaves the same",
-    color: "#e0602c",
-    types: ["verify", "accepted", "rejected"],
-    waiting: "Will compare frames, objects and picking.",
+    ...NAMES.verifier,
+    role: NAMES.verifier.description,
+    color: "#0fa58c",
+    types: [
+      "profile",
+      "benchmark",
+      "verify",
+      "challenge",
+      "complete",
+      "accepted",
+      "rejected",
+    ],
+    waiting: "Will run the checks and measurements and decide.",
   },
 ];
 const owner = (type) => AGENTS.find((a) => a.types.includes(type))?.id;
@@ -47,12 +58,14 @@ const owner = (type) => AGENTS.find((a) => a.types.includes(type))?.id;
 function activeAgent(job) {
   if (job.status === "queued") return null;
   const exp = job.experiments?.at(-1)?.status;
-  if (["reasoning", "building"].includes(exp)) return "smith";
-  if (["verifying", "checking"].includes(exp)) return "warden";
-  if (exp === "benchmarking") return "gauge";
-  const last = (job.events || []).at(-1);
-  if (!job.baseline) return last?.type === "profile" ? "gauge" : "scout";
-  return owner(last?.type) || "smith";
+  const last = (job.events || []).at(-1)?.type;
+  // The risk step logs a "verifier" event before the checks start.
+  if (last === "verifier" && exp !== "verifying") return "smith";
+  if (["verifying", "checking", "benchmarking"].includes(exp)) return "warden";
+  if (exp === "building") return "gauge";
+  if (exp === "reasoning") return last === "investigator" ? "scout" : "gauge";
+  if (!job.baseline) return last === "profile" ? "warden" : "scout";
+  return owner(last) || "gauge";
 }
 
 const statusText = { working: "Working", done: "Done", waiting: "Waiting" };
@@ -82,20 +95,28 @@ export default function AgentField({
     (m) => m[1],
   );
   // What each agent's workers build in the close-up: real names from this run.
+  const cited = (exp?.investigation?.evidence || [])
+    .map((e) => e.path)
+    .filter((p, i, all) => p && all.indexOf(p) === i);
+  const risks = exp?.riskAssessment?.probabilities
+    ? Object.keys(exp.riskAssessment.probabilities)
+    : ["identity", "animation", "geometry", "timing"];
   const partsFor = (id) =>
     id === "scout"
-      ? files.length
-        ? files.slice(0, 6)
-        : ["Source", "Imports", "Bundle"]
+      ? (cited.length ? cited : files)
+          .slice(0, 6)
+          .concat(
+            cited.length || files.length ? [] : ["Source", "Scene", "Profile"],
+          )
       : id === "gauge"
-        ? ["Draw calls", "CPU submit", "Frame time", "Triangles", "GPU time"]
+        ? patched.length
+          ? patched.slice(0, 6)
+          : files.length
+            ? files.slice(0, 4)
+            : ["Patch", "Build", "Repair"]
         : id === "smith"
-          ? patched.length
-            ? patched.slice(0, 6)
-            : files.length
-              ? files.slice(0, 4)
-              : ["Patch", "Rebuild", "Repair"]
-          : ["View 1", "View 2", "View 3", "Picking", "Transforms"];
+          ? risks.map((r) => `${r} risk`)
+          : ["Draw calls", "CPU submit", "Frame time", "Picking", "Transforms"];
   const info = AGENTS.map((a) => {
     const mine = events.filter((e) => a.types.includes(e.type));
     const state =
@@ -112,14 +133,21 @@ export default function AgentField({
   const progress = Math.round(
     ((doneCount + (current ? 0.5 : 0)) / AGENTS.length) * 100,
   );
+  const probs = exp?.riskAssessment?.probabilities;
   const detail =
-    current?.id === "gauge" && Number.isFinite(job.baseline?.calls)
-      ? `${job.baseline.calls.toLocaleString()} draw calls · CPU ${job.baseline.submitP95?.toFixed(1)} ms`
-      : current?.id === "smith" && exp?.title
+    current?.id === "scout" && exp?.investigation?.hypothesis
+      ? exp.investigation.hypothesis
+      : current?.id === "gauge" && exp?.title
         ? exp.title
-        : current?.id === "warden" && exp?.guards?.checks?.length
-          ? `${exp.guards.checks.filter((c) => c.visualPass && c.statePass && c.pickingPass !== false).length} of ${exp.guards.checks.length} viewpoints match`
-          : null;
+        : current?.id === "smith" && probs
+          ? Object.entries(probs)
+              .map(([k, v]) => `${k} ${Number(v).toFixed(2)}`)
+              .join(" · ")
+          : current?.id === "warden" && exp?.guards?.checks?.length
+            ? `${exp.guards.checks.filter((c) => c.visualPass && c.statePass && c.pickingPass !== false).length} of ${exp.guards.checks.length} checkpoints pass`
+            : current?.id === "warden" && Number.isFinite(job.baseline?.calls)
+              ? `${job.baseline.calls.toLocaleString()} draw calls · CPU ${job.baseline.submitP95?.toFixed(1)} ms`
+              : null;
   return (
     <div className="factory">
       <Suspense fallback={<div className="solar-scene" />}>
@@ -184,7 +212,9 @@ export default function AgentField({
                 onClick={() => setFocus(focus === a.id ? null : a.id)}
                 aria-pressed={focus === a.id}
               >
-                <b>{a.name}</b>
+                <b>
+                  {a.name} <span className="agent-sub">{a.subtitle}</span>
+                </b>
                 <span>{a.role}</span>
                 {a.state !== "working" && <small>{a.task}</small>}
               </button>
