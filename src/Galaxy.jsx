@@ -5,9 +5,12 @@ import React, { useEffect, useRef } from "react";
 const COLORS = [
   "122,82,255",
   "47,107,255",
+  "236,72,153",
+  "34,211,238",
   "167,139,250",
+  "244,114,182",
+  "20,184,166",
   "96,165,250",
-  "196,181,253",
 ];
 
 export default function Galaxy({ x = 0.62, y = 0.55, scale = 1 }) {
@@ -74,11 +77,13 @@ export default function Galaxy({ x = 0.62, y = 0.55, scale = 1 }) {
             cx + Math.cos(a) * d * R,
             cy + Math.sin(a) * d * R * 0.42,
             R * (0.16 + d * 0.1),
-            COLORS[(i + k) % 3],
+            COLORS[(i * 3 + k * 2) % COLORS.length],
             0.07,
           );
         }
       neb(cx, cy, R * 0.32, "196,181,253", 0.32);
+      neb(cx - R * 0.18, cy + R * 0.05, R * 0.22, "244,114,182", 0.12);
+      neb(cx + R * 0.2, cy - R * 0.06, R * 0.2, "34,211,238", 0.1);
       neb(cx, cy, R * 0.1, "255,255,255", 0.9);
       for (const s of stars) {
         const a = s.arm + s.d * 5.2 + spin * (1.4 - s.d * 0.6);

@@ -268,7 +268,7 @@ export default function RunResults({
       aria-modal="true"
       aria-label="Run results"
     >
-      <Galaxy x={0.5} y={0.5} scale={1.25} />
+      <Galaxy x={0.5} y={0.4} scale={0.95} />
       <Waves />
       <div className="grain" aria-hidden="true" />
       <header className="rr-top">

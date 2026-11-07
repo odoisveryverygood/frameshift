@@ -17,7 +17,7 @@ export default function Loading({
 }) {
   return (
     <section className="loading" aria-label="Sift is working" inert={inert}>
-      <Galaxy x={0.5} y={0.62} scale={1.1} />
+      <Galaxy x={0.5} y={0.4} scale={0.95} />
       <Waves />
       <div className="loading-inner">
         <div className="loading-copy">

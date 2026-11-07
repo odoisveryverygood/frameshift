@@ -1483,9 +1483,20 @@ body::before {
 /* Moving water under the agents screen and the dashboard. */
 .waves {
   position: fixed;
-  inset: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   width: 100vw;
-  height: 100vh;
+  height: 22vh;
   z-index: 0;
   pointer-events: none;
+}
+
+/* The galaxy keeps to the space above the waves. */
+.galaxy {
+  top: 0 !important;
+  bottom: auto !important;
+  height: 78vh !important;
+  -webkit-mask-image: linear-gradient(#000 80%, transparent);
+  mask-image: linear-gradient(#000 80%, transparent);
 }

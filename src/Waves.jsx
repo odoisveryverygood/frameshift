@@ -1,7 +1,42 @@
 import React, { useEffect, useRef } from "react";
 
-// Slow ripples on a dotted water plane, seen in perspective along the bottom of
-// the page. Decoration only.
+// Slow, solid blue and violet waves rolling along the bottom of the page.
+// Decoration only; it stays below the galaxy.
+const LAYERS = [
+  {
+    amp: 18,
+    len: 0.0042,
+    speed: 0.22,
+    base: 0.42,
+    from: "rgba(96,165,250,0.35)",
+    to: "rgba(167,139,250,0.30)",
+  },
+  {
+    amp: 22,
+    len: 0.0031,
+    speed: -0.16,
+    base: 0.55,
+    from: "rgba(122,82,255,0.40)",
+    to: "rgba(47,107,255,0.40)",
+  },
+  {
+    amp: 16,
+    len: 0.0052,
+    speed: 0.3,
+    base: 0.7,
+    from: "rgba(47,107,255,0.55)",
+    to: "rgba(122,82,255,0.50)",
+  },
+  {
+    amp: 12,
+    len: 0.0038,
+    speed: -0.24,
+    base: 0.84,
+    from: "rgba(37,73,220,0.70)",
+    to: "rgba(99,63,230,0.65)",
+  },
+];
+
 export default function Waves() {
   const ref = useRef(null);
   useEffect(() => {
@@ -22,8 +57,6 @@ export default function Waves() {
     };
     size();
     addEventListener("resize", size);
-    const COLS = 150,
-      ROWS = 46;
     const draw = (now) => {
       frame = requestAnimationFrame(draw);
       if (now - last < 33) return;
@@ -31,34 +64,24 @@ export default function Waves() {
       const t = reduced ? 0 : now / 1000;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, w, h);
-      const horizon = h * 0.52,
-        cx = w / 2;
-      for (let r = 0; r < ROWS; r++) {
-        const z = 1 - r / ROWS; // 1 far, ~0 near
-        const depth = 1 / (0.18 + z * 1.9);
-        const y0 = horizon + (h - horizon) * (1 - z) * 1.05;
-        for (let c = 0; c < COLS; c++) {
-          const x = (c / (COLS - 1)) * 2 - 1;
-          const wx = x * 6,
-            wz = z * 6;
-          // Rings spreading from the centre, plus a long swell.
-          const d = Math.hypot(wx, wz - 2.2);
-          const hgt =
-            Math.sin(d * 2.4 - t * 0.9) * Math.exp(-d * 0.22) * 0.9 +
-            Math.sin(wx * 0.6 + t * 0.35) * 0.25;
-          const px = cx + x * w * 0.75 * depth * 0.62;
-          const py = y0 - hgt * 9 * depth;
-          if (px < -10 || px > w + 10) continue;
-          const lift = (hgt + 1) / 2;
-          ctx.globalAlpha = Math.min(
-            0.75,
-            (0.12 + lift * 0.5) * (1 - z * 0.75),
-          );
-          ctx.fillStyle = lift > 0.62 ? "#7a52ff" : "#2f6bff";
-          ctx.fillRect(px, py, 1.2 + depth * 0.5, 1.2 + depth * 0.5);
+      for (const L of LAYERS) {
+        const g = ctx.createLinearGradient(0, 0, w, 0);
+        g.addColorStop(0, L.from);
+        g.addColorStop(1, L.to);
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.moveTo(0, h);
+        for (let x = 0; x <= w + 8; x += 8) {
+          const y =
+            h * L.base +
+            Math.sin(x * L.len + t * L.speed * 2) * L.amp +
+            Math.sin(x * L.len * 2.3 - t * L.speed * 1.3) * L.amp * 0.4;
+          ctx.lineTo(x, y);
         }
+        ctx.lineTo(w, h);
+        ctx.closePath();
+        ctx.fill();
       }
-      ctx.globalAlpha = 1;
       if (reduced) cancelAnimationFrame(frame);
     };
     frame = requestAnimationFrame(draw);
