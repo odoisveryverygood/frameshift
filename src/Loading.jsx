@@ -1,7 +1,6 @@
 import React from "react";
 import AgentField from "./AgentField.jsx";
 import Galaxy from "./Galaxy.jsx";
-import Waves from "./Waves.jsx";
 import "./loading.css";
 
 // Shown while a run is live: the goal, what the run is doing now, and the four
@@ -18,7 +17,6 @@ export default function Loading({
   return (
     <section className="loading" aria-label="Sift is working" inert={inert}>
       <Galaxy x={0.5} y={0.4} scale={0.95} />
-      <Waves />
       <div className="loading-inner">
         <div className="loading-copy">
           <span className="eyebrow">
