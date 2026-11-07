@@ -39,6 +39,26 @@ The start command launches a separate worker and the web server. Restarting the
 web server does not cancel an executing job. `npm run worker` can start the worker
 separately; interrupted work can resume when that worker restarts.
 
+## Executable Skill Lab
+
+Open **http://127.0.0.1:4310/lab/** with Earl running. The configured model learns a
+reusable JavaScript source transformer from an authored training application and
+training-only failures. Earl runs it in a separate restricted process, checks the
+base app plus geometry/hierarchy stress cases, then freezes the code and evaluates
+it on two other applications without another model call. Both must pass independent
+behavior/performance gates before the active skill version changes.
+
+This is a bounded `createWorld(THREE, scene)` instancing family, not universal
+Three.js optimization. The authored evaluation suite is withheld from the generator
+and reused across runs. Local records retain generated code, parent versions,
+training contexts, failures, screenshots, measurements and adoption decisions.
+See [the implementation and evidence boundaries](docs/SKILL-LAB.md).
+
+```sh
+# Verify a real completed adopted run without starting another model request:
+node scripts/verify-skill-lab.mjs --run YOUR_RUN_ID
+```
+
 ## Give Earl a mission
 
 From this repository, connect a trusted local project:
@@ -86,9 +106,10 @@ must be dated and distinguished from prior work in any event submission. This
 repository's history and third-party credits preserve that distinction.
 
 The primary problem statement is **Trust but Verify**. Experiment history informs
-subsequent optimization attempts. Earl does **not** yet implement held-out adoption
-of versioned agent skills, so it should not claim the full **System That Gets Better**
-problem statement on that basis.
+subsequent optimization attempts. The executable Skill Lab adds versioned skill generation and held-out adoption
+for a bounded rendering family. Its **System That Gets Better** claim is limited
+to the measured authored cohort and training-only refinement, not model retraining
+or general-purpose self-improvement.
 
 ## The original vision
 
