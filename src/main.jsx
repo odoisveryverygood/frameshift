@@ -244,8 +244,21 @@ function App() {
   const wasLive = useRef(new Set());
   useEffect(() => {
     const kind = new URLSearchParams(location.search).get("fixture");
-    if (import.meta.env.DEV && kind) loadFixture(kind).then(setResultsFixture);
-  }, []);
+    if (kind) loadFixture(kind).then(withStage).then(setResultsFixture);
+  }, [data.projects.length > 0]);
+  // The sample run is the recorded warehouse run, so the dashboard shows that
+  // project's real build when it exists here, otherwise the current project's.
+  function withStage(sample) {
+    const built =
+      data.projects.find((p) => p.built && p.name === sample.project.name) ||
+      (project?.built && project);
+    return built
+      ? { ...sample, project: { ...built, name: sample.project.name } }
+      : sample;
+  }
+  function openSampleDashboard() {
+    loadFixture("accepted").then(withStage).then(setResultsFixture);
+  }
   useEffect(() => {
     for (const r of projectRuns) {
       if (liveStatuses.includes(r.status)) wasLive.current.add(r.id);
@@ -958,14 +971,28 @@ function App() {
                   }
                 />
               ) : previewing ? (
-                <Loading
-                  revealed={phase !== "rip"}
-                  preview
-                  job={previewJob}
-                  project={project}
-                  goal={mission}
-                  baselineSrc={null}
-                />
+                <>
+                  <Loading
+                    revealed={phase !== "rip"}
+                    preview
+                    job={previewJob}
+                    project={project}
+                    goal={mission}
+                    baselineSrc={null}
+                  />
+                  <div className="preview-dashboard">
+                    <button
+                      type="button"
+                      className="primary-button"
+                      onClick={openSampleDashboard}
+                    >
+                      Go to dashboard
+                    </button>
+                    <small>
+                      Shows a recorded sample run while this is a simulation.
+                    </small>
+                  </div>
+                </>
               ) : (
                 <p className="results-empty">Finishing up…</p>
               )

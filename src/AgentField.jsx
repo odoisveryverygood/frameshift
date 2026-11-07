@@ -14,6 +14,8 @@ const AGENTS = [
   {
     id: "scout",
     ...NAMES.investigator,
+    name: NAMES.investigator.codename,
+    subtitle: NAMES.investigator.name,
     role: NAMES.investigator.description,
     color: "#2f6bff",
     types: ["build", "recovery", "investigator"],
@@ -22,6 +24,8 @@ const AGENTS = [
   {
     id: "gauge",
     ...NAMES.optimizer,
+    name: NAMES.optimizer.codename,
+    subtitle: NAMES.optimizer.name,
     role: NAMES.optimizer.description,
     color: "#7a52ff",
     types: ["optimizer", "agent", "repair", "inconclusive"],
@@ -30,6 +34,8 @@ const AGENTS = [
   {
     id: "smith",
     ...NAMES.risk,
+    name: NAMES.risk.codename,
+    subtitle: NAMES.risk.name,
     role: NAMES.risk.description,
     color: "#e0602c",
     types: ["verifier"],
@@ -38,6 +44,8 @@ const AGENTS = [
   {
     id: "warden",
     ...NAMES.verifier,
+    name: NAMES.verifier.codename,
+    subtitle: NAMES.verifier.name,
     role: NAMES.verifier.description,
     color: "#0fa58c",
     types: [

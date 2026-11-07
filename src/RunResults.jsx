@@ -5,6 +5,7 @@ import DotCollapse from "./results/DotCollapse.jsx";
 import PatchReveal from "./results/PatchReveal.jsx";
 import BeforeAfter from "./results/BeforeAfter.jsx";
 import Receipt from "./results/Receipt.jsx";
+import Stage from "./results/Stage.jsx";
 import { formatNumber, useInView, useReducedMotion } from "./results/motion.js";
 import "./run-results.css";
 
@@ -135,6 +136,14 @@ export default function RunResults({ run, project, onClose, fixture }) {
         receiptError ||
         "No verifier receipt was recorded for this run."
       : null);
+  // The middle of the dashboard is whatever the project built: the candidate when
+  // the backend serves one, otherwise the project's current build.
+  const stageSrc =
+    exp?.previewReady && exp?.previewUrl
+      ? exp.previewUrl
+      : project?.built
+        ? `/preview/${project.id}/index.html`
+        : null;
   const ref = exp?.reference,
     cand = exp?.candidate;
   const go = (id) =>
@@ -163,7 +172,7 @@ export default function RunResults({ run, project, onClose, fixture }) {
       <header className="rr-top">
         <div>
           <span className="eyebrow">
-            Run results{fixture ? " · fixture" : ""}
+            Run results{fixture ? " · sample run" : ""}
           </span>
           <b>{project?.name || run?.projectId}</b>
           <code>{run?.id}</code>
@@ -176,60 +185,72 @@ export default function RunResults({ run, project, onClose, fixture }) {
       <main className="rr-body">
         <section
           {...section("summary")}
-          className={"rr-hero " + tone}
+          className="rr-dash"
           ref={(el) => ((sections.current.summary = el), (hero.current = el))}
         >
-          <span className="eyebrow">
-            Verdict from the sealed verifier receipt
-          </span>
-          <h1>{headline}</h1>
-          {reason && <p className="reason">{reason}</p>}
-          <div className="metric-cards">
-            {METRICS.map(([label, key, digits, unit], i) => {
-              const before = formatNumber(ref?.[key], digits),
-                after = formatNumber(cand?.[key], digits);
-              const delta =
-                Number.isFinite(ref?.[key]) &&
-                Number.isFinite(cand?.[key]) &&
-                ref[key] > 0
-                  ? (cand[key] - ref[key]) / ref[key]
-                  : null;
-              return (
-                <article key={key} className="metric-card">
-                  <span className="label">{label}</span>
-                  <div className="ba">
-                    <span className="before">
-                      <Reel
-                        text={before}
-                        go={loaded && heroSeen}
-                        reduced={reduced}
-                        delay={i * 150}
-                      />
-                      {before != null && unit}
-                    </span>
-                    <span className="arrow" aria-hidden="true">
-                      →
-                    </span>
-                    <span className="after">
-                      <Reel
-                        text={after}
-                        go={loaded && heroSeen}
-                        reduced={reduced}
-                        delay={i * 150 + 250}
-                      />
-                      {after != null && unit}
-                    </span>
-                  </div>
-                  {delta != null && (
-                    <span className={"delta" + (delta < 0 ? " down" : "")}>
-                      {delta < 0 ? "−" : "+"}
-                      {Math.abs(delta * 100).toFixed(1)}%
-                    </span>
-                  )}
-                </article>
-              );
-            })}
-          </div>
+          <Stage
+            exp={exp}
+            colors={COLORS}
+            reduced={reduced}
+            stageSrc={stageSrc}
+            head={
+              <div className={"rr-hero " + tone}>
+                <span className="eyebrow">
+                  Verdict from the sealed verifier receipt
+                </span>
+                <h1>{headline}</h1>
+                {reason && <p className="reason">{reason}</p>}
+                <div className="metric-cards">
+                  {METRICS.map(([label, key, digits, unit], i) => {
+                    const before = formatNumber(ref?.[key], digits),
+                      after = formatNumber(cand?.[key], digits);
+                    const delta =
+                      Number.isFinite(ref?.[key]) &&
+                      Number.isFinite(cand?.[key]) &&
+                      ref[key] > 0
+                        ? (cand[key] - ref[key]) / ref[key]
+                        : null;
+                    return (
+                      <article key={key} className="metric-card">
+                        <span className="label">{label}</span>
+                        <div className="ba">
+                          <span className="before">
+                            <Reel
+                              text={before}
+                              go={loaded && heroSeen}
+                              reduced={reduced}
+                              delay={i * 150}
+                            />
+                            {before != null && unit}
+                          </span>
+                          <span className="arrow" aria-hidden="true">
+                            →
+                          </span>
+                          <span className="after">
+                            <Reel
+                              text={after}
+                              go={loaded && heroSeen}
+                              reduced={reduced}
+                              delay={i * 150 + 250}
+                            />
+                            {after != null && unit}
+                          </span>
+                        </div>
+                        {delta != null && (
+                          <span
+                            className={"delta" + (delta < 0 ? " down" : "")}
+                          >
+                            {delta < 0 ? "−" : "+"}
+                            {Math.abs(delta * 100).toFixed(1)}%
+                          </span>
+                        )}
+                      </article>
+                    );
+                  })}
+                </div>
+              </div>
+            }
+          />
           <p className="scope">
             Measured on the configured workload on this machine. CPU submission
             time is not GPU usage, and fewer draw calls do not automatically
@@ -296,7 +317,8 @@ export default function RunResults({ run, project, onClose, fixture }) {
   );
 }
 
-// Dev-only test data (?fixture=accepted|rejected|failed|noshots). Never shown in a build.
+// A recorded sample run (?fixture=accepted|rejected|failed|noshots, or "Go to dashboard"
+// in the simulation). The page labels it as a sample.
 export async function loadFixture(kind) {
   const [{ default: f }, { default: diff }] = await Promise.all([
     import("./results/devFixture.json"),

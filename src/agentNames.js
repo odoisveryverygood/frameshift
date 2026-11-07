@@ -1,32 +1,38 @@
 // Display names for the agents, in one place. The backend's role strings and event
 // types ("investigator", "optimizer", "verifier", ...) are protocol and stay as they
 // are; only what people read changes. `subtitle` keeps the backend role name visible
-// so teammates can map them.
+// so teammates can map them. `codename` is the short name shown first:
+// Argus has a hundred eyes, Vulcan forges, Oracle foresees, Aegis shields, Atlas carries.
 export const NAMES = {
   investigator: {
+    codename: "Argus",
     name: "Bottleneck Finder",
     subtitle: "Investigator",
     description:
       "Reads your scene and source code and finds what's slowing it down.",
   },
   optimizer: {
+    codename: "Vulcan",
     name: "Patch Writer",
     subtitle: "Optimizer",
     description: "Writes an exact code fix in an isolated copy and builds it.",
   },
   risk: {
+    codename: "Oracle",
     name: "Risk Spotter",
     subtitle: "Verifier · risk step",
     description:
       "Predicts what the fix might break and adds extra checkpoints.",
   },
   verifier: {
+    codename: "Aegis",
     name: "Proof Checker",
     subtitle: "Verifier",
     description:
       "Runs the tests and measurements and decides pass/fail. It is code, not an AI.",
   },
   repair: {
+    codename: "Atlas",
     name: "Part Aligner",
     subtitle: "Repair agent",
     description:

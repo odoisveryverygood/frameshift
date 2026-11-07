@@ -1468,3 +1468,14 @@ body::before {
     grid-template-rows: 1fr 1fr;
   }
 }
+
+.preview-dashboard {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 18px 0 0;
+}
+.preview-dashboard small {
+  color: var(--muted, #5b6474);
+}

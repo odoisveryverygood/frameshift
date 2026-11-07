@@ -207,13 +207,9 @@ const Tools = ({ trace }) =>
     <p className="not-recorded">No tool calls recorded.</p>
   );
 
-export default function Pipeline({ experiment: exp, colors, reduced }) {
-  const ref = useRef(null);
-  const seen = useInView(ref, 0.35);
-  const [open, setOpen] = useState(false);
-  const [hover, setHover] = useState(false);
-  const apart = open || hover || seen;
-
+// Each stage with the evidence the backend recorded for it. Shared by the
+// exploded machine and the dashboard's side panels.
+export function stageList(exp, { go, reduced }) {
   const cited = [
     ...new Set(
       (exp?.investigation?.evidence || []).map((e) => e.path).filter(Boolean),
@@ -223,7 +219,7 @@ export default function Pipeline({ experiment: exp, colors, reduced }) {
     (m) => m[1],
   );
   const checks = exp?.guards?.checks || [];
-  const stages = [
+  return [
     {
       id: "investigator",
       name: NAMES.investigator,
@@ -287,7 +283,7 @@ export default function Pipeline({ experiment: exp, colors, reduced }) {
       involved: Boolean(exp?.guards),
       body: checks.length ? (
         <>
-          <Checkpoints checks={checks} go={apart} reduced={reduced} />
+          <Checkpoints checks={checks} go={go} reduced={reduced} />
           <p className="meta">
             {checks.filter(pass).length} of {checks.length} checkpoints pass
             {exp.guards.coverage?.semanticObjects
@@ -303,6 +299,16 @@ export default function Pipeline({ experiment: exp, colors, reduced }) {
       ),
     },
   ];
+}
+
+export default function Pipeline({ experiment: exp, colors, reduced }) {
+  const ref = useRef(null);
+  const seen = useInView(ref, 0.35);
+  const [open, setOpen] = useState(false);
+  const [hover, setHover] = useState(false);
+  const apart = open || hover || seen;
+
+  const stages = stageList(exp, { go: apart, reduced });
   const t = useSprings(
     stages.map(() => (apart ? 1 : 0)),
     { reduced, stagger: 0.09 },
@@ -406,10 +412,10 @@ export default function Pipeline({ experiment: exp, colors, reduced }) {
                   />
                 </g>
                 <text y="64" textAnchor="middle" className="stage-name">
-                  {s.name.name}
+                  {s.name.codename}
                 </text>
                 <text y="80" textAnchor="middle" className="stage-sub">
-                  {s.involved ? s.name.subtitle : "not involved"}
+                  {s.involved ? s.name.name : "not involved"}
                 </text>
               </g>
             );
@@ -436,8 +442,8 @@ export default function Pipeline({ experiment: exp, colors, reduced }) {
             }}
           >
             <header>
-              <b>{s.name.name}</b>
-              <span>{s.involved ? s.name.subtitle : "not involved"}</span>
+              <b>{s.name.codename}</b>
+              <span>{s.involved ? s.name.name : "not involved"}</span>
             </header>
             {s.involved ? (
               s.body
