@@ -3,7 +3,7 @@
   inset: 0;
   z-index: 40;
   overflow: hidden;
-  background: #04050a;
+  background: #fff;
   pointer-events: none;
 }
 /* The code that was underneath the hero the whole time. */
@@ -16,8 +16,8 @@
   padding: clamp(18px, 3vw, 44px);
   overflow: hidden;
   background:
-    radial-gradient(50% 45% at 50% 55%, rgb(33 142 255 / 14%), transparent 70%),
-    #04050a;
+    radial-gradient(50% 45% at 50% 55%, rgb(31 75 255 / 6%), transparent 70%),
+    #fff;
 }
 .rip-file {
   min-width: 0;
@@ -25,7 +25,7 @@
 .rip-file b {
   display: block;
   margin-bottom: 12px;
-  color: rgb(241 242 245 / 85%);
+  color: var(--ink);
   font-family: var(--mono);
   font-size: 13px;
   font-weight: 400;
@@ -33,7 +33,7 @@
 }
 .rip-file pre {
   margin: 0;
-  color: rgb(160 205 255 / 62%);
+  color: rgb(31 75 255 / 70%);
   font-family: var(--mono);
   font-size: 13px;
   line-height: 1.75;
@@ -49,7 +49,7 @@
   display: block;
   height: 8px;
   border-radius: 4px;
-  background: rgb(160 205 255 / 16%);
+  background: rgb(31 75 255 / 12%);
 }
 .rip-tiles {
   position: absolute;
@@ -60,8 +60,9 @@
 .rip-tile {
   position: absolute;
   overflow: hidden;
-  background: #ffffff;
+  background: #fff;
   backface-visibility: visible;
+  box-shadow: 0 10px 30px rgb(10 12 20 / 14%);
   will-change: transform, opacity;
 }
 .rip-clone {

@@ -27,10 +27,10 @@ License: vendor/anatomy-LICENSE
 
 public/engine/raptor.png is the Raptor 2 test-stand drawing from anatomy's
 examples/raptor-engine, rendered once in Chrome with the plume, labels, controls and
-paper background removed (cold, assembled state) and given a light steel, copper and
-heat-tint colouring for Sift. The linework is by the anatomy project. It is shown on
-the hero page (src/EngineScene.jsx); the flame, the paper-square melt and the sway
-are authored for Sift and do not use anatomy's plume shader or code.
+paper background removed (cold, assembled state). The artwork is by the anatomy
+project. It is shown on the hero page (src/EngineScene.jsx); the flame, the orange
+nozzle glow, the paper-square melt, the hover lift and the sway are authored for Sift
+and do not use anatomy's plume shader or code.
 
 ## Runtime libraries
 

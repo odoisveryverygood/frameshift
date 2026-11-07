@@ -1,19 +1,27 @@
 import React, { useEffect, useRef, useState } from "react";
 import geometry from "./engineGeometry.json";
 
-// The Raptor 2 test-stand drawing from wheresryan22/anatomy (MIT), shown as a sheet
-// of paper that sways in 3D. Tap the engine: a flame starts under the nozzle and the
-// paper squares around the test pad curl, glow and burn away to a black pit.
+// The Raptor 2 test-stand drawing from wheresryan22/anatomy (MIT), left as a plain
+// sketch on the page. It sways a little; hovering lifts pieces of it the way the rest of
+// the page does. Tap the engine: a flame starts, the nozzle glows orange, and the paper
+// squares around the test pad curl, glow and burn away to a black pit.
 
 const SRC = "/engine/raptor.png";
-const CELLS_X = 26;
+const CELLS_X = 26; // paper squares that can burn
+const LIFT_COLS = 6; // pieces that lift under the cursor
 const BURN_SECONDS = 9;
-// Positions are fractions of the drawing, measured from the artwork.
 const EXIT = geometry.exit; // centre of the nozzle exit
 const EXIT_HALF = geometry.exitHalf; // half-width of the nozzle exit
 const PAD = geometry.pad; // the test pad the flame lands on
 const HOLE = geometry.hole; // half-size of the melt area (of width, of height)
 const ENGINE = geometry.engine; // tap area: x0, y0, x1, y1
+// The part that glows orange when it fires: the lower chamber and the bell (fractions).
+const HEAT = {
+  top: 0.37,
+  bottom: 0.605,
+  topX: [0.35, 0.65],
+  bottomX: [0.325, 0.675],
+};
 
 const rand = (a, b) => a + Math.random() * (b - a);
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -45,6 +53,12 @@ function ramp(k) {
     }
   return [70, 46, 44, 0];
 }
+const layer = (w, h) => {
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  return c;
+};
 
 export default function EngineScene() {
   const box = useRef(null),
@@ -55,34 +69,62 @@ export default function EngineScene() {
   useEffect(() => {
     const ctx = canvas.current.getContext("2d");
     const source = new Image();
-    let paper = null, // the drawing scaled to the canvas, cut into squares when drawn
-      pit = null,
-      pitCtx = null,
-      tileCanvas = null,
-      tileCtx = null,
+    // Everything is drawn into `scene`, then copied to the visible canvas.
+    let scene = null, // the finished picture
+      sg = null,
+      paper = null, // the sketch itself
+      heat = null, // the orange glow, shaped to the nozzle and masked to the sketch
+      pit = null, // black squares, masked to the sketch
+      pg = null,
+      tile = null, // one square, tinted while it burns
+      tg = null,
       W = 0,
       H = 0,
+      dpr = 1,
       cw = 0,
       ch = 0,
+      hw = 0,
+      hh = 0,
       scale = 1,
       cells = [];
     const build = () => {
       if (!source.complete || !source.naturalWidth || !W) return;
-      paper = document.createElement("canvas");
-      paper.width = W;
-      paper.height = H;
-      paper.getContext("2d").drawImage(source, 0, 0, W, H);
+      scene = layer(W, H);
+      sg = scene.getContext("2d");
+      paper = layer(W, H);
+      const pc = paper.getContext("2d");
+      pc.drawImage(source, 0, 0, W, H);
+      // The glow: a trapezoid over the lower engine, brighter toward the nozzle exit.
+      heat = layer(W, H);
+      const hc = heat.getContext("2d");
+      const y0 = HEAT.top * H,
+        y1 = HEAT.bottom * H;
+      const grad = hc.createLinearGradient(0, y0, 0, y1);
+      [
+        [0, "rgba(255,150,60,0)"],
+        [0.3, "rgba(255,138,48,0.55)"],
+        [0.65, "rgba(255,110,28,0.92)"],
+        [1, "rgba(255,168,60,1)"],
+      ].forEach(([t, c]) => grad.addColorStop(t, c));
+      hc.fillStyle = grad;
+      hc.beginPath();
+      hc.moveTo(HEAT.topX[0] * W, y0);
+      hc.lineTo(HEAT.topX[1] * W, y0);
+      hc.lineTo(HEAT.bottomX[1] * W, y1 + 8 * dpr);
+      hc.lineTo(HEAT.bottomX[0] * W, y1 + 8 * dpr);
+      hc.closePath();
+      hc.fill();
+      hc.globalCompositeOperation = "destination-in";
+      hc.drawImage(paper, 0, 0);
+      pit = layer(W, H);
+      pg = pit.getContext("2d");
       cw = W / CELLS_X;
       const rows = Math.round(H / cw);
       ch = H / rows;
-      pit = document.createElement("canvas");
-      pit.width = W;
-      pit.height = H;
-      pitCtx = pit.getContext("2d");
-      tileCanvas = document.createElement("canvas");
-      tileCanvas.width = Math.ceil(cw) + 2;
-      tileCanvas.height = Math.ceil(ch) + 2;
-      tileCtx = tileCanvas.getContext("2d");
+      tile = layer(Math.ceil(cw) + 2, Math.ceil(ch) + 2);
+      tg = tile.getContext("2d");
+      hw = W / LIFT_COLS;
+      hh = H / Math.round(H / hw);
       cells = [];
       for (let j = 0; j < rows; j++)
         for (let i = 0; i < CELLS_X; i++) {
@@ -99,23 +141,18 @@ export default function EngineScene() {
             });
         }
     };
-    source.onload = () => {
-      resize();
-    };
-    source.src = SRC;
-
     const resize = () => {
       if (!box.current) return;
       const aspect = source.naturalWidth
         ? source.naturalWidth / source.naturalHeight
-        : 1.035;
+        : geometry.aspect;
       const bw = box.current.clientWidth,
         bh = box.current.clientHeight - 26;
       const w = Math.min(bw, bh * aspect),
         h = w / aspect;
       card.current.style.width = w + "px";
       card.current.style.height = h + "px";
-      const dpr = Math.min(devicePixelRatio, 2);
+      dpr = Math.min(devicePixelRatio, 2);
       W = Math.round(w * dpr);
       H = Math.round(h * dpr);
       canvas.current.width = W;
@@ -123,19 +160,27 @@ export default function EngineScene() {
       scale = (EXIT_HALF * W) / 92;
       build();
     };
+    source.onload = resize;
+    source.src = SRC;
     const watcher = new ResizeObserver(resize);
     watcher.observe(box.current);
     resize();
 
-    // ---- Burn state and flame particles.
+    // ---- Burn state, flame particles and the pieces lifted by the cursor.
     const burn = { on: false, t: 0, power: 0, radius: 0 };
     const parts = [];
+    const lifts = new Map();
+    let hover = null;
     const toggle = () => {
       burn.on = !burn.on;
       if (burn.on) burn.t = 0;
       setFiring(burn.on);
     };
     fire.current = toggle;
+    const local = (e) => [
+      (e.offsetX / canvas.current.clientWidth) * W,
+      (e.offsetY / canvas.current.clientHeight) * H,
+    ];
     const inEngine = (e) => {
       const x = e.offsetX / canvas.current.clientWidth,
         y = e.offsetY / canvas.current.clientHeight;
@@ -144,15 +189,18 @@ export default function EngineScene() {
     const tap = (e) => {
       if (inEngine(e)) toggle();
     };
-    let hoverAt = 0;
-    const over = (e) => {
-      const now = performance.now();
-      if (now - hoverAt < 50) return;
-      hoverAt = now;
+    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const fine = matchMedia("(hover: hover) and (pointer: fine)").matches;
+    const move = (e) => {
       canvas.current.style.cursor = inEngine(e) ? "pointer" : "";
+      if (!still && fine && e.pointerType !== "touch") hover = local(e);
+    };
+    const leave = () => {
+      hover = null;
     };
     canvas.current.addEventListener("pointerdown", tap);
-    canvas.current.addEventListener("pointermove", over);
+    canvas.current.addEventListener("pointermove", move);
+    canvas.current.addEventListener("pointerleave", leave);
     const aim = { x: 0, y: 0 };
     const look = (e) => {
       aim.x = (e.clientX / innerWidth) * 2 - 1;
@@ -160,7 +208,6 @@ export default function EngineScene() {
     };
     addEventListener("pointermove", look);
 
-    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
     let last = performance.now(),
       clock = 0,
       sway = [0, 0],
@@ -174,40 +221,39 @@ export default function EngineScene() {
       const s = 1 - smooth(0.55, 1, m),
         ember = smooth(0.02, 0.35, m),
         char = smooth(0.45, 0.95, m);
-      ctx.save();
-      ctx.translate(
+      tg.globalCompositeOperation = "source-over";
+      tg.clearRect(0, 0, tile.width, tile.height);
+      tg.drawImage(paper, x, y, cw, ch, 1, 1, cw, ch);
+      // The colour only lands where there is paper (source-atop keeps the sketch's shape).
+      tg.globalCompositeOperation = "source-atop";
+      tg.fillStyle = `rgba(255,110,20,${ember * 0.85 * (1 - char * 0.5)})`;
+      tg.fillRect(0, 0, tile.width, tile.height);
+      tg.fillStyle = `rgba(18,12,10,${char})`;
+      tg.fillRect(0, 0, tile.width, tile.height);
+      tg.strokeStyle = `rgba(255,190,70,${ember * (1 - char)})`;
+      tg.lineWidth = 2 * scale;
+      tg.strokeRect(1, 1, cw, ch);
+      sg.save();
+      sg.translate(
         x + cw / 2,
         y + ch / 2 + m * m * ch * 1.3 * (0.6 + c.seed[2]),
       );
-      ctx.rotate(m * (1.2 + c.seed[0]) * (c.seed[1] < 0.5 ? -1 : 1));
-      ctx.scale(s, s * (1 - m * 0.3));
-      const t = tileCtx;
-      t.globalCompositeOperation = "source-over";
-      t.clearRect(0, 0, tileCanvas.width, tileCanvas.height);
-      t.drawImage(paper, x, y, cw, ch, 1, 1, cw, ch);
-      // The colour only lands where there is paper (source-atop keeps the drawing's shape).
-      t.globalCompositeOperation = "source-atop";
-      t.fillStyle = `rgba(255,110,20,${ember * 0.85 * (1 - char * 0.5)})`;
-      t.fillRect(0, 0, tileCanvas.width, tileCanvas.height);
-      t.fillStyle = `rgba(18,12,10,${char})`;
-      t.fillRect(0, 0, tileCanvas.width, tileCanvas.height);
-      t.strokeStyle = `rgba(255,190,70,${ember * (1 - char)})`;
-      t.lineWidth = 2 * scale;
-      t.strokeRect(1, 1, cw, ch);
-      ctx.drawImage(tileCanvas, -cw / 2 - 1, -ch / 2 - 1);
-      ctx.restore();
+      sg.rotate(m * (1.2 + c.seed[0]) * (c.seed[1] < 0.5 ? -1 : 1));
+      sg.scale(s, s * (1 - m * 0.3));
+      sg.drawImage(tile, -cw / 2 - 1, -ch / 2 - 1);
+      sg.restore();
     }
     function frame(now) {
-      // React clears the refs before it runs this effect\'s cleanup, so a frame can land in between.
+      // React clears the refs before it runs this effect's cleanup, so a frame can land in between.
       if (!card.current || !canvas.current) return;
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       clock += dt;
-      if (!paper) {
+      if (!scene) {
         raf = requestAnimationFrame(frame);
         return;
       }
-      // The paper sways in 3D, following the pointer a little.
+      // The sketch sways in 3D, following the pointer a little.
       if (!still) {
         sway[0] += (Math.sin(clock * 0.5) * 11 + aim.x * 6 - sway[0]) * 0.08;
         sway[1] += (-aim.y * 4 + Math.sin(clock * 0.37) * 2 - sway[1]) * 0.08;
@@ -231,8 +277,20 @@ export default function EngineScene() {
           )
         : Math.max(0, burn.radius - dt * 0.7);
 
-      ctx.clearRect(0, 0, W, H);
-      ctx.drawImage(paper, 0, 0);
+      sg.clearRect(0, 0, W, H);
+      sg.drawImage(paper, 0, 0);
+      // The lower engine glows orange while it fires.
+      if (burn.power > 0.01) {
+        sg.save();
+        sg.globalCompositeOperation = "multiply";
+        sg.globalAlpha = clamp(
+          burn.power * (0.94 + 0.06 * Math.sin(clock * 31)),
+          0,
+          1,
+        );
+        sg.drawImage(heat, 0, 0);
+        sg.restore();
+      }
       // Holes where the paper has burned, a heat glow, then the squares still curling away.
       const live = [];
       let holes = false;
@@ -251,32 +309,32 @@ export default function EngineScene() {
         if (m > 0) {
           if (!holes) {
             holes = true;
-            pitCtx.globalCompositeOperation = "source-over";
-            pitCtx.clearRect(0, 0, W, H);
-            pitCtx.fillStyle = "#06070b";
+            pg.globalCompositeOperation = "source-over";
+            pg.clearRect(0, 0, W, H);
+            pg.fillStyle = "#06070b";
           }
-          pitCtx.fillRect(c.i * cw - 0.5, c.j * ch - 0.5, cw + 1, ch + 1);
+          pg.fillRect(c.i * cw - 0.5, c.j * ch - 0.5, cw + 1, ch + 1);
           if (m < 1) live.push([c, m]);
         }
       }
       if (holes) {
-        // The pit shows only where the drawing has paper to burn through.
-        pitCtx.globalCompositeOperation = "destination-in";
-        pitCtx.drawImage(paper, 0, 0);
-        ctx.drawImage(pit, 0, 0);
+        // The pit shows only where the sketch has paper to burn through.
+        pg.globalCompositeOperation = "destination-in";
+        pg.drawImage(paper, 0, 0);
+        sg.drawImage(pit, 0, 0);
       }
       if (burn.power > 0.02) {
         const gr = HOLE[0] * W * 1.1;
-        ctx.save();
-        ctx.translate(PAD[0] * W, padY());
-        ctx.scale(1, (HOLE[1] * H) / (HOLE[0] * W));
-        const g = ctx.createRadialGradient(0, 0, 0, 0, 0, gr);
+        sg.save();
+        sg.translate(PAD[0] * W, padY());
+        sg.scale(1, (HOLE[1] * H) / (HOLE[0] * W));
+        const g = sg.createRadialGradient(0, 0, 0, 0, 0, gr);
         g.addColorStop(0, `rgba(255,150,40,${0.55 * burn.power})`);
         g.addColorStop(0.55, `rgba(255,80,20,${0.22 * burn.power})`);
         g.addColorStop(1, "rgba(255,60,20,0)");
-        ctx.fillStyle = g;
-        ctx.fillRect(-gr, -gr, gr * 2, gr * 2);
-        ctx.restore();
+        sg.fillStyle = g;
+        sg.fillRect(-gr, -gr, gr * 2, gr * 2);
+        sg.restore();
       }
       live.forEach(([c, m]) => drawTile(c, m));
 
@@ -316,28 +374,28 @@ export default function EngineScene() {
           [r, g, b, a] = ramp(k),
           size =
             p.size * (p.splash ? 0.7 : 1 - k * 0.35) * (0.6 + 0.4 * burn.power);
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.scale(1, p.splash ? 0.4 : 1);
-        const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, size);
+        sg.save();
+        sg.translate(p.x, p.y);
+        sg.scale(1, p.splash ? 0.4 : 1);
+        const grad = sg.createRadialGradient(0, 0, 0, 0, 0, size);
         grad.addColorStop(
           0,
           `rgba(${r | 0},${g | 0},${b | 0},${a * burn.power * (p.splash ? 0.5 : 1)})`,
         );
         grad.addColorStop(1, `rgba(${r | 0},${g | 0},${b | 0},0)`);
-        ctx.fillStyle = grad;
-        ctx.fillRect(-size, -size, size * 2, size * 2);
-        ctx.restore();
+        sg.fillStyle = grad;
+        sg.fillRect(-size, -size, size * 2, size * 2);
+        sg.restore();
       }
       if (burn.power > 0.02) {
         // A hot rim around the nozzle exit.
-        ctx.save();
-        ctx.strokeStyle = `rgba(255,120,30,${0.95 * burn.power})`;
-        ctx.lineWidth = 4 * scale;
-        ctx.shadowColor = "rgba(255,110,30,.9)";
-        ctx.shadowBlur = 14 * scale;
-        ctx.beginPath();
-        ctx.ellipse(
+        sg.save();
+        sg.strokeStyle = `rgba(255,120,30,${0.95 * burn.power})`;
+        sg.lineWidth = 4 * scale;
+        sg.shadowColor = "rgba(255,110,30,.9)";
+        sg.shadowBlur = 14 * scale;
+        sg.beginPath();
+        sg.ellipse(
           exitX(),
           exitY() + 18 * scale,
           EXIT_HALF * W,
@@ -346,18 +404,92 @@ export default function EngineScene() {
           0,
           Math.PI,
         );
-        ctx.stroke();
-        ctx.restore();
+        sg.stroke();
+        sg.restore();
       }
+
+      // Copy the finished picture to the screen, then lift pieces under the cursor:
+      // each piece rises as a tilted white square with a dark gap beneath it.
+      ctx.clearRect(0, 0, W, H);
+      ctx.drawImage(scene, 0, 0);
+      const reach = hw * 1.9;
+      if (hover) {
+        const rows = Math.round(H / hw);
+        const i0 = clamp(Math.floor((hover[0] - reach) / hw), 0, LIFT_COLS - 1),
+          i1 = clamp(Math.floor((hover[0] + reach) / hw), 0, LIFT_COLS - 1),
+          j0 = clamp(Math.floor((hover[1] - reach) / hh), 0, rows - 1),
+          j1 = clamp(Math.floor((hover[1] + reach) / hh), 0, rows - 1);
+        for (let j = j0; j <= j1; j++)
+          for (let i = i0; i <= i1; i++) {
+            const d = Math.hypot(
+              (i + 0.5) * hw - hover[0],
+              (j + 0.5) * hh - hover[1],
+            );
+            if (d >= reach) continue;
+            const key = j * LIFT_COLS + i;
+            if (!lifts.has(key))
+              lifts.set(key, {
+                i,
+                j,
+                s: 0,
+                t: 0,
+                seed: [rand(-1, 1), rand(-1, 1), rand(-1, 1)],
+              });
+            lifts.get(key).t = smooth(0, 1, 1 - d / reach);
+          }
+      }
+      lifts.forEach((c, key) => {
+        if (
+          !hover ||
+          Math.hypot(
+            (c.i + 0.5) * hw - hover[0],
+            (c.j + 0.5) * hh - hover[1],
+          ) >= reach
+        )
+          c.t = 0;
+        c.s += (c.t - c.s) * Math.min(1, dt * 12);
+        if (c.s < 0.01 && c.t === 0) return lifts.delete(key);
+        const s = c.s,
+          x = c.i * hw,
+          y = c.j * hh;
+        ctx.fillStyle = `rgba(5,6,10,${Math.min(1, s * 1.4)})`;
+        ctx.fillRect(x - 1, y - 1, hw + 2, hh + 2);
+        ctx.save();
+        ctx.translate(
+          x + hw / 2 + c.seed[0] * 10 * s * dpr,
+          y + hh / 2 - 16 * s * dpr,
+        );
+        ctx.transform(
+          1 - 0.04 * s,
+          c.seed[1] * 0.1 * s,
+          c.seed[0] * 0.1 * s,
+          1 - 0.04 * s,
+          0,
+          0,
+        );
+        ctx.rotate(c.seed[2] * 0.12 * s);
+        ctx.shadowColor = `rgba(10,12,20,${0.3 * s})`;
+        ctx.shadowBlur = 24 * dpr * s;
+        ctx.shadowOffsetY = 14 * dpr * s;
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(-hw / 2, -hh / 2, hw, hh);
+        ctx.shadowColor = "transparent";
+        ctx.drawImage(scene, x, y, hw, hh, -hw / 2, -hh / 2, hw, hh);
+        ctx.restore();
+      });
       raf = requestAnimationFrame(frame);
     }
     raf = requestAnimationFrame(frame);
     return () => {
       cancelAnimationFrame(raf);
       removeEventListener("pointermove", look);
-      canvas.current?.removeEventListener("pointerdown", tap);
-      canvas.current?.removeEventListener("pointermove", over);
       watcher.disconnect();
+      const c = canvas.current;
+      if (c) {
+        c.removeEventListener("pointerdown", tap);
+        c.removeEventListener("pointermove", move);
+        c.removeEventListener("pointerleave", leave);
+      }
     };
   }, []);
   return (
@@ -365,7 +497,7 @@ export default function EngineScene() {
       className="hero-art"
       ref={box}
       role="img"
-      aria-label="Drawing of a rocket engine on a test stand, swaying slowly. Tap the engine to fire it."
+      aria-label="Sketch of a rocket engine on a test stand, swaying slowly. Tap the engine to fire it."
     >
       <div className="engine-card" ref={card}>
         <canvas className="engine-canvas" ref={canvas} />

@@ -17,8 +17,6 @@ function frameUrl(canvas, owner) {
   blobUrls.set(owner, [...(blobUrls.get(owner) || []), url]);
   return url;
 }
-// A single frame of a live canvas, for copies that need to keep up with it.
-export const captureCanvasUrl = (canvas, owner) => frameUrl(canvas, owner);
 export function snapshotHtml(el, { owner = "rip", release = false } = {}) {
   const previous = release ? blobUrls.get(owner) || [] : [];
   if (release) blobUrls.delete(owner);
@@ -66,8 +64,8 @@ const rand = (min, max) => min + Math.random() * (max - min);
 const CRACK = 240;
 
 function makeTiles(width, height) {
-  const cols = Math.min(14, Math.max(4, Math.round(width / 110))),
-    rows = Math.min(9, Math.max(4, Math.round(height / 110))),
+  const cols = Math.min(10, Math.max(4, Math.round(width / 130))),
+    rows = Math.min(6, Math.max(4, Math.round(height / 130))),
     w = width / cols,
     h = height / rows;
   return Array.from({ length: cols * rows }, (_, i) => ({

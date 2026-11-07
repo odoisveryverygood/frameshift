@@ -2,9 +2,9 @@
   position: relative;
   display: grid;
   grid-template-rows: auto 1fr auto;
-  gap: clamp(12px, 2vw, 28px);
+  gap: clamp(20px, 3vw, 40px);
   min-height: 100dvh;
-  padding: clamp(14px, 2vw, 28px) clamp(16px, 3.2vw, 44px);
+  padding: clamp(20px, 2.6vw, 36px) clamp(20px, 4.4vw, 64px);
   overflow: hidden;
   isolation: isolate;
   /* A static wash, so tiles cloned from it match. */
@@ -20,7 +20,7 @@
   justify-content: space-between;
   gap: 16px;
   color: var(--muted);
-  font-family: var(--mono);
+  font-family: var(--font);
   font-size: 12px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -58,8 +58,8 @@
 }
 .hero-main {
   display: grid;
-  grid-template-columns: minmax(340px, 560px) minmax(0, 1fr);
-  gap: clamp(24px, 4vw, 64px);
+  grid-template-columns: minmax(340px, 580px) minmax(0, 1fr);
+  gap: clamp(40px, 6vw, 110px);
   align-items: center;
 }
 .hero-copy {
@@ -69,30 +69,31 @@
 }
 .hero-eyebrow {
   color: var(--accent);
-  font-family: var(--mono);
-  font-size: 12.5px;
-  letter-spacing: 0.14em;
+  font-family: var(--font);
+  font-size: 14px;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
 }
 .hero-copy h1 {
-  margin: 4px 0 0 -0.04em;
-  font-size: clamp(72px, 8.4vw, 128px);
-  font-weight: 600;
-  line-height: 0.84;
-  letter-spacing: -0.055em;
+  margin: clamp(10px, 1.4vw, 18px) 0 0 -0.03em;
+  font-size: clamp(96px, 11vw, 168px);
+  font-weight: 500;
+  line-height: 0.82;
+  letter-spacing: -0.025em;
 }
 .hero-copy > p {
-  margin: clamp(12px, 1.6vw, 20px) 0 clamp(14px, 2vw, 22px);
+  margin: clamp(26px, 3.2vw, 44px) 0 clamp(30px, 3.6vw, 48px);
   color: var(--ink-2);
-  font-size: clamp(15px, 1.3vw, 18px);
+  font-size: clamp(19px, 1.6vw, 23px);
+  line-height: 1.45;
 }
 
 /* Intake card */
 .intake {
   box-shadow: 0 24px 60px rgb(10 12 20 / 10%);
   display: grid;
-  gap: 10px;
-  padding: 18px;
+  gap: 16px;
+  padding: 26px;
   border: 1px solid var(--line-strong);
   border-radius: 18px;
   background: #ffffff;
@@ -131,7 +132,7 @@
 .intake-drop span,
 .intake-project span {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 14.5px;
   overflow-wrap: anywhere;
 }
 .intake-project .link-button {
@@ -159,7 +160,7 @@
 }
 .intake-kinds {
   color: var(--muted);
-  font-size: 12.5px;
+  font-size: 14px;
 }
 .intake-note {
   display: grid;
@@ -214,7 +215,7 @@
   align-items: flex-start;
   gap: 10px;
   color: var(--ink-2);
-  font-size: 13.5px;
+  font-size: 15px;
 }
 .intake-trust input {
   margin-top: 3px;
@@ -222,7 +223,7 @@
 }
 .intake-model {
   color: var(--ink-2);
-  font-size: 13.5px;
+  font-size: 15px;
 }
 .intake-model button {
   color: var(--accent);
@@ -256,7 +257,7 @@
   align-items: center;
   gap: 6px 14px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 14.5px;
 }
 .intake-examples button {
   color: var(--accent);
@@ -282,7 +283,7 @@
 }
 .intake-preview {
   color: var(--muted);
-  font-size: 12.5px;
+  font-size: 14px;
 }
 
 /* A small gradient that travels around a box's edge and leaks a little light. */
@@ -381,7 +382,7 @@
     display: none;
   }
 }
-@media (max-height: 880px) {
+@media (max-height: 760px) {
   .hero-bottom {
     display: none;
   }
@@ -395,7 +396,7 @@
   padding: 6px 14px;
   border-radius: 999px;
   color: var(--muted);
-  font-family: var(--mono);
+  font-family: var(--font);
   font-size: 12px;
   letter-spacing: 0.1em;
   text-transform: uppercase;

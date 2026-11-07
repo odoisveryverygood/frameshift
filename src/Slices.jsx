@@ -1,15 +1,14 @@
 import React, { useEffect, useRef } from "react";
-import { captureCanvasUrl, revokeSnapshots, snapshotHtml } from "./Rip.jsx";
 import "./slices.css";
 
-const RADIUS = 200;
+const CELL = 76;
+const RADIUS = 170;
 const rand = (min, max) => min + Math.random() * (max - min);
 
-// While the pointer moves over the hero, the page lifts into tilted pieces
-// around it and settles back when it leaves. Each piece is a clipped copy of the
-// hero sitting exactly over its own cell (so nothing shifts at rest) on top of a
-// dark square that shows through the gaps. Lives outside the hero so the rip
-// transition never copies it.
+// While the pointer moves over the headline, it lifts into tilted pieces with dark
+// gaps beneath, and settles back when the pointer leaves. The pieces are built once
+// (a small pool of copies of the headline text) and only their transforms change, so
+// hovering costs almost nothing. The engine on the right lifts inside its own canvas.
 export default function Slices({ heroRef }) {
   const host = useRef(null);
   useEffect(() => {
@@ -18,192 +17,136 @@ export default function Slices({ heroRef }) {
     if (!hero || !box) return;
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     if (!matchMedia("(hover: hover) and (pointer: fine)").matches) return;
-    if (innerWidth < 860) return;
-    const cols = Math.round(innerWidth / 96),
-      rows = Math.round(innerHeight / 96),
-      cw = innerWidth / cols,
-      ch = innerHeight / rows;
-    let html = snapshotHtml(hero, { owner: "slices" }),
-      dirty = false,
+    const copy = hero.querySelector(".hero-copy");
+    if (!copy) return;
+    let cells = [],
+      region = null,
       pointer = null,
-      raf = 0;
-    const cells = new Map();
-    // The engine is a live canvas that sways, so pieces over it re-copy it a few times a second.
-    const art = hero.querySelector("canvas.engine-canvas"),
-      card = hero.querySelector(".engine-card");
-    let artActive = false,
-      artUrl = null;
-    const refreshArt = () => {
-      if (!art || !artActive || !cells.size) return;
-      const url = captureCanvasUrl(art, "slices");
-      const stale = artUrl;
-      artUrl = url;
-      const transform = card?.style.transform || "";
-      cells.forEach((c) => {
-        c.tile.querySelectorAll("img.engine-canvas").forEach((img) => {
-          img.src = url;
-        });
-        c.tile.querySelectorAll(".engine-card").forEach((el) => {
-          el.style.transform = transform;
-        });
-      });
-      if (stale) setTimeout(() => URL.revokeObjectURL(stale), 600);
-    };
-    const artTimer = setInterval(refreshArt, 160);
-    const markDirty = () => {
-      dirty = true;
-    };
-    const watcher = new MutationObserver(markDirty);
-    watcher.observe(hero, {
-      subtree: true,
-      childList: true,
-      characterData: true,
-      attributes: true,
-    });
-    hero.addEventListener("input", markDirty);
-    hero.addEventListener("change", markDirty);
-    const cloneHtml = (i, j, rect) =>
-      `<div class="slice-clone" style="left:${rect.left - i * cw}px;top:${rect.top - j * ch}px;width:${rect.width}px;height:${rect.height}px">${html}</div>`;
-    function make(i, j, rect) {
-      const wrap = document.createElement("div");
-      wrap.className = "slice";
-      Object.assign(wrap.style, {
-        left: i * cw + "px",
-        top: j * ch + "px",
-        width: cw + "px",
-        height: ch + "px",
-      });
-      wrap.innerHTML = `<div class="slice-dark"></div><div class="slice-tile">${cloneHtml(i, j, rect)}</div>`;
-      box.appendChild(wrap);
-      const cell = {
-        i,
-        j,
-        wrap,
-        tile: wrap.querySelector(".slice-tile"),
-        seed: [rand(-1, 1), rand(-1, 1), rand(-1, 1)],
-        settled: false,
-        timer: 0,
-      };
-      cell.tile.getBoundingClientRect(); // commit the resting state so the rise animates
-      return cell;
+      raf = 0,
+      builtAt = 0;
+    function build() {
+      box.replaceChildren();
+      cells = [];
+      const rect = copy.getBoundingClientRect(),
+        intake = copy.querySelector(".intake"),
+        bottom = intake ? intake.getBoundingClientRect().top - 6 : rect.bottom;
+      region = { left: rect.left, top: rect.top, right: rect.right, bottom };
+      builtAt = scrollY;
+      box.style.transform = "";
+      const clone = copy.cloneNode(true);
+      clone.querySelector(".intake")?.remove();
+      clone.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+      clone.style.width = rect.width + "px";
+      const html = clone.outerHTML;
+      const cols = Math.max(1, Math.round((region.right - region.left) / CELL)),
+        rows = Math.max(1, Math.round((bottom - region.top) / CELL)),
+        cw = (region.right - region.left) / cols,
+        ch = (bottom - region.top) / rows;
+      for (let j = 0; j < rows; j++)
+        for (let i = 0; i < cols; i++) {
+          const x = region.left + i * cw,
+            y = region.top + j * ch;
+          const wrap = document.createElement("div");
+          wrap.className = "slice";
+          Object.assign(wrap.style, {
+            left: x + "px",
+            top: y + "px",
+            width: cw + "px",
+            height: ch + "px",
+          });
+          wrap.innerHTML = `<div class="slice-dark"></div><div class="slice-tile"><div class="slice-clone" style="left:${rect.left - x}px;top:${rect.top - y}px">${html}</div></div>`;
+          box.appendChild(wrap);
+          const tile = wrap.lastChild;
+          const cell = {
+            wrap,
+            tile,
+            cx: x + cw / 2,
+            cy: y + ch / 2,
+            seed: [rand(-1, 1), rand(-1, 1), rand(-1, 1)],
+            s: 0,
+          };
+          // Hidden at rest; it shows only while it is lifted or settling.
+          tile.addEventListener("transitionend", (e) => {
+            if (e.propertyName === "transform" && cell.s === 0)
+              wrap.classList.remove("shown");
+          });
+          cells.push(cell);
+        }
     }
-    function lift(c, s) {
-      const [a, b, r] = c.seed;
-      clearTimeout(c.timer);
-      c.settled = false;
-      c.wrap.classList.add("up");
-      c.tile.style.transform = `perspective(900px) translate3d(${a * 12 * s}px,${-20 * s}px,${30 + 100 * s}px) rotateX(${b * 44 * s}deg) rotateY(${a * 44 * s}deg) rotateZ(${r * 9 * s}deg) scale(${1 - 0.045 * s})`;
-      c.tile.style.boxShadow = `0 ${22 * s}px ${40 * s}px rgb(10 12 20 / ${0.3 * s})`;
-    }
-    function settle(key, c) {
-      if (c.settled) return;
-      c.settled = true;
-      c.wrap.classList.remove("up");
-      c.tile.style.transform = "";
-      c.tile.style.boxShadow = "";
-      c.timer = setTimeout(() => {
-        c.wrap.remove();
-        cells.delete(key);
-      }, 460);
-    }
-    function clear() {
-      cells.forEach((c) => {
-        clearTimeout(c.timer);
-        c.wrap.remove();
-      });
-      cells.clear();
+    function set(c, s) {
+      if (s > 0 && Math.abs(c.s - s) < 0.03) return;
+      if (s === 0 && c.s === 0) return;
+      c.s = s;
+      if (s > 0) {
+        c.wrap.classList.add("shown", "up");
+        const [a, b, r] = c.seed;
+        c.tile.style.transform = `perspective(900px) translate3d(${a * 10 * s}px,${-18 * s}px,${30 + 90 * s}px) rotateX(${b * 40 * s}deg) rotateY(${a * 40 * s}deg) rotateZ(${r * 8 * s}deg) scale(${1 - 0.045 * s})`;
+        c.tile.style.boxShadow = `0 ${20 * s}px ${36 * s}px rgb(10 12 20 / ${0.28 * s})`;
+      } else {
+        c.wrap.classList.remove("up");
+        c.tile.style.transform = "";
+        c.tile.style.boxShadow = "";
+      }
     }
     function update() {
       raf = 0;
-      const rect = hero.getBoundingClientRect();
-      if (dirty) {
-        html = snapshotHtml(hero, { owner: "slices", release: true });
-        dirty = false;
-        cells.forEach((c) => {
-          c.tile.innerHTML = cloneHtml(c.i, c.j, rect);
-        });
-      }
-      const seen = new Set();
-      const artBox = art?.getBoundingClientRect();
-      artActive = false;
-      const keepClear = [...hero.querySelectorAll(".intake, .hero-top")].map(
-        (n) => n.getBoundingClientRect(),
-      );
-      const covers = (x, y) =>
-        keepClear.some(
-          (r) =>
-            x + cw > r.left - 6 &&
-            x < r.right + 6 &&
-            y + ch > r.top - 6 &&
-            y < r.bottom + 6,
-        );
-      if (pointer && !pointer.blocked) {
-        const i0 = Math.max(0, Math.floor((pointer.x - RADIUS) / cw)),
-          i1 = Math.min(cols - 1, Math.floor((pointer.x + RADIUS) / cw)),
-          j0 = Math.max(0, Math.floor((pointer.y - RADIUS) / ch)),
-          j1 = Math.min(rows - 1, Math.floor((pointer.y + RADIUS) / ch));
-        for (let j = j0; j <= j1; j++)
-          for (let i = i0; i <= i1; i++) {
-            const d = Math.hypot(
-              (i + 0.5) * cw - pointer.x,
-              (j + 0.5) * ch - pointer.y,
-            );
-            if (d >= RADIUS || covers(i * cw, j * ch)) continue;
-            const t = 1 - d / RADIUS,
-              s = t * t * (3 - 2 * t),
-              key = j * cols + i;
-            let c = cells.get(key);
-            if (!c) {
-              c = make(i, j, rect);
-              cells.set(key, c);
-            }
-            seen.add(key);
-            if (
-              artBox &&
-              i * cw + cw > artBox.left &&
-              i * cw < artBox.right &&
-              j * ch + ch > artBox.top &&
-              j * ch < artBox.bottom
-            )
-              artActive = true;
-            lift(c, s);
+      if (!region) build();
+      const dy = scrollY - builtAt;
+      for (const c of cells) {
+        let s = 0;
+        if (pointer) {
+          const d = Math.hypot(c.cx - pointer.x, c.cy - dy - pointer.y);
+          if (d < RADIUS) {
+            const t = 1 - d / RADIUS;
+            s = t * t * (3 - 2 * t);
           }
+        }
+        set(c, s);
       }
-      cells.forEach((c, key) => {
-        if (!seen.has(key)) settle(key, c);
-      });
     }
     const queue = () => {
       if (!raf) raf = requestAnimationFrame(update);
     };
     const move = (e) => {
       if (e.pointerType && e.pointerType !== "mouse") return;
-      pointer = {
-        x: e.clientX,
-        y: e.clientY,
-        // The form and the top bar stay clean so they are easy to use.
-        blocked: Boolean(e.target.closest?.(".intake, .hero-top")),
-      };
+      const dy = scrollY - builtAt;
+      const inside =
+        region &&
+        e.clientX > region.left - RADIUS &&
+        e.clientX < region.right + RADIUS &&
+        e.clientY > region.top - dy - RADIUS &&
+        e.clientY < region.bottom - dy + RADIUS &&
+        !e.target.closest?.(".intake, .hero-top, .hero-art");
+      const next = inside ? { x: e.clientX, y: e.clientY } : null;
+      if (!next && !pointer) return;
+      pointer = next;
       queue();
     };
     const leave = () => {
       pointer = null;
       queue();
     };
+    const scroll = () => {
+      box.style.transform = `translateY(${builtAt - scrollY}px)`;
+    };
+    const rebuild = () => {
+      region = null;
+      pointer = null;
+      queue();
+    };
+    // Build after fonts settle so the copies line up with the real headline.
+    document.fonts?.ready.then(rebuild);
     addEventListener("pointermove", move);
     document.documentElement.addEventListener("mouseleave", leave);
-    addEventListener("scroll", clear, { passive: true });
+    addEventListener("scroll", scroll, { passive: true });
+    addEventListener("resize", rebuild);
     return () => {
       cancelAnimationFrame(raf);
-      clearInterval(artTimer);
-      watcher.disconnect();
-      hero.removeEventListener("input", markDirty);
-      hero.removeEventListener("change", markDirty);
       removeEventListener("pointermove", move);
       document.documentElement.removeEventListener("mouseleave", leave);
-      removeEventListener("scroll", clear);
-      clear();
-      revokeSnapshots("slices");
+      removeEventListener("scroll", scroll);
+      removeEventListener("resize", rebuild);
+      box.replaceChildren();
     };
   }, []);
   return <div className="slices" ref={host} aria-hidden="true" />;
