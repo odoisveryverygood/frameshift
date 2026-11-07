@@ -307,3 +307,26 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
+
+/* Frameless: no panel behind the solar system or the activity list. */
+.solar-scene {
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
+  overflow: visible;
+}
+.activity-panel > * {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  padding: 14px 0;
+  border-top: 1px solid rgb(10 12 20 / 8%);
+}
+.activity-panel > *:first-child {
+  border-top: 0;
+}
+.activity-now,
+.activity-inside {
+  padding-left: 16px !important;
+}

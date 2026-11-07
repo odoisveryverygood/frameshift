@@ -774,12 +774,17 @@ function App() {
   return (
     <div className={"app " + (phase === "hero" ? "is-hero" : "")}>
       {resultsFixture ? (
-        <RunResults {...resultsFixture} onClose={closeResults} />
+        <RunResults
+          {...resultsFixture}
+          measuring={running}
+          onClose={closeResults}
+        />
       ) : (
         resultsRun &&
         !liveStatuses.includes(resultsRun.status) && (
           <RunResults
             run={resultsRun}
+            measuring={running}
             project={data.projects.find((p) => p.id === resultsRun.projectId)}
             onClose={closeResults}
           />

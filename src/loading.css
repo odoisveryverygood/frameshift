@@ -66,3 +66,24 @@
   color: var(--muted);
   font-size: 15px;
 }
+
+/* No frame: the agents sit straight on the page, over a light Milky Way. */
+.loading {
+  position: relative;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+.loading-inner {
+  position: relative;
+  z-index: 1;
+  padding: clamp(8px, 2vw, 20px) 0;
+}
+.galaxy {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+}

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { stageList } from "./Pipeline.jsx";
 import PlanetRow from "./PlanetRow.jsx";
-import Model3D from "./Model3D.jsx";
+import ProjectModel from "./ProjectModel.jsx";
 import { formatNumber } from "./motion.js";
 
 const ORDER = ["investigator", "optimizer", "risk", "verifier"];
@@ -19,20 +19,20 @@ const pass = (c) =>
   c.pickingPass !== false &&
   c.cameraPass !== false;
 
-// Which part of the model each piece of evidence is about. Evidence text is
-// matched on what it mentions; anything unmatched falls back in order.
-const RISK_PART = {
-  identity: "sensor",
-  animation: "arm",
-  geometry: "chassis",
-  timing: "wheels",
+// Which objects of the project each piece of evidence is about, read from the
+// adapter: everything, the objects that move, or the objects the picking probes hit.
+const RISK_TARGET = {
+  identity: "picks",
+  animation: "moving",
+  geometry: "all",
+  timing: "moving",
 };
-function partFor(text, i, fallback) {
+function targetFor(text) {
   const t = String(text || "").toLowerCase();
-  if (/pick|identit|semantic/.test(t)) return "sensor";
-  if (/update|animat|position|rotation|transform/.test(t)) return "arm";
-  if (/geometr|mesh|draw|material|instanc/.test(t)) return "chassis";
-  return fallback[i % fallback.length];
+  if (/pick|identit|semantic/.test(t)) return "picks";
+  if (/update|animat|position|rotation|transform|per frame/.test(t))
+    return "moving";
+  return "all";
 }
 
 // Labels pinned to the model, all read from the run.
@@ -41,18 +41,18 @@ function callouts(id, exp) {
     return (exp?.investigation?.evidence || []).slice(0, 3).map((e, i) => ({
       title: e.path,
       text: e.observation,
-      part: partFor(e.observation, i, ["sensor", "chassis", "arm"]),
+      target: targetFor(e.observation),
     }));
   if (id === "optimizer") {
     const files = [...(exp?.diff || "").matchAll(/^\+\+\+ b\/(.+)$/gm)].map(
       (m) => m[1],
     );
     return [
-      exp?.title && { title: "Change", text: exp.title, part: "chassis" },
+      exp?.title && { title: "Change", text: exp.title, target: "all" },
       ...files.slice(0, 2).map((f, i) => ({
         title: "Patched",
         text: f,
-        part: ["lift", "arm"][i],
+        target: "all",
       })),
     ].filter(Boolean);
   }
@@ -65,7 +65,7 @@ function callouts(id, exp) {
         title: k + " risk",
         text: Number(p).toFixed(2) + " · extra checks added",
         warn: true,
-        part: RISK_PART[k] || "chassis",
+        target: RISK_TARGET[k] || "all",
       }));
   }
   const g = exp?.guards;
@@ -76,24 +76,31 @@ function callouts(id, exp) {
       title: "Checkpoints",
       text: `${checks.filter(pass).length} of ${checks.length} pass`,
       warn: checks.some((c) => !pass(c)),
-      part: "chassis",
+      target: "all",
     },
     g.coverage?.semanticObjects && {
       title: "Objects",
       text: g.coverage.semanticObjects.toLocaleString() + " compared",
-      part: "arm",
+      target: "all",
     },
     g.coverage?.pickingProbes && {
       title: "Picking",
       text: g.coverage.pickingProbes + " probes",
-      part: "sensor",
+      target: "picks",
     },
   ].filter(Boolean);
 }
 
 // The dashboard: one screen. The model in the middle lights up the parts the
 // selected agent is talking about; agents are planets along the bottom.
-export default function Stage({ exp, colors, reduced, head }) {
+export default function Stage({
+  exp,
+  colors,
+  reduced,
+  head,
+  project,
+  measuring,
+}) {
   const stages = stageList(exp, { go: true, reduced });
   const involved = ORDER.filter(
     (id) => stages.find((s) => s.id === id)?.involved,
@@ -117,13 +124,6 @@ export default function Stage({ exp, colors, reduced, head }) {
   const stage = stages.find((s) => s.id === selected);
   const color = colors[selected] || "#8a93a3";
   const notes = stage?.involved ? callouts(selected, exp) : [];
-  // The Proof Checker checks the whole model, so every part takes its colour.
-  const tint =
-    selected === "verifier" && exp?.guards?.pass
-      ? Object.fromEntries(
-          ["chassis", "wheels", "lift", "arm", "sensor"].map((p) => [p, color]),
-        )
-      : {};
   const ref = exp?.reference,
     cand = exp?.candidate;
 
@@ -139,12 +139,12 @@ export default function Stage({ exp, colors, reduced, head }) {
             · {stage?.involved ? stage.name.name : "not involved in this run"}
           </span>
         </p>
-        <Model3D
+        <ProjectModel
+          project={project}
           color={color}
-          focus={notes.map((n) => n.part)}
           callouts={notes}
-          tint={tint}
           reduced={reduced}
+          measuring={measuring}
         />
         <PlanetRow
           stages={stages}

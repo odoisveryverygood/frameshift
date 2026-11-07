@@ -6,6 +6,7 @@ import PatchReveal from "./results/PatchReveal.jsx";
 import BeforeAfter from "./results/BeforeAfter.jsx";
 import Receipt from "./results/Receipt.jsx";
 import Stage from "./results/Stage.jsx";
+import Galaxy from "./Galaxy.jsx";
 import { formatNumber, useInView, useReducedMotion } from "./results/motion.js";
 import "./run-results.css";
 
@@ -67,7 +68,13 @@ function Spotlight({ active, onPick }) {
   );
 }
 
-export default function RunResults({ run, project, onClose, fixture }) {
+export default function RunResults({
+  run,
+  project,
+  onClose,
+  fixture,
+  measuring,
+}) {
   const reduced = useReducedMotion();
   const exp = resultExperiment(run);
   const [receipt, setReceipt] = useState(fixture ? fixture.receipt : undefined);
@@ -173,6 +180,8 @@ export default function RunResults({ run, project, onClose, fixture }) {
   const views = {
     summary: (
       <Stage
+        project={project}
+        measuring={measuring}
         exp={exp}
         colors={COLORS}
         reduced={reduced}
@@ -258,6 +267,7 @@ export default function RunResults({ run, project, onClose, fixture }) {
       aria-modal="true"
       aria-label="Run results"
     >
+      <Galaxy x={0.5} y={0.5} scale={1.25} />
       <div className="grain" aria-hidden="true" />
       <header className="rr-top">
         <div>
