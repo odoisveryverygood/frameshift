@@ -53,31 +53,6 @@ const terminalStatuses = [
   "failed",
   "interrupted",
 ];
-// Generic placeholder shown under the hero in a preview with no project.
-const sampleCode = [
-  {
-    path: "preview/scene.js",
-    lines: [
-      "import * as THREE from 'three';",
-      "",
-      "const renderer = new THREE.WebGLRenderer({ antialias: true });",
-      "const scene = new THREE.Scene();",
-      "const camera = new THREE.PerspectiveCamera(50, aspect, 0.1, 200);",
-      "",
-      "for (let i = 0; i < count; i++) {",
-      "  const mesh = new THREE.Mesh(geometry, material);",
-      "  mesh.position.set(x(i), 0, z(i));",
-      "  scene.add(mesh);",
-      "}",
-      "",
-      "function animate() {",
-      "  requestAnimationFrame(animate);",
-      "  update(clock.getDelta());",
-      "  renderer.render(scene, camera);",
-      "}",
-    ],
-  },
-];
 const previewPhases = [
   "Reading your files",
   "Measuring the baseline",
@@ -323,7 +298,7 @@ function App() {
   }, [projectJob?.id, data.runs]);
   // In a preview the steps cycle so the progress screen can be seen moving.
   useEffect(() => {
-    if (!previewing || phase !== "work") return;
+    if (!previewing || phase === "hero" || phase === "results") return;
     const timer = setInterval(() => setPreviewStep((n) => (n + 1) % 4), 2400);
     return () => clearInterval(timer);
   }, [previewing, phase]);
@@ -492,29 +467,6 @@ function App() {
     setPhase("hero");
     window.scrollTo(0, 0);
   }
-  // Real source for the code revealed under the hero; falls back to nothing.
-  async function loadCode(p) {
-    const files = p.discovery?.files || [];
-    const picks = (
-      files.some((f) => f.usesThree) ? files.filter((f) => f.usesThree) : files
-    ).slice(0, 2);
-    const out = [];
-    for (const f of picks) {
-      try {
-        const src = await api(
-          "/projects/" + p.id + "/source?path=" + encodeURIComponent(f.path),
-        );
-        out.push({
-          path: f.path,
-          lines: String(src.content || "")
-            .split("\n")
-            .slice(0, 46)
-            .map((l) => l.slice(0, 96)),
-        });
-      } catch {}
-    }
-    return out;
-  }
   // Starts an optimization from the hero. The rip transition plays only once a
   // run really exists, so a refused request never tears the page apart.
   async function beginOptimize(getProject, origin) {
@@ -549,7 +501,6 @@ function App() {
       starting.current = false;
       return;
     }
-    const started = result.value.p;
     if (result.value.preview) {
       setNotice(
         "Previewing the transition. Connect a model to run it for real.",
@@ -566,11 +517,9 @@ function App() {
         height: box.height,
       },
       origin: origin || { x: innerWidth / 2, y: innerHeight / 2 },
-      code: null,
     });
     setPhase("rip");
     starting.current = false;
-    loadCode(started).then((code) => setRip((r) => (r ? { ...r, code } : r)));
   }
   // No project to run: play the transition anyway so it can be seen.
   async function beginPreview(origin) {
@@ -591,16 +540,9 @@ function App() {
         height: box.height,
       },
       origin: origin || { x: innerWidth / 2, y: innerHeight / 2 },
-      code: project ? null : sampleCode,
     });
     setPhase("rip");
     starting.current = false;
-    if (project)
-      loadCode(project).then((code) =>
-        setRip((r) =>
-          r ? { ...r, code: code.length ? code : sampleCode } : r,
-        ),
-      );
   }
   const optimizeFromHero = (body, origin) =>
     body === false
@@ -775,11 +717,7 @@ function App() {
         : [],
   };
   return (
-    <div
-      className={
-        "app " + (phase === "hero" || phase === "rip" ? "is-hero" : "")
-      }
-    >
+    <div className={"app " + (phase === "hero" ? "is-hero" : "")}>
       {phase === "hero" && <Slices heroRef={heroRef} />}
       {phase === "hero" && (
         <div inert={modal || drawer ? true : undefined}>
@@ -808,11 +746,10 @@ function App() {
           html={rip.html}
           rect={rip.rect}
           origin={rip.origin}
-          code={rip.code}
           onDone={ripDone}
         />
       )}
-      {(phase === "work" || phase === "results") && (
+      {phase !== "hero" && (
         <>
           <header className="topbar" inert={modal || drawer ? true : undefined}>
             <a
@@ -855,12 +792,12 @@ function App() {
                   New optimization
                 </button>
               )}
-              {phase === "work" && previewing && (
+              {phase !== "results" && previewing && (
                 <button className="secondary-button" onClick={goHero}>
                   Back to start
                 </button>
               )}
-              {phase === "work" && projectJob && (
+              {phase !== "results" && projectJob && (
                 <>
                   <button
                     className="link-button"
@@ -950,7 +887,7 @@ function App() {
             </div>
           </header>
           <div className="page" inert={modal || drawer ? true : undefined}>
-            {phase === "work" ? (
+            {phase !== "results" ? (
               projectJob ? (
                 <Loading
                   job={projectJob}

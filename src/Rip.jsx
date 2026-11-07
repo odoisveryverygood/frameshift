@@ -80,7 +80,7 @@ function makeTiles(width, height) {
 // The hero cracks into tiles that peel away from the pressed button in a wave,
 // uncovering the project's code. Uses ordinary CSS 3D transforms, so it works in
 // every browser (the reference effect needs HTML-in-Canvas, Chromium 157+).
-export default function Rip({ html, rect, origin, code, onDone }) {
+export default function Rip({ html, rect, origin, onDone }) {
   const layer = useRef(null),
     root = useRef(null);
   const tiles = useMemo(() => makeTiles(innerWidth, innerHeight), []);
@@ -90,8 +90,7 @@ export default function Rip({ html, rect, origin, code, onDone }) {
     const finish = () => {
       if (done) return;
       done = true;
-      root.current?.classList.add("out");
-      setTimeout(onDone, 380);
+      onDone();
     };
     if (reduce) {
       const t = setTimeout(finish, 350);
@@ -143,29 +142,13 @@ export default function Rip({ html, rect, origin, code, onDone }) {
       );
     });
     Promise.all(animations.map((a) => a.finished))
-      .then(() => setTimeout(finish, 420))
+      .then(finish)
       .catch(finish);
     const guard = setTimeout(finish, 4200);
     return () => clearTimeout(guard);
   }, []);
   return (
     <div className="rip" aria-hidden="true" ref={root}>
-      <div className="rip-code">
-        {code?.length ? (
-          code.map((file) => (
-            <div className="rip-file" key={file.path}>
-              <b>{file.path}</b>
-              <pre>{file.lines.join("\n")}</pre>
-            </div>
-          ))
-        ) : (
-          <div className="rip-file skeleton">
-            {Array.from({ length: 30 }, (_, i) => (
-              <i key={i} style={{ width: `${30 + ((i * 41) % 60)}%` }} />
-            ))}
-          </div>
-        )}
-      </div>
       <div className="rip-tiles" ref={layer}>
         {tiles.map((t) => (
           <div
