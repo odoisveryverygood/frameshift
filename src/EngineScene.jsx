@@ -205,7 +205,7 @@ export default function EngineScene() {
       trail.length = 0;
     };
     const unregister = registerEngine({
-      launch: () =>
+      launch: (onClear) =>
         new Promise((resolve) => {
           if (gone || flight) return resolve();
           if (still || !scene) {
@@ -217,7 +217,7 @@ export default function EngineScene() {
           burn.t = 0;
           burn.launch = true;
           setFiring(true);
-          flight = { t: 0, resolve };
+          flight = { t: 0, resolve, onClear };
         }),
       reset: () => {
         if (flight) flight.resolve();
@@ -304,6 +304,28 @@ export default function EngineScene() {
       sg.drawImage(tile, -cw / 2 - 1, -ch / 2 - 1);
       sg.restore();
     }
+    // Once the engine clears the stand, its flight runs on its own clock and layer,
+    // so it keeps climbing over the page while the page tears away beneath it.
+    function startFlight() {
+      const f = flight;
+      f.flying = true;
+      f.rect = canvas.current.getBoundingClientRect();
+      const r = f.rect;
+      f.onClear?.({
+        x: r.left + EXIT[0] * r.width,
+        y: r.top + PAD[1] * r.height,
+      });
+      let prev = performance.now();
+      const fly = (now) => {
+        if (flight !== f) return;
+        const d = Math.min(0.05, (now - prev) / 1000);
+        prev = now;
+        f.t += d;
+        drawFlight(d);
+        if (flight === f) requestAnimationFrame(fly);
+      };
+      requestAnimationFrame(fly);
+    }
     function drawFlight(dt) {
       const t = flight.t - IGNITION;
       if (!overlay) {
@@ -318,7 +340,7 @@ export default function EngineScene() {
         overlay.width = Math.round(innerWidth * od);
         overlay.height = Math.round(innerHeight * od);
       }
-      const r = canvas.current.getBoundingClientRect();
+      const r = flight.rect;
       const shake = t < 0.25 ? (1 - t / 0.25) * 2 : 0;
       const dy = -(760 * t * t + 70 * t);
       const rx = r.left + ROCKET[0] * r.width + rand(-shake, shake),
@@ -450,8 +472,9 @@ export default function EngineScene() {
           : Math.max(0, burn.radius - dt * 0.7);
 
       const away = gone || (flight && flight.t >= IGNITION);
-      if (flight) {
+      if (flight && !flight.flying) {
         flight.t += dt;
+        if (flight.t >= IGNITION) startFlight();
         if (flight.t >= IGNITION && burn.on) {
           // Hand the fire over to the overlay with the engine.
           burn.on = false;
@@ -659,15 +682,16 @@ export default function EngineScene() {
         ctx.drawImage(scene, x, y, hw, hh, -hw / 2, -hh / 2, hw, hh);
         ctx.restore();
       });
-      if (flight && flight.t >= IGNITION) drawFlight(dt);
       raf = requestAnimationFrame(frame);
     }
     raf = requestAnimationFrame(frame);
     return () => {
       cancelAnimationFrame(raf);
       unregister();
-      flight?.resolve();
-      dropOverlay();
+      if (!flight?.flying) {
+        flight?.resolve();
+        dropOverlay();
+      }
       removeEventListener("pointermove", look);
       watcher.disconnect();
       const c = canvas.current;

@@ -9,6 +9,14 @@ export function registerEngine(controls) {
     if (current === controls) current = null;
   };
 }
-export const launchEngine = () =>
-  current ? current.launch() : Promise.resolve();
+// onClear(point) fires when the engine clears its stand, with the screen point of
+// the launch pad; the returned promise settles when the flight is over.
+export const launchEngine = (onClear) =>
+  current ? current.launch(onClear) : Promise.resolve();
+// Resolves with the launch-pad point as soon as the engine clears its stand
+// (or with null at once when there is no engine on screen).
+export const engineCleared = () =>
+  new Promise((resolve) => {
+    launchEngine(resolve).then(() => resolve(null));
+  });
 export const resetEngine = () => current?.reset();

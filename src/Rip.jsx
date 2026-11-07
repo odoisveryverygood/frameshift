@@ -61,7 +61,7 @@ export function snapshotHtml(el, { owner = "rip", release = false } = {}) {
 }
 
 const rand = (min, max) => min + Math.random() * (max - min);
-const CRACK = 240;
+const CRACK = 120;
 
 function makeTiles(width, height) {
   const cols = Math.min(10, Math.max(4, Math.round(width / 130))),
