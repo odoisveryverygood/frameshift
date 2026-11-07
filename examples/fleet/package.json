@@ -1,0 +1,12 @@
+{
+  "name": "frameshift-fleet",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build --base=./"
+  },
+  "dependencies": {
+    "three": "^0.181.0",
+    "vite": "^7.2.0"
+  }
+}

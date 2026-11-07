@@ -1,0 +1,54 @@
+{
+  "engine": "three@0.181.2",
+  "results": [
+    {
+      "id": "pipelineBuildKey",
+      "title": "1. What is a pipeline build keyed on?",
+      "fallback": "Count shader builds for N objects sharing one material, then for one object holding N instances. N against 1 means object identity is in the key.",
+      "answer": "no per-object identity found in the render object cache key",
+      "note": "source: the trap this skill describes may have been closed, or the key may have moved. Confirm by counting shader builds for N instanced meshes sharing one material before you rely on it."
+    },
+    {
+      "id": "automaticBatching",
+      "title": "2. What does the engine batch automatically?",
+      "fallback": "Render one frame with the draw-call counter on, against a scene whose object count you know. Most engines batch nothing above the object.",
+      "answer": "nothing above the object; InstancedMesh and BatchedMesh to request",
+      "note": "API surface, not a measurement: this engine merges nothing for you. Count the draw calls of a frame against the object count of the scene that drew it."
+    },
+    {
+      "id": "scenePasses",
+      "title": "3. Which passes traverse the whole scene?",
+      "fallback": "Instrument the engine's per-object draw entry point for one frame and count how many times each object is submitted. This is a property of your scene, not of the engine.",
+      "answer": null,
+      "note": "Instrument the engine's per-object draw entry point for one frame and count how many times each object is submitted. This is a property of your scene, not of the engine."
+    },
+    {
+      "id": "asyncCompile",
+      "title": "4. Is there an asynchronous pipeline compile?",
+      "fallback": "Time the first frame after a stage, with and without the engine's compile call ahead of it.",
+      "answer": "compileAsync()",
+      "note": "Call it at the end of each published stage, not in the frame that needs the pipeline."
+    },
+    {
+      "id": "gpuCompletionSignal",
+      "title": "5. Is there a GPU completion signal?",
+      "fallback": "Run a deliberately heavy scene and compare the callback rate against the completion rate. If they never diverge under load, the signal is not measuring completion.",
+      "answer": "not on the engine's public API; the WebGPU queue's onSubmittedWorkDone and a WebGL2 fence underneath",
+      "note": "source: the engine withdrew the call, so this one is yours to own. Keep one per backend, do not assume a global requestAnimationFrame while polling a fence (a worker has none), and publish which signal you got: a scene without one counts submissions and reports a rate that can be twice the truth."
+    },
+    {
+      "id": "objectIdentity",
+      "title": "6. What identity must stay stable, and does the static flag apply?",
+      "fallback": "Mutate one property at a time on a constructed object and watch for a recompile or a buffer reupload. Then set the engine's static flag and check whether the per-object work actually drops.",
+      "answer": "no custom nodes: yes, a colour node: no, a position node: no",
+      "note": "A material built from shader nodes returns early, before the flag is read, so setting it on one does nothing and nothing says so. Check which of your own materials fall on which side before you reason as though any object is skipped. Separately: any knob whose value the engine bakes into generated source is a rebuild and not a uniform. Generate a shader twice with that knob at two values and compare the text."
+    },
+    {
+      "id": "vertexHookOrder",
+      "title": "7. When does your own vertex code run?",
+      "fallback": "Give one instanced object a vertex hook that adds a constant, generate its vertex shader source, and read whether the engine's own transform sits above or below your line.",
+      "answer": "your hook runs first; the engine transforms what you return",
+      "note": "The working position is the geometry's own vertex, so a displacement written against it is already in the right space. Re-run this after any engine upgrade: moving this order breaks nothing and fails silently."
+    }
+  ]
+}

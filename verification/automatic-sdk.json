@@ -1,0 +1,19 @@
+{
+  "at": "2026-11-07T08:33:45.193Z",
+  "project": "Independent plain Vite + Three.js fixture with no FrameShift adapter",
+  "objects": 25,
+  "calls": 25,
+  "samples": 30,
+  "gpuSupported": true,
+  "deterministicState": true,
+  "actualApplicationSelection": [
+    {
+      "tag": "OUTPUT",
+      "label": "selection",
+      "selected": null,
+      "pressed": null,
+      "text": "cell-12"
+    }
+  ],
+  "errors": []
+}

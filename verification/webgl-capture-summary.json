@@ -1,0 +1,6 @@
+{
+  "commands": 82,
+  "drawCommands": 13,
+  "compressedBytes": 148181,
+  "note": "Separate Spector.js instrumentation of the accepted instanced scene; not a timing benchmark"
+}

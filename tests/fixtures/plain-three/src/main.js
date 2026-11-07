@@ -1,0 +1,6 @@
+import * as THREE from 'three';
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(innerWidth,innerHeight);document.body.append(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color('#e9eff0');const camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,.1,100);camera.position.set(8,6,10);camera.lookAt(0,0,0);scene.add(new THREE.HemisphereLight(0xffffff,0x718295,3));
+const objects=[];for(let i=0;i<25;i++){const mesh=new THREE.Mesh(new THREE.BoxGeometry(.6,.6,.6),new THREE.MeshStandardMaterial({color:i%2?0x3f776d:0x5269a8}));mesh.name='cell-'+i;mesh.position.set(i%5-2,0,Math.floor(i/5)-2);scene.add(mesh);objects.push(mesh)}
+const clock=new THREE.Clock();function animate(){requestAnimationFrame(animate);const t=clock.getElapsedTime();for(let i=0;i<objects.length;i++)objects[i].rotation.y=t*.3+i*.1;renderer.render(scene,camera)}animate();
+const ray=new THREE.Raycaster();renderer.domElement.addEventListener('click',e=>{ray.setFromCamera(new THREE.Vector2(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1),camera);const hit=ray.intersectObjects(objects)[0];document.querySelector('#selection').textContent=hit?.object.name||'Nothing selected';});

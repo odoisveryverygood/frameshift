@@ -1,0 +1,36 @@
+{
+  "pass": true,
+  "checks": [
+    {
+      "firstTransformMismatch": null,
+      "view": 0,
+      "time": 0,
+      "visualDifference": 0,
+      "visualPass": true,
+      "statePass": true,
+      "objectCount": 1600,
+      "pickingPass": true
+    },
+    {
+      "firstTransformMismatch": null,
+      "view": 1,
+      "time": 1.7,
+      "visualDifference": 0.0000016276041666666668,
+      "visualPass": true,
+      "statePass": true,
+      "objectCount": 1600,
+      "pickingPass": true
+    },
+    {
+      "firstTransformMismatch": null,
+      "view": 2,
+      "time": 4.2,
+      "visualDifference": 0,
+      "visualPass": true,
+      "statePass": true,
+      "objectCount": 1600,
+      "pickingPass": true
+    }
+  ],
+  "errors": []
+}

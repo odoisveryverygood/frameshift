@@ -1,0 +1,449 @@
+{
+  "id": "f77fc68b-0de",
+  "projectId": "aee03e1a-6c0",
+  "projectName": "Orbit lab / automatic import",
+  "kind": "optimize",
+  "status": "completed",
+  "createdAt": "2026-11-07T08:41:49.388Z",
+  "phase": "Optimization finished. Accepted changes are available as a patch.",
+  "events": [
+    {
+      "at": "2026-11-07T08:41:49.758Z",
+      "type": "build",
+      "message": "Building production bundle"
+    },
+    {
+      "at": "2026-11-07T08:41:51.571Z",
+      "type": "build",
+      "message": "Attaching the protected Three.js profiler"
+    },
+    {
+      "at": "2026-11-07T08:41:52.735Z",
+      "type": "build",
+      "message": "Building production bundle"
+    },
+    {
+      "at": "2026-11-07T08:41:54.078Z",
+      "type": "build",
+      "message": "Attaching the protected Three.js profiler"
+    },
+    {
+      "at": "2026-11-07T08:41:55.243Z",
+      "type": "profile",
+      "message": "Profiling the reference on this machine"
+    },
+    {
+      "at": "2026-11-07T08:42:07.364Z",
+      "type": "agent",
+      "message": "Experiment 1: analyzing source and measurements"
+    },
+    {
+      "at": "2026-11-07T08:42:19.517Z",
+      "type": "build",
+      "message": "Building production bundle"
+    },
+    {
+      "at": "2026-11-07T08:42:21.335Z",
+      "type": "build",
+      "message": "Attaching the protected Three.js profiler"
+    },
+    {
+      "at": "2026-11-07T08:42:22.469Z",
+      "type": "verify",
+      "message": "Experiment 1: checking visuals, object transforms and picking"
+    },
+    {
+      "at": "2026-11-07T08:42:28.755Z",
+      "type": "benchmark",
+      "message": "Experiment 1: sequential reference and candidate benchmarks"
+    },
+    {
+      "at": "2026-11-07T08:42:53.314Z",
+      "type": "accepted",
+      "message": "Experiment 1: accepted — Correctness checks passed and submission time improved beyond the measured noise band."
+    },
+    {
+      "at": "2026-11-07T08:42:53.316Z",
+      "type": "complete",
+      "message": "Optimization finished. Accepted changes are available as a patch."
+    }
+  ],
+  "experiments": [
+    {
+      "id": "a376a14a-7f7",
+      "index": 1,
+      "status": "accepted",
+      "createdAt": "2026-11-07T08:42:07.364Z",
+      "trace": [
+        {
+          "at": "2026-11-07T08:42:08.501Z",
+          "tool": "read_profile",
+          "ok": true
+        },
+        {
+          "at": "2026-11-07T08:42:09.655Z",
+          "tool": "list_source",
+          "ok": true
+        },
+        {
+          "at": "2026-11-07T08:42:10.835Z",
+          "tool": "read_source",
+          "path": "src/main.js",
+          "ok": true
+        },
+        {
+          "at": "2026-11-07T08:42:19.400Z",
+          "tool": "submit_patch",
+          "ok": true
+        }
+      ],
+      "title": "Repair instancing with camera-safe initial transforms",
+      "hypothesis": "The rejected batching patch likely changed early camera validation because initial instance matrices baked in nonzero rotations before animation started. Building instanced meshes with the same pre-animation transforms as the original meshes, then applying animated rotations only in the render loop, should preserve correctness while still cutting draw calls from 25 to 2.",
+      "expectedEffect": "submitP95 should improve via far fewer draw submissions, while camera/visual/picking checks remain aligned with the original scene.",
+      "notes": "Single-file repair of the prior batching attempt. Keeps geometry, materials, colors, object count semantics, per-instance semantic IDs, picking behavior, and exact animated rotation arithmetic while matching original initial transforms at time 0.",
+      "model": "gpt-5.4",
+      "usage": {
+        "input_tokens": 21172,
+        "output_tokens": 950,
+        "total_tokens": 22122
+      },
+      "patches": [
+        {
+          "path": "src/main.js",
+          "search": "const objects=[];for(let i=0;i<25;i++){const mesh=new THREE.Mesh(new THREE.BoxGeometry(.6,.6,.6),new THREE.MeshStandardMaterial({color:i%2?0x3f776d:0x5269a8}));mesh.name='cell-'+i;mesh.position.set(i%5-2,0,Math.floor(i/5)-2);scene.add(mesh);objects.push(mesh)}\nconst clock=new THREE.Clock();function animate(){requestAnimationFrame(animate);const t=clock.getElapsedTime();for(let i=0;i<objects.length;i++)objects[i].rotation.y=t*.3+i*.1;renderer.render(scene,camera)}animate();\nconst ray=new THREE.Raycaster();renderer.domElement.addEventListener('click',e=>{ray.setFromCamera(new THREE.Vector2(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1),camera);const hit=ray.intersectObjects(objects)[0];document.querySelector('#selection').textContent=hit?.object.name||'Nothing selected';});",
+          "replace": "const boxGeometry=new THREE.BoxGeometry(.6,.6,.6),materials=[new THREE.MeshStandardMaterial({color:0x5269a8}),new THREE.MeshStandardMaterial({color:0x3f776d})],counts=[0,0];for(let i=0;i<25;i++)counts[i%2]++;const renderObjects=materials.map((material,index)=>{const mesh=new THREE.InstancedMesh(boxGeometry,material,counts[index]);mesh.userData.semanticIds=[];scene.add(mesh);return mesh});\nconst dummy=new THREE.Object3D(),instanceMap=[];const instanceCounts=[0,0];for(let i=0;i<25;i++){const group=i%2,instanceId=instanceCounts[group]++;dummy.position.set(i%5-2,0,Math.floor(i/5)-2);dummy.rotation.set(0,0,0);dummy.updateMatrix();renderObjects[group].setMatrixAt(instanceId,dummy.matrix);renderObjects[group].userData.semanticIds[instanceId]='cell-'+i;instanceMap[i]={mesh:renderObjects[group],instanceId,name:'cell-'+i}}for(let i=0;i<renderObjects.length;i++)renderObjects[i].instanceMatrix.needsUpdate=true;\nconst clock=new THREE.Clock();function animate(){requestAnimationFrame(animate);const t=clock.getElapsedTime();for(let i=0;i<instanceMap.length;i++){const {mesh,instanceId}=instanceMap[i];dummy.position.set(i%5-2,0,Math.floor(i/5)-2);dummy.rotation.set(0,t*.3+i*.1,0);dummy.updateMatrix();mesh.setMatrixAt(instanceId,dummy.matrix)}for(let i=0;i<renderObjects.length;i++)renderObjects[i].instanceMatrix.needsUpdate=true;renderer.render(scene,camera)}animate();\nconst ray=new THREE.Raycaster();renderer.domElement.addEventListener('click',e=>{ray.setFromCamera(new THREE.Vector2(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1),camera);const hit=ray.intersectObjects(renderObjects)[0];document.querySelector('#selection').textContent=hit?hit.object.userData.semanticIds[hit.instanceId]:'Nothing selected';});",
+          "beforeHash": "e9563bdd7dfca5bf1895150509e21cdd54d32c2fca7cdbd5032ce2a956907212"
+        }
+      ],
+      "referenceHashes": {
+        "src/main.js": "e9563bdd7dfca5bf1895150509e21cdd54d32c2fca7cdbd5032ce2a956907212"
+      },
+      "files": [
+        "src/main.js"
+      ],
+      "diff": "===================================================================\n--- a/src/main.js\n+++ b/src/main.js\n@@ -1,6 +1,7 @@\n import * as THREE from 'three';\n const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(innerWidth,innerHeight);document.body.append(renderer.domElement);\n const scene=new THREE.Scene();scene.background=new THREE.Color('#e9eff0');const camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,.1,100);camera.position.set(8,6,10);camera.lookAt(0,0,0);scene.add(new THREE.HemisphereLight(0xffffff,0x718295,3));\n-const objects=[];for(let i=0;i<25;i++){const mesh=new THREE.Mesh(new THREE.BoxGeometry(.6,.6,.6),new THREE.MeshStandardMaterial({color:i%2?0x3f776d:0x5269a8}));mesh.name='cell-'+i;mesh.position.set(i%5-2,0,Math.floor(i/5)-2);scene.add(mesh);objects.push(mesh)}\n-const clock=new THREE.Clock();function animate(){requestAnimationFrame(animate);const t=clock.getElapsedTime();for(let i=0;i<objects.length;i++)objects[i].rotation.y=t*.3+i*.1;renderer.render(scene,camera)}animate();\n-const ray=new THREE.Raycaster();renderer.domElement.addEventListener('click',e=>{ray.setFromCamera(new THREE.Vector2(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1),camera);const hit=ray.intersectObjects(objects)[0];document.querySelector('#selection').textContent=hit?.object.name||'Nothing selected';});\n+const boxGeometry=new THREE.BoxGeometry(.6,.6,.6),materials=[new THREE.MeshStandardMaterial({color:0x5269a8}),new THREE.MeshStandardMaterial({color:0x3f776d})],counts=[0,0];for(let i=0;i<25;i++)counts[i%2]++;const renderObjects=materials.map((material,index)=>{const mesh=new THREE.InstancedMesh(boxGeometry,material,counts[index]);mesh.userData.semanticIds=[];scene.add(mesh);return mesh});\n+const dummy=new THREE.Object3D(),instanceMap=[];const instanceCounts=[0,0];for(let i=0;i<25;i++){const group=i%2,instanceId=instanceCounts[group]++;dummy.position.set(i%5-2,0,Math.floor(i/5)-2);dummy.rotation.set(0,0,0);dummy.updateMatrix();renderObjects[group].setMatrixAt(instanceId,dummy.matrix);renderObjects[group].userData.semanticIds[instanceId]='cell-'+i;instanceMap[i]={mesh:renderObjects[group],instanceId,name:'cell-'+i}}for(let i=0;i<renderObjects.length;i++)renderObjects[i].instanceMatrix.needsUpdate=true;\n+const clock=new THREE.Clock();function animate(){requestAnimationFrame(animate);const t=clock.getElapsedTime();for(let i=0;i<instanceMap.length;i++){const {mesh,instanceId}=instanceMap[i];dummy.position.set(i%5-2,0,Math.floor(i/5)-2);dummy.rotation.set(0,t*.3+i*.1,0);dummy.updateMatrix();mesh.setMatrixAt(instanceId,dummy.matrix)}for(let i=0;i<renderObjects.length;i++)renderObjects[i].instanceMatrix.needsUpdate=true;renderer.render(scene,camera)}animate();\n+const ray=new THREE.Raycaster();renderer.domElement.addEventListener('click',e=>{ray.setFromCamera(new THREE.Vector2(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1),camera);const hit=ray.intersectObjects(renderObjects)[0];document.querySelector('#selection').textContent=hit?hit.object.userData.semanticIds[hit.instanceId]:'Nothing selected';});\n",
+      "guards": {
+        "interactions": {
+          "events": 1,
+          "statePass": true,
+          "behaviorPass": true,
+          "errors": []
+        },
+        "coverage": {
+          "checkpoints": 8,
+          "semanticObjects": 25,
+          "pickingProbes": 40,
+          "replayedEvents": 1
+        },
+        "pass": true,
+        "checks": [
+          {
+            "firstTransformMismatch": null,
+            "view": 0,
+            "time": 0,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 25,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 1,
+            "time": 0.6,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 25,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 2,
+            "time": 1.2,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 25,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 3,
+            "time": 2,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 25,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 4,
+            "time": 3,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 25,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 5,
+            "time": 4.2,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 25,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 6,
+            "time": 5,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 25,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 7,
+            "time": 6,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 25,
+            "pickingPass": true
+          }
+        ],
+        "errors": []
+      },
+      "reference": {
+        "frameMedian": 33.30000000000018,
+        "frameP95": 33.40000000000009,
+        "submitMedian": 0.5999999940395355,
+        "submitP95": 1.0999999940395355,
+        "fps": 30.030030030029867,
+        "calls": 25,
+        "triangles": 300,
+        "geometries": 25,
+        "repeatMetrics": [
+          1.0999999940395355,
+          1.0999999940395355,
+          1.0999999940395355
+        ],
+        "samples": 3,
+        "frameCount": 180,
+        "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+        "hardware": {
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+          "cores": 10,
+          "viewport": [
+            960,
+            640
+          ],
+          "dpr": 1
+        },
+        "uncertainty": {
+          "repeats": 3,
+          "min": 1.0999999940395355,
+          "max": 1.0999999940395355,
+          "relativeSpread": 0,
+          "note": "Limited repeat count; differences inside observed variability are inconclusive."
+        },
+        "gpuSupported": true,
+        "gpuP95": 0.637833
+      },
+      "candidate": {
+        "frameMedian": 33.30000000000018,
+        "frameP95": 33.40000000000009,
+        "submitMedian": 0.4000000059604645,
+        "submitP95": 0.5999999940395355,
+        "fps": 30.030030030029867,
+        "calls": 2,
+        "triangles": 300,
+        "geometries": 1,
+        "repeatMetrics": [
+          0.6000000238418579,
+          0.5999999940395355,
+          0.5
+        ],
+        "samples": 3,
+        "frameCount": 180,
+        "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+        "hardware": {
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+          "cores": 10,
+          "viewport": [
+            960,
+            640
+          ],
+          "dpr": 1
+        },
+        "uncertainty": {
+          "repeats": 3,
+          "min": 0.5,
+          "max": 0.6000000238418579,
+          "relativeSpread": 0.1666667080587815,
+          "note": "Limited repeat count; differences inside observed variability are inconclusive."
+        },
+        "gpuSupported": true,
+        "gpuP95": 0.676999
+      },
+      "reason": "Correctness checks passed and submission time improved beyond the measured noise band.",
+      "improvement": 0.4545454570084564,
+      "threshold": 0.08
+    }
+  ],
+  "config": {
+    "name": "plain-three-instrumentation-fixture",
+    "buildCommand": [
+      "npm",
+      "run",
+      "build"
+    ],
+    "outputDir": "dist",
+    "editableFiles": [
+      "src/main.js"
+    ],
+    "autoInstrument": true,
+    "metric": "submitP95",
+    "minImprovement": 0.08,
+    "maxVisualDifference": 0.01,
+    "samples": 60,
+    "repeats": 3,
+    "checkpoints": [
+      {
+        "time": 0,
+        "view": 0
+      },
+      {
+        "time": 0.6,
+        "view": 1
+      },
+      {
+        "time": 1.2,
+        "view": 2
+      },
+      {
+        "time": 2,
+        "view": 0
+      },
+      {
+        "time": 3,
+        "view": 1
+      },
+      {
+        "time": 4.2,
+        "view": 2
+      },
+      {
+        "time": 5,
+        "view": 0
+      },
+      {
+        "time": 6,
+        "view": 1
+      }
+    ],
+    "scenario": {
+      "name": "Select center cell",
+      "events": [
+        {
+          "type": "click",
+          "at": 0.3,
+          "x": 0.5,
+          "y": 0.5
+        }
+      ],
+      "savedAt": "2026-11-07T08:38:50.193Z"
+    }
+  },
+  "maxExperiments": 1,
+  "tokens": 22122,
+  "recoveries": 0,
+  "updatedAt": "2026-11-07T08:42:53.316Z",
+  "workerPid": 7579,
+  "startedAt": "2026-11-07T08:41:49.737Z",
+  "isolation": "macOS filesystem-restricted, network-denied builds",
+  "checkpoints": {
+    "baseline": true
+  },
+  "sdkVersion": "6fdb6c0866f87a42723a814566e00b3215f4f5d893419ed231bb70b2c1d5600d",
+  "baseline": {
+    "frameMedian": 33.30000000000018,
+    "frameP95": 33.400000000000546,
+    "submitMedian": 0.5,
+    "submitP95": 0.7000000178813934,
+    "fps": 30.030030030029867,
+    "calls": 25,
+    "triangles": 300,
+    "geometries": 25,
+    "repeatMetrics": [
+      1,
+      0.7000000178813934,
+      0.699999988079071
+    ],
+    "samples": 3,
+    "frameCount": 180,
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+    "hardware": {
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+      "cores": 10,
+      "viewport": [
+        960,
+        640
+      ],
+      "dpr": 1
+    },
+    "gpuSupported": true,
+    "gpuP95": 0.646749
+  },
+  "metric": "submitP95",
+  "best": {
+    "frameMedian": 33.30000000000018,
+    "frameP95": 33.40000000000009,
+    "submitMedian": 0.4000000059604645,
+    "submitP95": 0.5999999940395355,
+    "fps": 30.030030030029867,
+    "calls": 2,
+    "triangles": 300,
+    "geometries": 1,
+    "repeatMetrics": [
+      0.6000000238418579,
+      0.5999999940395355,
+      0.5
+    ],
+    "samples": 3,
+    "frameCount": 180,
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+    "hardware": {
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+      "cores": 10,
+      "viewport": [
+        960,
+        640
+      ],
+      "dpr": 1
+    },
+    "uncertainty": {
+      "repeats": 3,
+      "min": 0.5,
+      "max": 0.6000000238418579,
+      "relativeSpread": 0.1666667080587815,
+      "note": "Limited repeat count; differences inside observed variability are inconclusive."
+    },
+    "gpuSupported": true,
+    "gpuP95": 0.676999
+  }
+}

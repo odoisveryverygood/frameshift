@@ -1,0 +1,293 @@
+{
+  "id": "fea029eb-0e2",
+  "projectId": "ccaf9eea-8ed",
+  "projectName": "Warehouse robotics scene",
+  "kind": "optimize",
+  "status": "completed",
+  "createdAt": "2026-11-07T08:15:47.799Z",
+  "events": [
+    {
+      "at": "2026-11-07T08:15:47.801Z",
+      "type": "build",
+      "message": "Building production bundle"
+    },
+    {
+      "at": "2026-11-07T08:15:49.114Z",
+      "type": "profile",
+      "message": "Profiling the reference on this machine"
+    },
+    {
+      "at": "2026-11-07T08:15:57.558Z",
+      "type": "agent",
+      "message": "Experiment 1: analyzing source and measurements"
+    },
+    {
+      "at": "2026-11-07T08:16:08.688Z",
+      "type": "build",
+      "message": "Building production bundle"
+    },
+    {
+      "at": "2026-11-07T08:16:10.333Z",
+      "type": "verify",
+      "message": "Experiment 1: checking visuals, object transforms and picking"
+    },
+    {
+      "at": "2026-11-07T08:16:14.348Z",
+      "type": "benchmark",
+      "message": "Experiment 1: sequential reference and candidate benchmarks"
+    },
+    {
+      "at": "2026-11-07T08:16:27.227Z",
+      "type": "accepted",
+      "message": "Experiment 1: accepted — Draw calls decreased, correctness checks passed, and CPU submission/frame pacing stayed within their guards."
+    },
+    {
+      "at": "2026-11-07T08:16:27.228Z",
+      "type": "agent",
+      "message": "Experiment 2: analyzing source and measurements"
+    },
+    {
+      "at": "2026-11-07T08:16:32.440Z",
+      "type": "complete",
+      "message": "Optimization finished. Accepted changes are available as a patch."
+    }
+  ],
+  "experiments": [
+    {
+      "id": "94548e09-6b9",
+      "index": 1,
+      "status": "accepted",
+      "createdAt": "2026-11-07T08:15:57.558Z",
+      "referenceHashes": {
+        "src/scene.js": "7e10725aa1e5afb732745a6b64e564f5969780652921580c2f6edad9582a5a52"
+      },
+      "title": "Batch robots into two InstancedMesh groups with corrected transform math and per-instance semantic IDs",
+      "hypothesis": "The dominant cost is 1600 repeated opaque robot meshes causing 1611 draw calls. Replacing them with two InstancedMesh batches split by original material/color should collapse those robot submissions to two draw calls while preserving exact world transforms, colors, animation, and picking identity through userData.semanticIds.",
+      "expectedEffect": "Large reduction in draw calls and CPU submission time, with identical robot placement and animation at every timestamp. Raycasting/picking identity remains available per instance via instanceId -> userData.semanticIds mapping.",
+      "notes": "This is a focused repair of the previously rejected instancing attempt. The earlier patch changed transform arithmetic, causing visual/state/picking failures. This version preserves the original constants and expressions exactly: x uses (column - 19.5) * 1.25, y uses .32 + Math.sin(t * 1.8 + i * .13) * .04, z uses (row - Math.floor(count / 40) / 2) * 1.3 + Math.sin(t * .4 + column * .2) * .4, and rotation.y uses Math.sin(t * .5 + i * .04) * .18. Robots are batched only by their original opaque material split, which should cut robot draw submissions from 1600 to 2 while preserving per-instance semantic identity via userData.semanticIds.",
+      "model": "gpt-5.4",
+      "usage": {
+        "input_tokens": 11429,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 1096,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 12525
+      },
+      "files": [
+        "src/scene.js"
+      ],
+      "diff": "===================================================================\n--- a/src/scene.js\n+++ b/src/scene.js\n@@ -1,30 +1,67 @@\n // Preserve every semantic object, material, geometry, animation and picking identity.\n // semanticId identifies an ordinary mesh; semanticIds identifies each instance.\n export function createWorld(THREE, scene) {\n   const count = 1600;\n-  const robots = [];\n-  // Allocate geometry only once and share it among all robots\n+  const columns = 40;\n+  const rows = Math.floor(count / 40);\n+\n   const sharedGeometry = new THREE.BoxGeometry(.72, .48, .94);\n-  // Only two material instances instead of 1600\n   const orangeMaterial = new THREE.MeshStandardMaterial({color: 0xf59b52, roughness: .42, metalness: .35});\n   const blueMaterial   = new THREE.MeshStandardMaterial({color: 0x4f8ca8, roughness: .42, metalness: .35});\n+\n+  const orangeIndices = [];\n+  const blueIndices = [];\n   for (let i = 0; i < count; i++) {\n-    // Use shared material objects based on color\n-    const material = i % 3 === 0 ? orangeMaterial : blueMaterial;\n-    const mesh = new THREE.Mesh(sharedGeometry, material);\n-    mesh.userData.semanticId = 'robot-' + i;\n-    scene.add(mesh);\n-    robots.push(mesh);\n+    if (i % 3 === 0) {\n+      orangeIndices.push(i);\n+    } else {\n+      blueIndices.push(i);\n+    }\n   }\n+\n+  const orangeMesh = new THREE.InstancedMesh(sharedGeometry, orangeMaterial, orangeIndices.length);\n+  const blueMesh = new THREE.InstancedMesh(sharedGeometry, blueMaterial, blueIndices.length);\n+\n+  orangeMesh.userData.semanticIds = orangeIndices.map((i) => 'robot-' + i);\n+  blueMesh.userData.semanticIds = blueIndices.map((i) => 'robot-' + i);\n+\n+  scene.add(orangeMesh);\n+  scene.add(blueMesh);\n+\n+  const dummy = new THREE.Object3D();\n+\n   return {\n     update(t) {\n-      for (let i = 0; i < count; i++) {\n+      for (let inst = 0; inst < orangeIndices.length; inst++) {\n+        const i = orangeIndices[inst];\n         const column = i % 40;\n         const row = Math.floor(i / 40);\n-        const position = new THREE.Vector3((column - 19.5) * 1.25, .32 + Math.sin(t * 1.8 + i * .13) * .04, (row - Math.floor(count / 40) / 2) * 1.3 + Math.sin(t * .4 + column * .2) * .4);\n-        robots[i].position.copy(position);\n-        robots[i].rotation.y = Math.sin(t * .5 + i * .04) * .18;\n+        dummy.position.set(\n+          (column - 19.5) * 1.25,\n+          .32 + Math.sin(t * 1.8 + i * .13) * .04,\n+          (row - Math.floor(count / 40) / 2) * 1.3 + Math.sin(t * .4 + column * .2) * .4\n+        );\n+        dummy.rotation.set(0, Math.sin(t * .5 + i * .04) * .18, 0);\n+        dummy.updateMatrix();\n+        orangeMesh.setMatrixAt(inst, dummy.matrix);\n       }\n+\n+      for (let inst = 0; inst < blueIndices.length; inst++) {\n+        const i = blueIndices[inst];\n+        const column = i % 40;\n+        const row = Math.floor(i / 40);\n+        dummy.position.set(\n+          (column - 19.5) * 1.25,\n+          .32 + Math.sin(t * 1.8 + i * .13) * .04,\n+          (row - Math.floor(count / 40) / 2) * 1.3 + Math.sin(t * .4 + column * .2) * .4\n+        );\n+        dummy.rotation.set(0, Math.sin(t * .5 + i * .04) * .18, 0);\n+        dummy.updateMatrix();\n+        blueMesh.setMatrixAt(inst, dummy.matrix);\n+      }\n+\n+      orangeMesh.instanceMatrix.needsUpdate = true;\n+      blueMesh.instanceMatrix.needsUpdate = true;\n     }\n   };\n }\n",
+      "guards": {
+        "pass": true,
+        "checks": [
+          {
+            "firstTransformMismatch": null,
+            "view": 0,
+            "time": 0,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 1600,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 1,
+            "time": 1.7,
+            "visualDifference": 0.0000016276041666666668,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 1600,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 2,
+            "time": 4.2,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 1600,
+            "pickingPass": true
+          }
+        ],
+        "errors": []
+      },
+      "reference": {
+        "frameMedian": 16.699999999999818,
+        "frameP95": 16.799999999999955,
+        "submitMedian": 2.9000000059604645,
+        "submitP95": 3.199999988079071,
+        "fps": 59.88023952095874,
+        "calls": 1611,
+        "triangles": 19310,
+        "geometries": 12,
+        "repeatMetrics": [
+          3.300000011920929,
+          3.199999988079071,
+          3.2999999821186066
+        ],
+        "samples": 3,
+        "frameCount": 240,
+        "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+        "hardware": {
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+          "cores": 10,
+          "viewport": [
+            960,
+            640
+          ],
+          "dpr": 1
+        },
+        "gpuSupported": true,
+        "gpuP95": 0.970291
+      },
+      "candidate": {
+        "frameMedian": 16.699999999999818,
+        "frameP95": 16.799999999999272,
+        "submitMedian": 0.5,
+        "submitP95": 0.800000011920929,
+        "fps": 59.88023952095874,
+        "calls": 13,
+        "triangles": 19310,
+        "geometries": 12,
+        "repeatMetrics": [
+          0.7000000178813934,
+          0.7999999821186066,
+          1
+        ],
+        "samples": 3,
+        "frameCount": 240,
+        "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+        "hardware": {
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+          "cores": 10,
+          "viewport": [
+            960,
+            640
+          ],
+          "dpr": 1
+        },
+        "gpuSupported": true,
+        "gpuP95": 1.641875
+      },
+      "metric": "drawCalls",
+      "improvement": 0.9919304779639975,
+      "threshold": 0.08,
+      "reason": "Draw calls decreased, correctness checks passed, and CPU submission/frame pacing stayed within their guards."
+    },
+    {
+      "id": "76c4a5b2-c8e",
+      "index": 2,
+      "status": "inconclusive",
+      "createdAt": "2026-11-07T08:16:27.228Z",
+      "referenceHashes": {
+        "src/scene.js": "0e0e886678cb62bc8f154b06eba256c8a1e2e7705f8a5d0401dfdf72c0bc48f8"
+      },
+      "title": "No further safe draw-call reduction remains in src/scene.js",
+      "hypothesis": "The dominant draw-call optimization for this file has already been accepted: batching 1600 repeated robots into two InstancedMesh groups by material. Within the allowed file, there is no additional safe batching opportunity that would reduce draw calls further without changing materials/colors or violating identity/semantic preservation.",
+      "expectedEffect": "No source changes. Current accepted implementation already reduces robot submissions from ~1600 meshes to 2 instanced draws while preserving transforms and picking identity. Further edits in this file would be arithmetic/allocation variants, which do not meet the selected goal of reducing draw calls.",
+      "notes": "History shows the accepted instancing patch is already present in src/scene.js, with calls reduced to 13 and correctness passing. Merging the two instanced groups into one draw would require changing the per-instance material/color model, which would alter the semantic material/color contract unless shader structure is expanded beyond the original contract. No other repeated opaque object set is visible in the allowed source. Repeating the accepted patch is disallowed, and non-batching edits would not satisfy the requested optimization goal.",
+      "model": "gpt-5.4",
+      "usage": {
+        "input_tokens": 13267,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 3840
+        },
+        "output_tokens": 244,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 13511
+      },
+      "reason": "History shows the accepted instancing patch is already present in src/scene.js, with calls reduced to 13 and correctness passing. Merging the two instanced groups into one draw would require changing the per-instance material/color model, which would alter the semantic material/color contract unless shader structure is expanded beyond the original contract. No other repeated opaque object set is visible in the allowed source. Repeating the accepted patch is disallowed, and non-batching edits would not satisfy the requested optimization goal."
+    }
+  ],
+  "config": {
+    "name": "Warehouse robotics scene",
+    "buildCommand": [
+      "npm",
+      "run",
+      "build"
+    ],
+    "outputDir": "dist",
+    "editableFiles": [
+      "src/scene.js"
+    ],
+    "adapter": "__frameshift",
+    "metric": "submitP95",
+    "minImprovement": 0.08,
+    "maxVisualDifference": 0.01,
+    "samples": 80,
+    "repeats": 3
+  },
+  "maxExperiments": 2,
+  "tokens": 26036,
+  "updatedAt": "2026-11-07T08:16:32.442Z",
+  "phase": "Optimization finished. Accepted changes are available as a patch.",
+  "baseline": {
+    "frameMedian": 16.699999999999818,
+    "frameP95": 16.700000000000273,
+    "submitMedian": 2.699999988079071,
+    "submitP95": 3.2000000178813934,
+    "fps": 59.88023952095874,
+    "calls": 1611,
+    "triangles": 19310,
+    "geometries": 12,
+    "repeatMetrics": [
+      3.2999999821186066,
+      3.4000000059604645,
+      3
+    ],
+    "samples": 3,
+    "frameCount": 240,
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+    "hardware": {
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+      "cores": 10,
+      "viewport": [
+        960,
+        640
+      ],
+      "dpr": 1
+    },
+    "gpuSupported": true,
+    "gpuP95": 1.145875
+  },
+  "metric": "drawCalls",
+  "best": {
+    "frameMedian": 16.699999999999818,
+    "frameP95": 16.799999999999272,
+    "submitMedian": 0.5,
+    "submitP95": 0.800000011920929,
+    "fps": 59.88023952095874,
+    "calls": 13,
+    "triangles": 19310,
+    "geometries": 12,
+    "repeatMetrics": [
+      0.7000000178813934,
+      0.7999999821186066,
+      1
+    ],
+    "samples": 3,
+    "frameCount": 240,
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+    "hardware": {
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+      "cores": 10,
+      "viewport": [
+        960,
+        640
+      ],
+      "dpr": 1
+    },
+    "gpuSupported": true,
+    "gpuP95": 1.641875
+  }
+}

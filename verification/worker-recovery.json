@@ -1,0 +1,26 @@
+{
+  "at": "2026-11-07T08:46:09.422Z",
+  "runId": "50d00cc5-d18",
+  "oldPid": 7579,
+  "newPid": 8151,
+  "status": "completed",
+  "recoveries": 1,
+  "checkpointResumed": true,
+  "events": [
+    {
+      "at": "2026-11-07T08:44:25.121Z",
+      "type": "recovery",
+      "message": "Recovering from the last safe checkpoint"
+    },
+    {
+      "at": "2026-11-07T08:44:25.135Z",
+      "type": "recovery",
+      "message": "Continuing from the completed baseline checkpoint"
+    }
+  ],
+  "experimentStates": [
+    "interrupted",
+    "inconclusive"
+  ],
+  "verifiedBy": "Saved run events and post-restart API state"
+}

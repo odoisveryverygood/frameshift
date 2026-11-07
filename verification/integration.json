@@ -1,0 +1,44 @@
+{
+  "at": "2026-11-07T08:11:31.514Z",
+  "checks": [
+    {
+      "name": "Import a local project through the public API",
+      "pass": true
+    },
+    {
+      "name": "Reject cross-origin API writes",
+      "pass": true
+    },
+    {
+      "name": "Production build, real browser profile, screenshots, and raw metrics",
+      "pass": true
+    },
+    {
+      "name": "Export a patch against the original source",
+      "pass": true
+    },
+    {
+      "name": "Apply to the imported fixture and preserve an exact backup",
+      "pass": true
+    },
+    {
+      "name": "Reject Apply when the original source has changed",
+      "pass": true
+    },
+    {
+      "name": "Cancellation stops an actual build/profile job",
+      "pass": true
+    },
+    {
+      "name": "Artifact routes reject credential/path traversal",
+      "pass": true
+    },
+    {
+      "name": "Disconnect the fixture while retaining its run artifacts",
+      "pass": true
+    }
+  ],
+  "fixtureProjectId": "9738314d-90c",
+  "profileRunId": "96c1ec54-c1d",
+  "notes": "Authored local fixture; no model calls. Does not establish third-party generalization."
+}

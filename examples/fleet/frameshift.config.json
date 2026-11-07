@@ -1,0 +1,18 @@
+{
+  "name": "Fleet robotics scene",
+  "buildCommand": [
+    "npm",
+    "run",
+    "build"
+  ],
+  "outputDir": "dist",
+  "editableFiles": [
+    "src/scene.js"
+  ],
+  "adapter": "__frameshift",
+  "metric": "submitP95",
+  "minImprovement": 0.08,
+  "maxVisualDifference": 0.01,
+  "samples": 80,
+  "repeats": 3
+}
