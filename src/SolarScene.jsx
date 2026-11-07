@@ -296,7 +296,10 @@ export default function SolarScene({
       g.stroke();
     });
     const planets = {};
-    for (const a of latest.current.agents) {
+    // Each globe has its own WebGL context; creating them one per frame keeps the
+    // screen from stalling while the page tears away above it.
+    const pending = [...latest.current.agents];
+    const addPlanet = (a) => {
       const g = makeGlobe(host, 256, a.color, START[a.id]);
       const sprite = new THREE.Sprite(
         new THREE.SpriteMaterial({
@@ -358,7 +361,7 @@ export default function SolarScene({
         packets,
         angle: START[a.id],
       };
-    }
+    };
 
     // ---------------- The close-up.
     const close = new THREE.Scene();
@@ -551,6 +554,7 @@ export default function SolarScene({
       last = now;
       clock += dt;
       const { agents: list, revealed, focus } = latest.current;
+      if (pending.length) addPlanet(pending.shift());
 
       // Focus changes from outside (planet click, panel, Back).
       if (

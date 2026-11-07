@@ -42,7 +42,7 @@ import Loading from "./Loading.jsx";
 import Hero from "./Hero.jsx";
 import Rip, { revokeSnapshots, snapshotHtml } from "./Rip.jsx";
 import Slices from "./Slices.jsx";
-import { engineCleared, resetEngine } from "./engineBus.js";
+import { engineCleared, resetEngine, standImage } from "./engineBus.js";
 import "./style.css";
 const liveStatuses = ["queued", "running", "recovering"];
 const terminalStatuses = [
@@ -477,7 +477,9 @@ function App() {
       ? el.getBoundingClientRect()
       : { left: 0, top: 0, width: innerWidth, height: innerHeight };
     return {
-      html: el ? snapshotHtml(el) : "",
+      html: el
+        ? snapshotHtml(el, { images: { "engine-canvas": standImage() } })
+        : "",
       rect: {
         left: box.left,
         top: box.top,
@@ -490,6 +492,8 @@ function App() {
     starting.current = true;
     // The rocket lifts off while the request is made; the rip follows both.
     const cleared = engineCleared();
+    // Lay out the tear now, invisibly, so liftoff never waits on it.
+    setRip({ ...heroSnapshot(), go: false });
     const goal = mission.trim();
     const result = await act(async () => {
       const p = await getProject();
@@ -514,6 +518,7 @@ function App() {
     if (!result.ok || !result.value) {
       starting.current = false;
       resetEngine();
+      setRip(null);
       return;
     }
     const pad = await cleared;
@@ -524,23 +529,27 @@ function App() {
       setPreviewing(true);
       setPreviewStep(0);
     }
-    setRip({
-      ...heroSnapshot(),
+    setRip((r) => ({
+      ...(r || heroSnapshot()),
       origin: pad || origin || { x: innerWidth / 2, y: innerHeight / 2 },
-    });
+      go: true,
+    }));
     setPhase("rip");
     starting.current = false;
   }
   // No project to run: play the transition anyway so it can be seen.
   async function beginPreview(origin) {
     starting.current = true;
-    const pad = await engineCleared();
+    const cleared = engineCleared();
+    setRip({ ...heroSnapshot(), go: false });
+    const pad = await cleared;
     setPreviewing(true);
     setPreviewStep(0);
-    setRip({
-      ...heroSnapshot(),
+    setRip((r) => ({
+      ...r,
       origin: pad || origin || { x: innerWidth / 2, y: innerHeight / 2 },
-    });
+      go: true,
+    }));
     setPhase("rip");
     starting.current = false;
   }
@@ -741,8 +750,9 @@ function App() {
           />
         </div>
       )}
-      {phase === "rip" && rip && (
+      {rip && (
         <Rip
+          go={rip.go}
           html={rip.html}
           rect={rip.rect}
           origin={rip.origin}

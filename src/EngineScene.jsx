@@ -79,6 +79,7 @@ export default function EngineScene() {
       stand = null, // the stand with the engine gone
       rocket = null, // the engine on its own, for the flight
       rocketHot = null,
+      standUrl = null,
       sg = null,
       paper = null, // the sketch itself
       heat = null, // the orange glow, shaped to the nozzle and masked to the sketch
@@ -110,6 +111,12 @@ export default function EngineScene() {
       const stc = stand.getContext("2d");
       stc.drawImage(paper, 0, 0);
       stc.clearRect(rx, ry, rw, rh);
+      // Kept ready for the tear's copy of the page (no encoding at liftoff).
+      stand.toBlob((b) => {
+        if (!b) return;
+        if (standUrl) URL.revokeObjectURL(standUrl);
+        standUrl = URL.createObjectURL(b);
+      });
       rocket = layer(Math.ceil(rw), Math.ceil(rh));
       rocket.getContext("2d").drawImage(paper, rx, ry, rw, rh, 0, 0, rw, rh);
       // The glow: a trapezoid over the lower engine, brighter toward the nozzle exit.
@@ -205,6 +212,7 @@ export default function EngineScene() {
       trail.length = 0;
     };
     const unregister = registerEngine({
+      standUrl: () => standUrl,
       launch: (onClear) =>
         new Promise((resolve) => {
           if (gone || flight) return resolve();
@@ -311,6 +319,22 @@ export default function EngineScene() {
       f.flying = true;
       f.rect = canvas.current.getBoundingClientRect();
       const r = f.rect;
+      f.heat = burn.power;
+      burn.on = false;
+      burn.power = 0;
+      // The flame particles already in the air carry on in the flight layer.
+      for (const p of parts)
+        trail.push({
+          fire: p.splash ? "splash" : true,
+          x: r.left + (p.x / W) * r.width,
+          y: r.top + (p.y / H) * r.height,
+          vx: (p.vx / W) * r.width,
+          vy: (p.vy / H) * r.height,
+          life: p.life,
+          max: p.max,
+          size: (p.size / W) * r.width * 0.9,
+        });
+      parts.length = 0;
       f.onClear?.({
         x: r.left + EXIT[0] * r.width,
         y: r.top + PAD[1] * r.height,
@@ -327,6 +351,7 @@ export default function EngineScene() {
       requestAnimationFrame(fly);
     }
     function drawFlight(dt) {
+      const f = flight;
       const t = flight.t - IGNITION;
       if (!overlay) {
         overlay = document.createElement("canvas");
@@ -341,10 +366,11 @@ export default function EngineScene() {
         overlay.height = Math.round(innerHeight * od);
       }
       const r = flight.rect;
-      const shake = t < 0.25 ? (1 - t / 0.25) * 2 : 0;
+      // Settle in smoothly: a gentle rumble that fades, no random jumps.
+      const shake = t < 0.3 ? Math.sin(t * 90) * (1 - t / 0.3) * 0.9 : 0;
       const dy = -(760 * t * t + 70 * t);
-      const rx = r.left + ROCKET[0] * r.width + rand(-shake, shake),
-        ry = r.top + ROCKET[1] * r.height + dy + rand(-shake, shake),
+      const rx = r.left + ROCKET[0] * r.width + shake,
+        ry = r.top + ROCKET[1] * r.height + dy,
         rw = (ROCKET[2] - ROCKET[0]) * r.width,
         rh = (ROCKET[3] - ROCKET[1]) * r.height;
       const ex = r.left + EXIT[0] * r.width,
@@ -420,7 +446,12 @@ export default function EngineScene() {
       core.addColorStop(1, "rgba(255,120,30,0)");
       og.fillStyle = core;
       og.fillRect(ex - nozzle * 1.6, ey - nozzle, nozzle * 3.2, nozzle * 3.4);
+      // The glow carries on from where the drawing left it, then warms fully.
+      f.heat = Math.min(1, (f.heat ?? 0) + dt * 2.2);
+      og.drawImage(rocket, rx, ry, rw, rh);
+      og.globalAlpha = f.heat;
       og.drawImage(rocketHot, rx, ry, rw, rh);
+      og.globalAlpha = 1;
       if (flight.t >= FLIGHT) {
         const done = flight.resolve;
         flight = null;
@@ -471,16 +502,15 @@ export default function EngineScene() {
             )
           : Math.max(0, burn.radius - dt * 0.7);
 
-      const away = gone || (flight && flight.t >= IGNITION);
+      const away = gone || Boolean(flight?.flying);
       if (flight && !flight.flying) {
         flight.t += dt;
-        if (flight.t >= IGNITION) startFlight();
-        if (flight.t >= IGNITION && burn.on) {
-          // Hand the fire over to the overlay with the engine.
-          burn.on = false;
-          burn.power = 0;
-          parts.length = 0;
-        }
+        if (
+          flight.t >= IGNITION &&
+          Math.abs(sway[0]) < 0.05 &&
+          Math.abs(sway[1]) < 0.05
+        )
+          startFlight();
       }
       sg.clearRect(0, 0, W, H);
       sg.drawImage(away ? stand : paper, 0, 0);

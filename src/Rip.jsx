@@ -17,7 +17,10 @@ function frameUrl(canvas, owner) {
   blobUrls.set(owner, [...(blobUrls.get(owner) || []), url]);
   return url;
 }
-export function snapshotHtml(el, { owner = "rip", release = false } = {}) {
+export function snapshotHtml(
+  el,
+  { owner = "rip", release = false, images = {} } = {},
+) {
   const previous = release ? blobUrls.get(owner) || [] : [];
   if (release) blobUrls.delete(owner);
   const clone = el.cloneNode(true);
@@ -26,7 +29,8 @@ export function snapshotHtml(el, { owner = "rip", release = false } = {}) {
   canvases.forEach((c, i) => {
     try {
       const img = document.createElement("img");
-      img.src = frameUrl(c, owner);
+      // A ready-made image avoids encoding the canvas on the spot.
+      img.src = images[c.className] || frameUrl(c, owner);
       img.alt = "";
       img.className = c.className;
       copies[i].replaceWith(img);
@@ -80,11 +84,13 @@ function makeTiles(width, height) {
 // The hero cracks into tiles that peel away from the pressed button in a wave,
 // uncovering the project's code. Uses ordinary CSS 3D transforms, so it works in
 // every browser (the reference effect needs HTML-in-Canvas, Chromium 157+).
-export default function Rip({ html, rect, origin, onDone }) {
+export default function Rip({ html, rect, origin, onDone, go = true }) {
   const layer = useRef(null),
     root = useRef(null);
   const tiles = useMemo(() => makeTiles(innerWidth, innerHeight), []);
   useLayoutEffect(() => {
+    // Mounted early and invisible, so the copy is laid out before the tear starts.
+    if (!go) return;
     const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
     let done = false;
     const finish = () => {
@@ -146,9 +152,14 @@ export default function Rip({ html, rect, origin, onDone }) {
       .catch(finish);
     const guard = setTimeout(finish, 4200);
     return () => clearTimeout(guard);
-  }, []);
+  }, [go]);
   return (
-    <div className="rip" aria-hidden="true" ref={root}>
+    <div
+      className="rip"
+      aria-hidden="true"
+      ref={root}
+      style={go ? undefined : { opacity: 0.001 }}
+    >
       <div className="rip-tiles" ref={layer}>
         {tiles.map((t) => (
           <div

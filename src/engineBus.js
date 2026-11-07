@@ -20,3 +20,5 @@ export const engineCleared = () =>
     launchEngine(resolve).then(() => resolve(null));
   });
 export const resetEngine = () => current?.reset();
+// A ready-made image of the stand without its engine, for the tear's copy of the page.
+export const standImage = () => current?.standUrl?.() || null;
