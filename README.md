@@ -1,14 +1,26 @@
-# Earl
+# Sift
+
+Formerly Earl / FrameShift. **UI teammate: start with [the Sift UI and animation handoff](docs/SIFT-UI-HANDOFF.md).** It maps the four product roles to actual workflows, API responses, scene messages, verification states, and a reproducible demo. The runtime still displays Earl; the UI teammate owns the visual rename, color scheme, layout and animation pass.
 
 ### Better frames, with proof.
+
+**Robot STL import:** connect → **Robot STL** → choose the export units → inspect → review → open. Originals are retained locally; cleanup never invents missing mechanical parts. [STL behavior and limits](docs/STL-IMPORT.md).
+
+**New: [the repair workspace](docs/REPAIR-WORKSPACE.md).** Select a detached region, calculate a mounting alignment or review a measured-gap proposal, then export a complete STL checked by an independent geometry verifier. The exported candidate loads into the viewport automatically. Mounting intent and mechanical fit remain separate from execution checks.
+
+**New: [the spatial workspace](docs/SPATIAL-WORKSPACE.md).** Select a real object,
+ask Argon to investigate its scene and source, hand a grounded finding to Meta,
+and demonstrate a selection challenge against the original and optimized builds.
+The viewport leads; source, measurements and evidence open when needed.
 
 **Teammates: [read the updated product, agent and sponsor plan](docs/TEAM-PRODUCT-PLAN.md).**
 It includes ownership, build order, verified setup status, and how to explain each
 sponsor honestly. **Feature branches and PRs only; no direct pushes to `main`.**
 
 The next product flow is: open your 3D app → describe the slowdown → three agents
-investigate, patch and verify → compare and apply. Meta and Subquadratic wiring
-are planned; Fetch local handoff and ASI API connectivity have been verified.
+investigate, patch and verify → compare and apply. Meta specialists, Subquadratic risk selection and Fetch local handoffs are now
+wired into the worker. See [how the agent pipeline works](docs/AGENT-PIPELINE.md)
+for setup, evidence and current limits. ASI API connectivity is separately verified.
 See [the exact setup status](integrations/SETUP-STATUS.md).
 
 Earl is a local AI performance engineer for 3D web applications. Connect an

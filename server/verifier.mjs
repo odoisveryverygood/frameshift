@@ -4,6 +4,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import crypto from "node:crypto";
+import { compareGeometryEvidence } from "./benchmark.mjs";
 import { ROOT, json, save, decision, safeFile } from "./core.mjs";
 
 const hash = (value) => crypto.createHash("sha256").update(value).digest("hex");
@@ -17,7 +18,7 @@ const encode = (value) => JSON.stringify(stable(value));
 const implementations = [
   "server/verifier.mjs", "server/core.mjs", "server/benchmark.mjs",
   "server/integration.mjs", "sdk/runtime.mjs",
-  "server/instrument-build.mjs",
+  "server/instrument-build.mjs", "server/subq.mjs", "sdk/spatial.mjs", "sdk/vite.mjs",
 ];
 export async function sealVerificationPolicy(config, metric) {
   const files = {};
@@ -41,6 +42,18 @@ export async function writeVerificationVerdict({ seal, config, metric, evidenceD
     const bytes = await fs.readFile(path.join(evidenceDir, name));
     artifacts[name] = { sha256: hash(bytes), bytes: bytes.length };
   }
+  if (seal.policy.subqVerification) {
+    for (const name of ["risk-assessment.json", "verification-plan.json", "verification-request.json"]) {
+      const bytes = await fs.readFile(path.join(evidenceDir, name));
+      artifacts[name] = { sha256: hash(bytes), bytes: bytes.length };
+    }
+  }
+  if (seal.policy.requireMeshFingerprint) {
+    for(const name of ['reference-states.json','candidate-states.json']) {const bytes=await fs.readFile(path.join(evidenceDir,name));artifacts[name]={sha256:hash(bytes),bytes:bytes.length};}
+    const referenceGeometry=await json(path.join(evidenceDir,'reference-states.json'));
+    const candidateGeometry=await json(path.join(evidenceDir,'candidate-states.json'));
+    if(!compareGeometryEvidence(referenceGeometry.geometry,candidateGeometry.geometry,true).pass)throw Error('Imported mesh geometry evidence changed or is missing; candidate cannot be accepted.');
+  }
   const reference = await json(path.join(evidenceDir, names[0]));
   const candidate = await json(path.join(evidenceDir, names[1]));
   const guards = await json(path.join(evidenceDir, names[2]));
@@ -50,6 +63,18 @@ export async function writeVerificationVerdict({ seal, config, metric, evidenceD
   for (const name of seal.policy.editableFiles) {
     for (const [version, directory] of [["reference", referenceSourceDir], ["candidate", candidateSourceDir]])
       sources[version][name] = hash(await fs.readFile(await safeFile(directory, name)));
+  }
+  if (seal.policy.subqVerification) {
+    const plan = await json(path.join(evidenceDir, "verification-plan.json"));
+    const request = await json(path.join(evidenceDir, "verification-request.json"));
+    const assessment = await json(path.join(evidenceDir, "risk-assessment.json"));
+    if (guards.coverage?.checkpoints !== seal.policy.checkpoints.length || !Array.isArray(guards.checks) || guards.checks.length !== seal.policy.checkpoints.length || guards.checks.some((check, index) => check.time !== seal.policy.checkpoints[index].time))
+      throw Error("Executed verification checkpoints do not match the sealed SubQ plan");
+    if (plan?.seal?.hash !== seal.hash || encode(plan.config) !== encode(seal.policy) ||
+        assessment?.inputSha256 !== seal.policy.subqVerification.inputSha256 || assessment?.provider !== "Subquadratic" ||
+        request?.stage !== "PatchReady" || request.sourceHash !== hash(JSON.stringify(stable(sources.reference))) ||
+        request.candidateHash !== hash(JSON.stringify(stable(sources.candidate))) || request.artifactHash !== artifacts["change.patch"].sha256)
+      throw Error("Sponsor verification evidence does not match the sealed source, candidate, patch or risk plan");
   }
   const verdict = decision(reference?.summary, candidate?.summary, guards, seal.policy);
   const receipt = {
@@ -61,6 +86,7 @@ export async function writeVerificationVerdict({ seal, config, metric, evidenceD
     implementations: seal.implementations,
     artifacts,
     sources,
+    referenceRoles: { performance: "Current best source fingerprinted above", correctness: "Protected original-build appearance and behavior; may precede accepted best-source optimizations" },
     verdict,
     coverage: {
       checkpoints: seal.policy.checkpoints?.length || 8,

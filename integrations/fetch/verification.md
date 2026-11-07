@@ -21,3 +21,12 @@ private identity file remain under ignored `.frameshift/fetch/`.
 Next action: complete account setup, then implement mailbox serving around these
 identities and verify a real remote message independently. This evidence does
 not establish remote reachability, optimization quality or sponsor eligibility.
+
+## Worker bridge verification
+
+On November 7, 2026, `node --test tests/fetch-bridge.test.mjs` passed both tests
+against the installed uAgents 0.26.1 runtime. Actual ordered messages produced
+receipts; duplicates, premature stages, stale source/candidate/attempts and
+starting a repair before the previous result were rejected. A canceled job
+closed its process and rejected subsequent work. These checks concern local
+transport. The root integration must separately exercise a real Earl job.

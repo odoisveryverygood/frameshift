@@ -1,5 +1,7 @@
 # Earl: local Fetch.ai agents
 
+**Current implementation:** the [worker bridge](#worker-bridge) now carries real performance-job handoffs. The transport-only smoke setup below is retained as a separate bootstrap check; it is not the limit of the current integration. Public Agentverse transport remains unverified. See [the current UI handoff](../../docs/SIFT-UI-HANDOFF.md).
+
 This is a real `uagents==0.26.1` installation and a verified typed local message
 handoff between three stable identities. It is an integration bootstrap, not an
 implemented performance optimization pipeline. It has no model calls and does
@@ -79,3 +81,41 @@ Sources: the installed pinned SDK's `Agent` constructor, `setup`,
 `start_registration_loop`, `_update_agent_status`, `start_server`, `_shutdown`,
 and `uagents_core.registration.AgentRegistrationPolicy` were inspected directly.
 Official upstream: https://github.com/fetchai/uAgents.
+
+## Worker bridge
+
+`server/fetch-bridge.mjs` starts `job_service.py` as a bounded child process for
+an Earl job. The owner calls `handoff` at real lifecycle transitions:
+
+```js
+const bridge = await createFetchBridge({ signal });
+try {
+  const receipt = await bridge.handoff({
+    stage: 'InvestigationReady', jobId, attempt: 0, sourceHash,
+  });
+  // After a patch exists: PatchReady with the same sourceHash + candidateHash.
+  // After evaluation: VerificationResult with the same hashes + artifactHash.
+} finally { await bridge.close(); }
+```
+
+The Python process sends the typed message through the actual SDK dispatcher.
+The receiving specialist checks the expected sender, job/attempt ordering and
+revision hashes before acknowledging. Duplicate stages, stale revisions, prior
+incomplete attempts, unknown fields, large messages and missing candidate hashes
+are rejected. Node independently matches receipts to the pending request and
+expected public identities. Cancellation or a deadline terminates the process.
+The subprocess receives no model-provider environment credentials.
+
+The bridge exchanges only job identifiers and hashes; it never accepts a source
+path, shell command or remote instruction. It starts no listeners and disables
+network socket connections and registration using the same pinned LocalAgent
+implementation. Receipts establish local delivery, not remote discovery or
+correctness of the artifact named by a hash.
+
+```sh
+node --test tests/fetch-bridge.test.mjs
+```
+
+These tests exercise the actual installed SDK, including rejected duplicates,
+stale source/candidate/attempt messages, ordering failures and cancellation. They
+are skipped explicitly if the local Python environment has not been installed.

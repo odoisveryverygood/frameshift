@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import dotenv from "dotenv";
+import { redactProviderError } from "./model.mjs";
 import { ROOT, DATA, json, save } from "./core.mjs";
 import {
   initialize,
@@ -111,7 +112,7 @@ while (!closing) {
       await processJob(next);
     } catch (e) {
       next.status = "failed";
-      next.error = String(e.message).replace(/sk-[\w-]+/g, "[redacted]");
+      next.error = redactProviderError(e.message);
       await persistRun(next);
     }
     active = null;

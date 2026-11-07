@@ -1,5 +1,5 @@
 /** Generate a reusable executable skill from training evidence only. */
-import { provider } from "../model.mjs";
+import { provider, providerApiKey } from "../model.mjs";
 import { normalizeSkillPath } from "./runtime.mjs";
 
 const redact = (value) => String(value).replace(/sk-[\w-]+/g, "[redacted]");
@@ -72,7 +72,7 @@ export async function generateSkill({ trainingFiles, feedback, parentSkill, sign
   let response, body;
   try {
     response = await fetch(config.baseUrl.replace(/\/$/, "") + (config.protocol === "chat-completions" ? "/chat/completions" : "/responses"), {
-      method: "POST", headers: { Authorization: "Bearer " + process.env.OPENAI_API_KEY, "Content-Type": "application/json" },
+      method: "POST", headers: { Authorization: "Bearer " + providerApiKey(), "Content-Type": "application/json" },
       body: JSON.stringify(payload), signal: combined,
     });
     body = await response.json();

@@ -1,8 +1,12 @@
 # Earl: teammate guide and implementation plan
 
+**Current teammate handoff: [Sift UI, animation and backend contracts](SIFT-UI-HANDOFF.md).** The product is being renamed to Sift. That handoff supersedes the historical UI plan and setup statuses below. It covers the implemented STL repair flow as well as the performance flow. Preserve branch/PR rules; the UI teammate owns the visual changes.
+
+**Latest handoff:** [Spatial workspace](SPATIAL-WORKSPACE.md) documents the implemented scene bridge, Argon findings, candidate preview, challenges, API contracts and limits. The right evidence panel is now closed by default. Preserve the working backend contracts when refining the UI.
+
 **Read this first.** Earl turns a performance complaint about a local 3D app into a focused code change with measured evidence. The goal is a simple product, with three collaborating specialists behind it.
 
-Updated November 7, 2026. This document describes the agreed target; it does not claim every feature below already exists.
+Updated November 7, 2026. The implementation update in [Agent pipeline](AGENT-PIPELINE.md) supersedes the original planning status below: live Meta investigation/patching, live SubQ added checks, and local Fetch handoffs have now completed one accepted measured warehouse optimization. Public Agentverse discovery remains unfinished. The full original target is preserved below for context.
 
 ## Current status: what you can honestly demo
 
@@ -10,9 +14,10 @@ Updated November 7, 2026. This document describes the agreed target; it does not
 |---|---|---|
 | Core Earl | Local Vite + Three.js discovery, preview, tool-based source edits, isolated candidates, deterministic checks, paired benchmarks and receipts are implemented. | Recheck the complete user journey after the redesign and sponsor wiring. |
 | Skill Lab | Executable transformer learning and bounded authored cross-project evaluation have recorded local evidence. | Integrate as an advanced feature; do not claim universal optimization or model training. |
-| Meta | Planned Investigator and Optimizer provider. | User is obtaining credentials. No live Meta tool-loop result yet. |
-| Subquadratic | Planned structured risk decisions that add verification cases. | User is obtaining credentials. No live decision-to-test integration yet. |
-| Fetch uAgents | SDK 0.26.1 installed locally; three stable identities exchanged typed messages using real in-process SDK dispatch. | Connect handlers to real Earl jobs; duplicate/stale handling and remote transport are not yet verified. |
+| Meta | Live separate investigation/optimization contexts, targeted patches, failed-candidate repair, and accepted measured local warehouse runs. | Re-run after material backend changes; no universal optimization claim. |
+| Gemini / Argon | Live visual scene/source investigation and live STL Repair tool calls, including a measured-gap proposal. | No model can establish physical mounting correctness from an STL alone. |
+| Subquadratic | Live risk decisions expanded protected checks that were executed by the independent verifier. | Not used by the current STL repair path. |
+| Fetch uAgents | SDK 0.26.1 local typed performance-job handoffs; ordering, stale/duplicate rejection and cancellation tests passed. | Public Agentverse endpoints and remote transport remain unverified. |
 | Agentverse | Google sign-in completed; authenticated My Agents page verified. | No public agents registered. Current launch flow needs a running public endpoint; mailbox deployment is an alternative to investigate. |
 | ASI:One | Account created; approved backend key saved privately; live asi1-mini check returned HTTP 200 and EARL_OK. | This is connectivity proof, not an ASI-powered optimization or Agentverse discovery result. |
 
@@ -34,7 +39,7 @@ Existing teammate readiness work is in [PR #3](https://github.com/odoisveryveryg
 
 Use present tense only for verified work. For the target architecture: **Meta investigates and writes the patch; Subquadratic identifies patch risks that cause additional tests; Fetch provides typed specialist handoffs and an independently callable verifier; Agentverse makes that verifier reachable/discoverable; ASI model inference is optional and separate.**
 
-Today: Fetch's local handoff and ASI's API connectivity are verified. Meta, SubQ, remote Agentverse messaging and public discovery are planned. The deterministic verifier, not a model confidence score, decides acceptance. Do not present all of these as completed sponsor integrations.
+Today: Meta investigation/patching, SubQ risk-selected executed checks, and local Fetch handoffs have passed a complete warehouse run. ASI connectivity is verified separately. Remote Agentverse messaging and public discovery remain planned. The deterministic verifier, not a model confidence score, decides acceptance. Do not present all of these as completed sponsor integrations.
 
 ## Full agreed plan
 

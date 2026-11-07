@@ -1,0 +1,170 @@
+solid authored-alignment-fixture
+facet normal 0 0 0
+outer loop
+vertex 10 5 7.5
+vertex 10 -5 7.5
+vertex 10 5 -7.5
+endloop
+endfacet
+facet normal 0 0 0
+outer loop
+vertex 10 -5 7.5
+vertex 10 -5 -7.5
+vertex 10 5 -7.5
+endloop
+endfacet
+facet normal 0 0 0
+outer loop
+vertex -10 5 -7.5
+vertex -10 -5 -7.5
+vertex -10 5 7.5
+endloop
+endfacet
+facet normal 0 0 0
+outer loop
+vertex -10 -5 -7.5
+vertex -10 -5 7.5
+vertex -10 5 7.5
+endloop
+endfacet
+facet normal 0 0 0
+outer loop
+vertex -10 5 -7.5
+vertex -10 5 7.5
+vertex 10 5 -7.5
+endloop
+endfacet
+facet normal 0 0 0
+outer loop
+vertex -10 5 7.5
+vertex 10 5 7.5
+vertex 10 5 -7.5
+endloop
+endfacet
+facet normal 0 0 0
+outer loop
+vertex -10 -5 7.5
+vertex -10 -5 -7.5
+vertex 10 -5 7.5
+endloop
+endfacet
+facet normal 0 0 0
+outer loop
+vertex -10 -5 -7.5
+vertex 10 -5 -7.5
+vertex 10 -5 7.5
+endloop
+endfacet
+facet normal 0 0 0
+outer loop
+vertex -10 5 7.5
+vertex -10 -5 7.5
+vertex 10 5 7.5
+endloop
+endfacet
+facet normal 0 0 0
+outer loop
+vertex -10 -5 7.5
+vertex 10 -5 7.5
+vertex 10 5 7.5
+endloop
+endfacet
+facet normal 0 0 0
+outer loop
+vertex 10 5 -7.5
+vertex 10 -5 -7.5
+vertex -10 5 -7.5
+endloop
+endfacet
+facet normal 0 0 0
+outer loop
+vertex 10 -5 -7.5
+vertex -10 -5 -7.5
+vertex -10 5 -7.5
+endloop
+endfacet
+facet normal 0 0 0
+outer loop
+vertex 44 2 1.5
+vertex 44 -2 1.5
+vertex 44 2 -1.5
+endloop
+endfacet
+facet normal 0 0 0
+outer loop
+vertex 44 -2 1.5
+vertex 44 -2 -1.5
+vertex 44 2 -1.5
+endloop
+endfacet
+facet normal 0 0 0
+outer loop
+vertex 36 2 -1.5
+vertex 36 -2 -1.5
+vertex 36 2 1.5
+endloop
+endfacet
+facet normal 0 0 0
+outer loop
+vertex 36 -2 -1.5
+vertex 36 -2 1.5
+vertex 36 2 1.5
+endloop
+endfacet
+facet normal 0 0 0
+outer loop
+vertex 36 2 -1.5
+vertex 36 2 1.5
+vertex 44 2 -1.5
+endloop
+endfacet
+facet normal 0 0 0
+outer loop
+vertex 36 2 1.5
+vertex 44 2 1.5
+vertex 44 2 -1.5
+endloop
+endfacet
+facet normal 0 0 0
+outer loop
+vertex 36 -2 1.5
+vertex 36 -2 -1.5
+vertex 44 -2 1.5
+endloop
+endfacet
+facet normal 0 0 0
+outer loop
+vertex 36 -2 -1.5
+vertex 44 -2 -1.5
+vertex 44 -2 1.5
+endloop
+endfacet
+facet normal 0 0 0
+outer loop
+vertex 36 2 1.5
+vertex 36 -2 1.5
+vertex 44 2 1.5
+endloop
+endfacet
+facet normal 0 0 0
+outer loop
+vertex 36 -2 1.5
+vertex 44 -2 1.5
+vertex 44 2 1.5
+endloop
+endfacet
+facet normal 0 0 0
+outer loop
+vertex 44 2 -1.5
+vertex 44 -2 -1.5
+vertex 36 2 -1.5
+endloop
+endfacet
+facet normal 0 0 0
+outer loop
+vertex 44 -2 -1.5
+vertex 36 -2 -1.5
+vertex 36 2 -1.5
+endloop
+endfacet
+endsolid authored-alignment-fixture
