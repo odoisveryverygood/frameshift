@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:," />
+    <title>Orbit Lab · Interactive rendering exercise</title>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <p class="eyebrow">Rendering field notes / 001</p>
+          <h1>Orbit Lab<span>240 satellites. One small system.</span></h1>
+        </div>
+        <button id="pause" type="button" aria-pressed="false">
+          Pause orbits
+        </button>
+      </header>
+      <section id="viewport" aria-label="Interactive orbital scene">
+        <p id="render-error" role="alert" hidden></p>
+      </section>
+      <footer>
+        <div>
+          <p class="eyebrow">Selection</p>
+          <output
+            id="selection"
+            aria-live="polite"
+            data-frameshift-check="selection"
+            >Nothing selected</output
+          >
+        </div>
+        <p id="motion" role="status" data-frameshift-check="motion">
+          Orbits running
+        </p>
+        <p class="hint">
+          Click a satellite or the central beacon.<br />Tab to the scene and
+          press Enter to select the beacon.
+        </p>
+      </footer>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
