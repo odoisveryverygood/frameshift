@@ -35,7 +35,7 @@ const Hero = forwardRef(function Hero(
   const wide = useWide();
   // Start loading the 3D agents screen early so it is ready when the rip ends.
   useEffect(() => {
-    const t = setTimeout(() => import("./AgentScene.jsx"), 1200);
+    const t = setTimeout(() => import("./SolarScene.jsx"), 1200);
     return () => clearTimeout(t);
   }, []);
   return (

@@ -1,12 +1,10 @@
 import React, { Suspense, lazy, useEffect, useState } from "react";
-import { flushSync } from "react-dom";
-import { X } from "lucide-react";
 import "./agents.css";
 
 // three.js only loads for this screen.
-const AgentScene = lazy(() => import("./AgentScene.jsx"));
+const SolarScene = lazy(() => import("./SolarScene.jsx"));
 
-// The four kinds of work in a Sift run, each drawn as an agent. Every agent's state,
+// The four kinds of work in a Sift run, each shown as an agent. Every agent's state,
 // task and log come from the run itself: which events it has logged and what the run
 // is doing now. They are the stages of one run, not separate AI models.
 const AGENTS = [
@@ -29,10 +27,10 @@ const AGENTS = [
   {
     id: "smith",
     name: "Smith",
-    role: "Writes a candidate patch",
+    role: "Rebuilds it with a patch",
     color: "#7a52ff",
     types: ["agent", "repair", "inconclusive"],
-    waiting: "Will read the measurements and propose a fix.",
+    waiting: "Will propose a fix and rebuild the parts it touches.",
   },
   {
     id: "warden",
@@ -57,164 +55,7 @@ function activeAgent(job) {
   return owner(last?.type) || "smith";
 }
 
-function Avatar({ id, working }) {
-  const cls = "avatar " + (working ? "working" : "");
-  if (id === "scout")
-    return (
-      <svg className={cls} viewBox="0 0 64 64" aria-hidden="true">
-        <defs>
-          <linearGradient id="scout-beam" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#5fa0ff" stopOpacity=".55" />
-            <stop offset="1" stopColor="#5fa0ff" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <polygon
-          className="scout-beam"
-          points="32,30 14,62 50,62"
-          fill="url(#scout-beam)"
-        />
-        <path
-          d="M32 5C32 5 13 24 13 36a19 19 0 0 0 38 0C51 24 32 5 32 5Z"
-          fill="#2f6bff"
-        />
-        <path
-          d="M22 30c1-5 4-9 7-12"
-          stroke="#fff"
-          strokeOpacity=".6"
-          strokeWidth="2.4"
-          fill="none"
-          strokeLinecap="round"
-        />
-        <circle cx="32" cy="36" r="10" fill="#0b1a44" />
-        <circle className="scout-lens" cx="32" cy="36" r="7" fill="#9cc4ff" />
-        <circle cx="35" cy="33" r="2.2" fill="#fff" />
-        <circle
-          cx="32"
-          cy="36"
-          r="10"
-          fill="none"
-          stroke="#cfe0ff"
-          strokeWidth="1.6"
-        />
-      </svg>
-    );
-  if (id === "gauge")
-    return (
-      <svg className={cls} viewBox="0 0 64 64" aria-hidden="true">
-        <line
-          x1="32"
-          y1="9"
-          x2="32"
-          y2="3"
-          stroke="#0fa58c"
-          strokeWidth="2.4"
-          strokeLinecap="round"
-        />
-        <circle className="gauge-ping" cx="32" cy="3" r="2.6" fill="#7ff0d8" />
-        <circle cx="32" cy="34" r="23" fill="#0fa58c" />
-        <circle cx="32" cy="34" r="16" fill="#e9fffa" />
-        {Array.from({ length: 9 }, (_, i) => {
-          const a = Math.PI * (0.85 + (i / 8) * 1.3);
-          return (
-            <line
-              key={i}
-              x1={32 + Math.cos(a) * 13}
-              y1={34 + Math.sin(a) * 13}
-              x2={32 + Math.cos(a) * 15.5}
-              y2={34 + Math.sin(a) * 15.5}
-              stroke="#0b4f45"
-              strokeWidth="1.4"
-            />
-          );
-        })}
-        <g className="gauge-needle">
-          <line
-            x1="32"
-            y1="34"
-            x2="32"
-            y2="22"
-            stroke="#e0602c"
-            strokeWidth="2.4"
-            strokeLinecap="round"
-          />
-        </g>
-        <circle cx="32" cy="34" r="2.6" fill="#0b4f45" />
-        <circle cx="26" cy="43" r="1.6" fill="#0b4f45" />
-        <circle cx="38" cy="43" r="1.6" fill="#0b4f45" />
-        <rect x="20" y="55" width="7" height="5" rx="2.5" fill="#0b7a69" />
-        <rect x="37" y="55" width="7" height="5" rx="2.5" fill="#0b7a69" />
-      </svg>
-    );
-  if (id === "smith")
-    return (
-      <svg className={cls} viewBox="0 0 64 64" aria-hidden="true">
-        <rect x="12" y="14" width="40" height="40" rx="11" fill="#7a52ff" />
-        <rect x="12" y="14" width="40" height="14" rx="7" fill="#9b7cff" />
-        <rect x="18" y="31" width="28" height="9" rx="4.5" fill="#1b0f4a" />
-        <rect
-          className="smith-eye"
-          x="22"
-          y="34"
-          width="6"
-          height="3"
-          rx="1.5"
-          fill="#bda9ff"
-        />
-        <rect
-          className="smith-eye"
-          x="36"
-          y="34"
-          width="6"
-          height="3"
-          rx="1.5"
-          fill="#bda9ff"
-        />
-        <g className="smith-tool">
-          <path
-            d="M50 44 l9 -9 a5 5 0 1 1 3 3 l-9 9 z"
-            fill="#cfd5e3"
-            stroke="#5b6478"
-            strokeWidth="1"
-          />
-        </g>
-        <g className="smith-sparks">
-          <circle cx="58" cy="30" r="1.4" fill="#ffd166" />
-          <circle cx="61" cy="36" r="1" fill="#ffb340" />
-          <circle cx="55" cy="27" r="1" fill="#ffe08a" />
-        </g>
-      </svg>
-    );
-  return (
-    <svg className={cls} viewBox="0 0 64 64" aria-hidden="true">
-      <circle
-        className="warden-ring"
-        cx="32"
-        cy="32"
-        r="29"
-        fill="none"
-        stroke="#e0602c"
-        strokeOpacity=".35"
-        strokeWidth="1.5"
-        strokeDasharray="4 5"
-      />
-      <path
-        d="M32 7 L52 14 V32 C52 45 42 53 32 57 C22 53 12 45 12 32 V14 Z"
-        fill="#e0602c"
-      />
-      <path d="M32 11 L48 17 V31 C48 41 41 48 32 52 Z" fill="#f08a5d" />
-      <path
-        className="warden-check"
-        d="M22 31 L29 38 L43 24"
-        fill="none"
-        stroke="#fff"
-        strokeWidth="4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        pathLength="1"
-      />
-    </svg>
-  );
-}
+const statusText = { working: "Working", done: "Done", waiting: "Waiting" };
 
 export default function AgentField({
   job,
@@ -223,14 +64,38 @@ export default function AgentField({
   preview,
   revealed = true,
 }) {
-  const [selected, setSelected] = useState(null);
+  const [focus, setFocus] = useState(null);
+  useEffect(() => {
+    if (!focus) return;
+    const key = (e) => e.key === "Escape" && setFocus(null);
+    addEventListener("keydown", key);
+    return () => removeEventListener("keydown", key);
+  }, [focus]);
   const active = activeAgent(job);
   const events = job.events || [];
+  const exp = job.experiments?.at(-1);
   const files = (project?.discovery?.files || [])
     .map((f) => f.path)
     .concat(project?.config?.editableFiles || [])
     .filter((p, i, all) => p && all.indexOf(p) === i);
-  const exp = job.experiments?.at(-1);
+  const patched = [...(exp?.diff || "").matchAll(/^\+\+\+ b\/(.+)$/gm)].map(
+    (m) => m[1],
+  );
+  // What each agent's workers build in the close-up: real names from this run.
+  const partsFor = (id) =>
+    id === "scout"
+      ? files.length
+        ? files.slice(0, 6)
+        : ["Source", "Imports", "Bundle"]
+      : id === "gauge"
+        ? ["Draw calls", "CPU submit", "Frame time", "Triangles", "GPU time"]
+        : id === "smith"
+          ? patched.length
+            ? patched.slice(0, 6)
+            : files.length
+              ? files.slice(0, 4)
+              : ["Patch", "Rebuild", "Repair"]
+          : ["View 1", "View 2", "View 3", "Picking", "Transforms"];
   const info = AGENTS.map((a) => {
     const mine = events.filter((e) => a.types.includes(e.type));
     const state =
@@ -239,169 +104,125 @@ export default function AgentField({
       state === "working"
         ? job.phase || mine.at(-1)?.message || a.role
         : mine.at(-1)?.message || a.waiting;
-    return { ...a, mine, state, task };
+    return { ...a, mine, state, task, parts: partsFor(a.id) };
   });
-  const pick = (id) => {
-    const next = selected === id ? null : id;
-    const apply = () => flushSync(() => setSelected(next));
-    if (
-      document.startViewTransition &&
-      !matchMedia("(prefers-reduced-motion: reduce)").matches
-    )
-      document.startViewTransition(apply);
-    else apply();
-  };
-  useEffect(() => {
-    if (!selected) return;
-    const key = (e) => e.key === "Escape" && pick(selected);
-    addEventListener("keydown", key);
-    return () => removeEventListener("keydown", key);
-  }, [selected]);
-  const chosen = info.find((a) => a.id === selected);
-  const statusText = { working: "Working", done: "Done", waiting: "Waiting" };
+  const current = info.find((a) => a.state === "working");
+  const focused = info.find((a) => a.id === focus);
+  const doneCount = info.filter((a) => a.state === "done").length;
+  const progress = Math.round(
+    ((doneCount + (current ? 0.5 : 0)) / AGENTS.length) * 100,
+  );
+  const detail =
+    current?.id === "gauge" && Number.isFinite(job.baseline?.calls)
+      ? `${job.baseline.calls.toLocaleString()} draw calls · CPU ${job.baseline.submitP95?.toFixed(1)} ms`
+      : current?.id === "smith" && exp?.title
+        ? exp.title
+        : current?.id === "warden" && exp?.guards?.checks?.length
+          ? `${exp.guards.checks.filter((c) => c.visualPass && c.statePass && c.pickingPass !== false).length} of ${exp.guards.checks.length} viewpoints match`
+          : null;
   return (
-    <div className={"field-wrap " + (chosen ? "has-detail" : "")}>
-      <Suspense fallback={<div className="agent-scene" />}>
-        <AgentScene
+    <div className="factory">
+      <Suspense fallback={<div className="solar-scene" />}>
+        <SolarScene
           agents={info}
-          selected={selected}
-          onPick={pick}
           revealed={revealed}
           projectName={project?.name || "Your project"}
+          focus={focus}
+          onFocus={setFocus}
         />
       </Suspense>
-      {chosen && (
-        <aside
-          className="agent-detail"
-          style={{ "--c": chosen.color }}
-          aria-label={`${chosen.name} details`}
-        >
-          <header>
-            <span
-              className="avatar-wrap big"
-              style={{ viewTransitionName: `agent-${chosen.id}` }}
-            >
-              <Avatar id={chosen.id} working={chosen.state === "working"} />
-            </span>
-            <div>
-              <h3>{chosen.name}</h3>
-              <p>{chosen.role}</p>
-            </div>
+      <aside className="activity-panel" aria-label="What the agents are doing">
+        <div className="activity-progress">
+          <span>Rebuild progress</span>
+          <b>{progress}%</b>
+          <i style={{ width: progress + "%" }} />
+        </div>
+        {focused && (
+          <section className="activity-inside" style={{ "--c": focused.color }}>
+            <span className="eyebrow">Inside {focused.name}</span>
+            <p>
+              {focused.state === "working"
+                ? `Working on ${focused.parts.slice(0, 3).join(", ")}`
+                : focused.state === "done"
+                  ? `Finished: ${focused.task}`
+                  : focused.waiting}
+            </p>
+            <small>
+              The small workers show this stage of the run; they are an
+              illustration, not separate programs.
+            </small>
             <button
               type="button"
-              className="icon-button"
-              aria-label="Close"
-              onClick={() => pick(chosen.id)}
+              className="link-button"
+              onClick={() => setFocus(null)}
             >
-              <X size={16} />
+              Back to the system
             </button>
-          </header>
-          <span className={"agent-state " + chosen.state}>
-            {statusText[chosen.state]}
-          </span>
-          <section>
-            <h4>
-              {chosen.state === "waiting"
-                ? "Up next"
-                : chosen.state === "working"
-                  ? "Working on"
-                  : "Last did"}
-            </h4>
-            <p className="agent-task">{chosen.task}</p>
           </section>
-          {chosen.id === "scout" && files.length > 0 && (
-            <section>
-              <h4>Files it can read</h4>
-              <ul className="agent-files">
-                {files.slice(0, 8).map((f) => (
-                  <li key={f}>{f}</li>
-                ))}
-              </ul>
-            </section>
-          )}
-          {chosen.id === "gauge" && (
-            <section>
-              <h4>Baseline</h4>
-              {Number.isFinite(job.baseline?.calls) ? (
-                <dl className="agent-stats">
-                  <div>
-                    <dt>Draw calls</dt>
-                    <dd>{job.baseline.calls.toLocaleString()}</dd>
-                  </div>
-                  <div>
-                    <dt>CPU submit p95</dt>
-                    <dd>{job.baseline.submitP95?.toFixed(1)} ms</dd>
-                  </div>
-                  <div>
-                    <dt>Frame p95</dt>
-                    <dd>{job.baseline.frameP95?.toFixed(1)} ms</dd>
-                  </div>
-                </dl>
-              ) : (
-                <p className="agent-muted">Not measured yet.</p>
-              )}
-              {baselineSrc && (
-                <img
-                  className="agent-frame"
-                  src={baselineSrc}
-                  alt="Baseline frame for this run"
-                />
-              )}
-            </section>
-          )}
-          {chosen.id === "smith" && (
-            <section>
-              <h4>Current idea</h4>
-              {exp?.title ? (
-                <>
-                  <p className="agent-idea">{exp.title}</p>
-                  {exp.hypothesis && (
-                    <p className="agent-muted">{exp.hypothesis}</p>
-                  )}
-                </>
-              ) : (
-                <p className="agent-muted">No proposal yet.</p>
-              )}
-            </section>
-          )}
-          {chosen.id === "warden" && (
-            <section>
-              <h4>Checks</h4>
-              {exp?.guards?.checks?.length ? (
-                <p className="agent-idea">
-                  {
-                    exp.guards.checks.filter(
-                      (c) =>
-                        c.visualPass && c.statePass && c.pickingPass !== false,
-                    ).length
-                  }
-                  {" of "}
-                  {exp.guards.checks.length} viewpoints match
-                </p>
-              ) : (
-                <p className="agent-muted">Nothing to check yet.</p>
-              )}
-            </section>
-          )}
-          <section>
-            <h4>Log</h4>
-            {chosen.mine.length ? (
-              <ol className="agent-log">
-                {chosen.mine.slice(-5).map((e, i) => (
-                  <li key={i}>{e.message}</li>
-                ))}
-              </ol>
-            ) : (
-              <p className="agent-muted">Nothing logged yet.</p>
-            )}
+        )}
+        {current && (
+          <section
+            className="activity-now"
+            style={{ "--c": current.color }}
+            aria-live="polite"
+          >
+            <span className="eyebrow">Now · {current.name}</span>
+            <p>{current.task}</p>
+            {detail && <small>{detail}</small>}
           </section>
-          <p className="agent-foot">
-            {preview
-              ? "Preview: nothing is running."
-              : "One of four stages of this run, shown as an agent."}
-          </p>
-        </aside>
-      )}
+        )}
+        <ol className="activity-agents">
+          {info.map((a) => (
+            <li
+              key={a.id}
+              className={a.state + (focus === a.id ? " focused" : "")}
+              style={{ "--c": a.color }}
+            >
+              <i aria-hidden="true" />
+              <button
+                type="button"
+                onClick={() => setFocus(focus === a.id ? null : a.id)}
+                aria-pressed={focus === a.id}
+              >
+                <b>{a.name}</b>
+                <span>{a.role}</span>
+                {a.state !== "working" && <small>{a.task}</small>}
+              </button>
+              <em>{statusText[a.state]}</em>
+            </li>
+          ))}
+        </ol>
+        <section className="activity-log">
+          <span className="eyebrow">Log</span>
+          <ol>
+            {events
+              .slice(-6)
+              .reverse()
+              .map((e, i) => {
+                const who = AGENTS.find((a) => a.types.includes(e.type));
+                return (
+                  <li key={events.length - i} style={{ "--c": who?.color }}>
+                    {e.message}
+                  </li>
+                );
+              })}
+            {!events.length && <li>Waiting for the first step…</li>}
+          </ol>
+        </section>
+        {baselineSrc && (
+          <img
+            className="activity-frame"
+            src={baselineSrc}
+            alt="Baseline frame captured for this run"
+            onError={(e) => (e.currentTarget.style.display = "none")}
+          />
+        )}
+        <p className="activity-foot">
+          {preview
+            ? "Preview: nothing is running."
+            : "Each agent is one stage of this run."}
+        </p>
+      </aside>
     </div>
   );
 }
