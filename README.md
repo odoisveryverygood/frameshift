@@ -1,5 +1,7 @@
 # Sift
 
+**All teammates: [read the complete project, sponsor and hackathon guide](TEAM-README.md).** It explains what Sift does, every agent/integration, verified evidence, track fit, demo framing, original-work boundaries and current limitations. No code knowledge is needed to start there.
+
 Formerly Earl / FrameShift. **UI teammate: start with [the Sift UI and animation handoff](docs/SIFT-UI-HANDOFF.md).** It maps the four product roles to actual workflows, API responses, scene messages, verification states, and a reproducible demo. The runtime still displays Earl; the UI teammate owns the visual rename, color scheme, layout and animation pass.
 
 ### Better frames, with proof.
@@ -308,13 +310,11 @@ and dedicated VM/container runners.
 
 ## API providers
 
-Live optimization has been tested using OpenAI Responses. The provider layer also
-supports compatible Chat Completions function calls, covered by local contract tests.
-
-A Meta/Llama-hosted provider requires a compatible endpoint, model, protocol, and
-tool-calling support. Replacing only the key does not establish compatibility.
-A native provider-specific API would require its own transport adapter. No native
-Meta endpoint has been live-validated in this implementation.
+Live Meta Model API optimization and Gemini scene/repair tool calls have been
+verified locally. Subquadratic risk decisions have caused additional checks to run.
+The older configured-provider/OpenAI Responses mode and compatible Chat Completions
+transport remain available. See [the sponsor map](TEAM-README.md#4-exactly-how-each-sponsor-is-used)
+for the actual roles and limits; replacing only a key does not establish provider compatibility.
 
 Editable source, profiles, and relevant experiment history are sent to the configured
 model provider during optimization. Local profiling does not make a model request.

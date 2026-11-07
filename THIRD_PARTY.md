@@ -23,7 +23,7 @@ in vendor/agr-LICENSE (MIT). AGR's reported speedups are not Earl results.
 ## Runtime libraries
 
 Three.js, React, Express, Vite, Playwright Core, Pixelmatch, PNGJS, jsdiff,
-Spector.js, dotenv, Lucide, esbuild and their dependencies are installed through
+Spector.js, dotenv, Lucide, esbuild, ml-matrix, three-mesh-bvh and their dependencies are installed through
 npm and retain their package licenses. See package-lock.json and node_modules.
 
 ## Design references
@@ -32,6 +32,12 @@ Spline's viewport-and-panel workflow, NASA Eyes' replay/data relationship,
 and Unseen/Lusion's cinematic 3D presentation informed the interface direction.
 No site source, brand assets, models, or screenshots from those sites are used.
 The example scenes and dashboard visuals are authored for FrameShift/Earl.
+
+Anatomy (https://github.com/wheresryan22/anatomy) and Etch
+(https://github.com/PranavAchar01/etch) informed the spatial interaction direction.
+Their source code, models and assets are not embedded. FreeCAD's parts library,
+NopSCADlib, Trimesh and meshoptimizer were researched; no downloaded parts catalog
+or runtime integration of those packages is claimed in the current build.
 
 Earl’s workbench redesign references the user’s Morf project and Rive’s contextual
 editor structure. Morf was inspected as an authorized local design reference; its

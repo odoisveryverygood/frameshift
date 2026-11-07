@@ -1,5 +1,7 @@
 # Sift — UI teammate handoff
 
+For the plain-language product, sponsor, track and demo explanation shared by the whole team, read [TEAM-README.md](../TEAM-README.md) first. The Fetch sponsor guide has additional mandatory ASI:One/ACP/Agentverse requirements which the current local transport does not meet.
+
 Updated November 7, 2026. This is the current implementation handoff. Older Earl/FrameShift plans and screenshots are historical. **The UI teammate owns the Sift name, logo, color scheme, layout, motion, and agent visualization.** Those visual changes have not been implemented in this handoff.
 
 ## Get the complete code
