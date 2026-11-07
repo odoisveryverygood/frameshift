@@ -17,6 +17,8 @@ function frameUrl(canvas, owner) {
   blobUrls.set(owner, [...(blobUrls.get(owner) || []), url]);
   return url;
 }
+// A single frame of a live canvas, for copies that need to keep up with it.
+export const captureCanvasUrl = (canvas, owner) => frameUrl(canvas, owner);
 export function snapshotHtml(el, { owner = "rip", release = false } = {}) {
   const previous = release ? blobUrls.get(owner) || [] : [];
   if (release) blobUrls.delete(owner);

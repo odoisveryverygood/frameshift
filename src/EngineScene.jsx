@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import geometry from "./engineGeometry.json";
 
 // The Raptor 2 test-stand drawing from wheresryan22/anatomy (MIT), shown as a sheet
 // of paper that sways in 3D. Tap the engine: a flame starts under the nozzle and the
@@ -8,11 +9,11 @@ const SRC = "/engine/raptor.png";
 const CELLS_X = 26;
 const BURN_SECONDS = 9;
 // Positions are fractions of the drawing, measured from the artwork.
-const EXIT = [0.5, 0.575]; // centre of the nozzle exit
-const EXIT_HALF = 0.1; // half-width of the nozzle exit
-const PAD = [0.505, 0.787]; // the test pad the flame lands on
-const HOLE = [0.2, 0.108]; // half-size of the melt area
-const ENGINE = [0.34, 0.07, 0.66, 0.64]; // tap area: x0, y0, x1, y1
+const EXIT = geometry.exit; // centre of the nozzle exit
+const EXIT_HALF = geometry.exitHalf; // half-width of the nozzle exit
+const PAD = geometry.pad; // the test pad the flame lands on
+const HOLE = geometry.hole; // half-size of the melt area (of width, of height)
+const ENGINE = geometry.engine; // tap area: x0, y0, x1, y1
 
 const rand = (a, b) => a + Math.random() * (b - a);
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -55,6 +56,10 @@ export default function EngineScene() {
     const ctx = canvas.current.getContext("2d");
     const source = new Image();
     let paper = null, // the drawing scaled to the canvas, cut into squares when drawn
+      pit = null,
+      pitCtx = null,
+      tileCanvas = null,
+      tileCtx = null,
       W = 0,
       H = 0,
       cw = 0,
@@ -70,6 +75,14 @@ export default function EngineScene() {
       cw = W / CELLS_X;
       const rows = Math.round(H / cw);
       ch = H / rows;
+      pit = document.createElement("canvas");
+      pit.width = W;
+      pit.height = H;
+      pitCtx = pit.getContext("2d");
+      tileCanvas = document.createElement("canvas");
+      tileCanvas.width = Math.ceil(cw) + 2;
+      tileCanvas.height = Math.ceil(ch) + 2;
+      tileCtx = tileCanvas.getContext("2d");
       cells = [];
       for (let j = 0; j < rows; j++)
         for (let i = 0; i < CELLS_X; i++) {
@@ -107,7 +120,7 @@ export default function EngineScene() {
       H = Math.round(h * dpr);
       canvas.current.width = W;
       canvas.current.height = H;
-      scale = W / 920;
+      scale = (EXIT_HALF * W) / 92;
       build();
     };
     const watcher = new ResizeObserver(resize);
@@ -168,14 +181,20 @@ export default function EngineScene() {
       );
       ctx.rotate(m * (1.2 + c.seed[0]) * (c.seed[1] < 0.5 ? -1 : 1));
       ctx.scale(s, s * (1 - m * 0.3));
-      ctx.drawImage(paper, x, y, cw, ch, -cw / 2, -ch / 2, cw, ch);
-      ctx.fillStyle = `rgba(255,110,20,${ember * 0.85 * (1 - char * 0.5)})`;
-      ctx.fillRect(-cw / 2, -ch / 2, cw, ch);
-      ctx.fillStyle = `rgba(18,12,10,${char})`;
-      ctx.fillRect(-cw / 2, -ch / 2, cw, ch);
-      ctx.strokeStyle = `rgba(255,190,70,${ember * (1 - char)})`;
-      ctx.lineWidth = 2 * scale;
-      ctx.strokeRect(-cw / 2, -ch / 2, cw, ch);
+      const t = tileCtx;
+      t.globalCompositeOperation = "source-over";
+      t.clearRect(0, 0, tileCanvas.width, tileCanvas.height);
+      t.drawImage(paper, x, y, cw, ch, 1, 1, cw, ch);
+      // The colour only lands where there is paper (source-atop keeps the drawing's shape).
+      t.globalCompositeOperation = "source-atop";
+      t.fillStyle = `rgba(255,110,20,${ember * 0.85 * (1 - char * 0.5)})`;
+      t.fillRect(0, 0, tileCanvas.width, tileCanvas.height);
+      t.fillStyle = `rgba(18,12,10,${char})`;
+      t.fillRect(0, 0, tileCanvas.width, tileCanvas.height);
+      t.strokeStyle = `rgba(255,190,70,${ember * (1 - char)})`;
+      t.lineWidth = 2 * scale;
+      t.strokeRect(1, 1, cw, ch);
+      ctx.drawImage(tileCanvas, -cw / 2 - 1, -ch / 2 - 1);
       ctx.restore();
     }
     function frame(now) {
@@ -216,6 +235,7 @@ export default function EngineScene() {
       ctx.drawImage(paper, 0, 0);
       // Holes where the paper has burned, a heat glow, then the squares still curling away.
       const live = [];
+      let holes = false;
       for (const c of cells) {
         const m =
           burn.radius < 0.02
@@ -229,16 +249,27 @@ export default function EngineScene() {
                 1,
               );
         if (m > 0) {
-          ctx.fillStyle = "#06070b";
-          ctx.fillRect(c.i * cw - 0.5, c.j * ch - 0.5, cw + 1, ch + 1);
+          if (!holes) {
+            holes = true;
+            pitCtx.globalCompositeOperation = "source-over";
+            pitCtx.clearRect(0, 0, W, H);
+            pitCtx.fillStyle = "#06070b";
+          }
+          pitCtx.fillRect(c.i * cw - 0.5, c.j * ch - 0.5, cw + 1, ch + 1);
           if (m < 1) live.push([c, m]);
         }
+      }
+      if (holes) {
+        // The pit shows only where the drawing has paper to burn through.
+        pitCtx.globalCompositeOperation = "destination-in";
+        pitCtx.drawImage(paper, 0, 0);
+        ctx.drawImage(pit, 0, 0);
       }
       if (burn.power > 0.02) {
         const gr = HOLE[0] * W * 1.1;
         ctx.save();
         ctx.translate(PAD[0] * W, padY());
-        ctx.scale(1, HOLE[1] / HOLE[0]);
+        ctx.scale(1, (HOLE[1] * H) / (HOLE[0] * W));
         const g = ctx.createRadialGradient(0, 0, 0, 0, 0, gr);
         g.addColorStop(0, `rgba(255,150,40,${0.55 * burn.power})`);
         g.addColorStop(0.55, `rgba(255,80,20,${0.22 * burn.power})`);

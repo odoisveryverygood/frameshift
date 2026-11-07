@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { revokeSnapshots, snapshotHtml } from "./Rip.jsx";
+import { captureCanvasUrl, revokeSnapshots, snapshotHtml } from "./Rip.jsx";
 import "./slices.css";
 
 const RADIUS = 200;
@@ -28,6 +28,28 @@ export default function Slices({ heroRef }) {
       pointer = null,
       raf = 0;
     const cells = new Map();
+    // The engine is a live canvas that sways, so pieces over it re-copy it a few times a second.
+    const art = hero.querySelector("canvas.engine-canvas"),
+      card = hero.querySelector(".engine-card");
+    let artActive = false,
+      artUrl = null;
+    const refreshArt = () => {
+      if (!art || !artActive || !cells.size) return;
+      const url = captureCanvasUrl(art, "slices");
+      const stale = artUrl;
+      artUrl = url;
+      const transform = card?.style.transform || "";
+      cells.forEach((c) => {
+        c.tile.querySelectorAll("img.engine-canvas").forEach((img) => {
+          img.src = url;
+        });
+        c.tile.querySelectorAll(".engine-card").forEach((el) => {
+          el.style.transform = transform;
+        });
+      });
+      if (stale) setTimeout(() => URL.revokeObjectURL(stale), 600);
+    };
+    const artTimer = setInterval(refreshArt, 160);
     const markDirty = () => {
       dirty = true;
     };
@@ -102,9 +124,11 @@ export default function Slices({ heroRef }) {
         });
       }
       const seen = new Set();
-      const keepClear = [
-        ...hero.querySelectorAll(".intake, .hero-top, .hero-art"),
-      ].map((n) => n.getBoundingClientRect());
+      const artBox = art?.getBoundingClientRect();
+      artActive = false;
+      const keepClear = [...hero.querySelectorAll(".intake, .hero-top")].map(
+        (n) => n.getBoundingClientRect(),
+      );
       const covers = (x, y) =>
         keepClear.some(
           (r) =>
@@ -134,6 +158,14 @@ export default function Slices({ heroRef }) {
               cells.set(key, c);
             }
             seen.add(key);
+            if (
+              artBox &&
+              i * cw + cw > artBox.left &&
+              i * cw < artBox.right &&
+              j * ch + ch > artBox.top &&
+              j * ch < artBox.bottom
+            )
+              artActive = true;
             lift(c, s);
           }
       }
@@ -150,7 +182,7 @@ export default function Slices({ heroRef }) {
         x: e.clientX,
         y: e.clientY,
         // The form and the top bar stay clean so they are easy to use.
-        blocked: Boolean(e.target.closest?.(".intake, .hero-top, .hero-art")),
+        blocked: Boolean(e.target.closest?.(".intake, .hero-top")),
       };
       queue();
     };
@@ -163,6 +195,7 @@ export default function Slices({ heroRef }) {
     addEventListener("scroll", clear, { passive: true });
     return () => {
       cancelAnimationFrame(raf);
+      clearInterval(artTimer);
       watcher.disconnect();
       hero.removeEventListener("input", markDirty);
       hero.removeEventListener("change", markDirty);
