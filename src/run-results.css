@@ -1451,3 +1451,199 @@
   box-shadow: inset 0 0 90px color-mix(in srgb, var(--c) 55%, transparent);
   transition: box-shadow 0.8s;
 }
+
+/* Agent selector: a row of planets, white chart with hairlines. */
+.planet-row {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 6px 10px;
+  border-radius: 24px;
+  background: var(--glass);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -18px 40px rgba(15, 23, 42, 0.03);
+}
+.planet-row svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+.pr-arrow {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: #fff;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--ink);
+  cursor: pointer;
+}
+.pr-arrow:hover {
+  border-color: rgba(15, 23, 42, 0.3);
+}
+.pr-axis {
+  stroke: rgba(15, 23, 42, 0.08);
+  stroke-dasharray: 2 6;
+}
+.pr-slot {
+  cursor: pointer;
+  outline: none;
+}
+.pr-slot:focus-visible .body {
+  stroke: #2f6bff;
+  stroke-width: 2;
+}
+.planet .body {
+  stroke: rgba(15, 23, 42, 0.35);
+  stroke-width: 0.8;
+  transition: r 0.5s;
+}
+.planet .meridian {
+  fill: none;
+  stroke: rgba(15, 23, 42, 0.22);
+  stroke-width: 0.6;
+}
+.planet.big .meridian {
+  stroke: rgba(15, 23, 42, 0.3);
+  animation: pr-spin 14s linear infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+.planet .orbit {
+  fill: none;
+  stroke: rgba(15, 23, 42, 0.4);
+  stroke-width: 0.8;
+}
+.planet .orbit.back {
+  stroke-opacity: 0.35;
+  stroke-dasharray: 2 3;
+}
+.planet.big .orbit {
+  stroke: var(--c);
+  stroke-width: 1.2;
+}
+.planet .halo {
+  fill: none;
+  stroke: color-mix(in srgb, var(--a) 30%, transparent);
+  stroke-width: 18;
+  opacity: 0.35;
+  filter: blur(6px);
+}
+.planet .arc {
+  fill: none;
+  stroke: rgba(15, 23, 42, 0.25);
+  stroke-width: 0.8;
+}
+.planet .tick {
+  stroke: rgba(15, 23, 42, 0.35);
+  stroke-width: 0.8;
+}
+.planet.idle .body {
+  stroke-dasharray: 3 3;
+}
+.planet:not(.big) {
+  transition: opacity 0.3s;
+  opacity: 0.75;
+}
+.pr-slot:hover .planet:not(.big) {
+  opacity: 1;
+}
+@keyframes pr-spin {
+  from {
+    transform: scaleX(1);
+  }
+  50% {
+    transform: scaleX(-1);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.pr-orbit {
+  font:
+    10px "JetBrains Mono",
+    monospace;
+  letter-spacing: 0.12em;
+  fill: var(--muted);
+}
+.pr-mark {
+  fill: var(--a);
+}
+.pr-name {
+  font:
+    600 15px "EB Garamond",
+    serif;
+  letter-spacing: 0.16em;
+  fill: var(--muted);
+}
+.pr-name.on {
+  fill: var(--ink);
+  font-size: 19px;
+}
+.pr-sub {
+  font:
+    10.5px "JetBrains Mono",
+    monospace;
+  fill: var(--muted);
+}
+.pr-flight polyline {
+  fill: none;
+  stroke: var(--a);
+  stroke-width: 1.2;
+  stroke-dasharray: 3 4;
+  opacity: 0.8;
+}
+.rocket path {
+  fill: #fff;
+  stroke: var(--ink);
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+.rocket .fin {
+  fill: var(--a);
+}
+.rocket .window {
+  fill: var(--a);
+  stroke: var(--ink);
+  stroke-width: 0.8;
+}
+.rocket .flame {
+  fill: #ff8a3d;
+  stroke: none;
+  animation: flicker 0.12s infinite alternate;
+  transform-origin: -8px 0;
+}
+@keyframes flicker {
+  to {
+    transform: scaleX(0.6);
+  }
+}
+.reduced .planet.big .meridian {
+  animation: none;
+}
+@media (max-width: 640px) {
+  .planet-row {
+    grid-template-columns: 1fr;
+    padding: 4px;
+  }
+  .pr-arrow {
+    display: none;
+  }
+  .pr-sub {
+    display: none;
+  }
+  .pr-name {
+    font-size: 22px;
+  }
+  .pr-name.on {
+    font-size: 26px;
+  }
+}
