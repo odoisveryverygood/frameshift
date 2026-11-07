@@ -2,6 +2,15 @@
 
 ### Better frames, with proof.
 
+**Teammates: [read the updated product, agent and sponsor plan](docs/TEAM-PRODUCT-PLAN.md).**
+It includes ownership, build order, verified setup status, and how to explain each
+sponsor honestly. **Feature branches and PRs only; no direct pushes to `main`.**
+
+The next product flow is: open your 3D app → describe the slowdown → three agents
+investigate, patch and verify → compare and apply. Meta and Subquadratic wiring
+are planned; Fetch local handoff and ASI API connectivity have been verified.
+See [the exact setup status](integrations/SETUP-STATUS.md).
+
 Earl is a local AI performance engineer for 3D web applications. Connect an
 existing project, measure its rendering workload, let an agent investigate and
 experiment with the code, and review a patch with evidence explaining what
