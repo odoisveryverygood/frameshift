@@ -2165,3 +2165,58 @@
   font-style: normal;
   color: var(--muted);
 }
+
+/* ---------- Clear glass (Apple-style) on every panel ---------- */
+.run-results .waves {
+  z-index: 0;
+}
+.sg .rr-hero,
+.sg-card,
+.spotlight,
+.run-results .ghost,
+.pr-arrow {
+  position: relative;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.42),
+    rgba(255, 255, 255, 0.14)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 0 24px rgba(255, 255, 255, 0.25),
+    0 10px 40px rgba(47, 60, 120, 0.1);
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+}
+.sg .rr-hero,
+.sg-card {
+  border-radius: 26px;
+  padding: 18px 20px;
+  overflow: hidden;
+}
+.sg-card + .sg-card {
+  border-top: 1px solid rgba(255, 255, 255, 0.7);
+  padding-top: 18px;
+}
+.sg .rr-hero::after,
+.sg-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(255, 255, 255, 0) 32%,
+    rgba(255, 255, 255, 0) 70%,
+    rgba(255, 255, 255, 0.25) 100%
+  );
+  mix-blend-mode: soft-light;
+}
+.sg-agent::before {
+  left: 20px;
+  top: 0;
+}

@@ -7,6 +7,7 @@ import BeforeAfter from "./results/BeforeAfter.jsx";
 import Receipt from "./results/Receipt.jsx";
 import Stage from "./results/Stage.jsx";
 import Galaxy from "./Galaxy.jsx";
+import Waves from "./Waves.jsx";
 import { formatNumber, useInView, useReducedMotion } from "./results/motion.js";
 import "./run-results.css";
 
@@ -268,6 +269,7 @@ export default function RunResults({
       aria-label="Run results"
     >
       <Galaxy x={0.5} y={0.5} scale={1.25} />
+      <Waves />
       <div className="grain" aria-hidden="true" />
       <header className="rr-top">
         <div>

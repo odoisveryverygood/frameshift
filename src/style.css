@@ -1479,3 +1479,13 @@ body::before {
 .preview-dashboard small {
   color: var(--muted, #5b6474);
 }
+
+/* Moving water under the agents screen and the dashboard. */
+.waves {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+}
