@@ -38,6 +38,7 @@ import {
   runVerdict,
 } from "./parts.jsx";
 import Dashboard from "./Dashboard.jsx";
+import RunResults, { loadFixture } from "./RunResults.jsx";
 import Loading from "./Loading.jsx";
 import Hero from "./Hero.jsx";
 import Rip, { revokeSnapshots, snapshotHtml } from "./Rip.jsx";
@@ -233,6 +234,44 @@ function App() {
     checking: 3,
     result: 4,
   }[view];
+  // Run results: /?project=<id>&run=<runId>&view=results, opened automatically when
+  // one of this project's runs leaves the live states.
+  const [resultsRunId, setResultsRunId] = useState(() => {
+    const q = new URLSearchParams(location.search);
+    return q.get("view") === "results" ? q.get("run") : null;
+  });
+  const [resultsFixture, setResultsFixture] = useState(null);
+  const wasLive = useRef(new Set());
+  useEffect(() => {
+    const kind = new URLSearchParams(location.search).get("fixture");
+    if (import.meta.env.DEV && kind) loadFixture(kind).then(setResultsFixture);
+  }, []);
+  useEffect(() => {
+    for (const r of projectRuns) {
+      if (liveStatuses.includes(r.status)) wasLive.current.add(r.id);
+      else if (
+        wasLive.current.delete(r.id) &&
+        terminalStatuses.includes(r.status) &&
+        r.kind === "optimize"
+      )
+        openResults(r.id);
+    }
+  }, [projectRuns.map((r) => r.id + r.status).join()]);
+  function openResults(id) {
+    setResultsRunId(id);
+    const url = new URL(location.href);
+    url.searchParams.set("run", id);
+    url.searchParams.set("view", "results");
+    history.pushState(null, "", url);
+  }
+  function closeResults() {
+    setResultsRunId(null);
+    setResultsFixture(null);
+    const url = new URL(location.href);
+    for (const k of ["run", "view", "fixture"]) url.searchParams.delete(k);
+    history.replaceState(null, "", url);
+  }
+  const resultsRun = data.runs.find((r) => r.id === resultsRunId);
   const activityRun = projectJob || run;
   const activityEvents = activityRun?.events || [];
   useEffect(() => {
@@ -721,6 +760,18 @@ function App() {
   };
   return (
     <div className={"app " + (phase === "hero" ? "is-hero" : "")}>
+      {resultsFixture ? (
+        <RunResults {...resultsFixture} onClose={closeResults} />
+      ) : (
+        resultsRun &&
+        !liveStatuses.includes(resultsRun.status) && (
+          <RunResults
+            run={resultsRun}
+            project={data.projects.find((p) => p.id === resultsRun.projectId)}
+            onClose={closeResults}
+          />
+        )
+      )}
       {phase === "hero" && <Slices heroRef={heroRef} />}
       {phase === "hero" && (
         <div inert={modal || drawer ? true : undefined}>
