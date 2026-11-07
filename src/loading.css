@@ -1,74 +1,29 @@
 .loading {
-  position: relative;
-  min-height: 0;
-  overflow: auto;
-  isolation: isolate;
-  background:
-    radial-gradient(55% 45% at 78% 30%, rgb(58 27 208 / 32%), transparent 70%),
-    radial-gradient(40% 35% at 30% 85%, rgb(33 142 255 / 22%), transparent 70%),
-    radial-gradient(35% 30% at 70% 20%, rgb(255 79 122 / 18%), transparent 70%),
-    var(--bg);
-}
-.loading-water {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  overflow: hidden;
-  pointer-events: none;
-}
-.loading-water i {
-  position: absolute;
-  left: 50%;
-  bottom: -30%;
-  width: 90vmin;
-  height: 90vmin;
-  margin-left: -45vmin;
-  border: 1px solid rgb(79 176 255 / 22%);
-  border-radius: 50%;
-  transform: scale(0.2);
-  animation: ripple 7s ease-out infinite;
-}
-.loading-water i:nth-child(2) {
-  animation-delay: -2.3s;
-}
-.loading-water i:nth-child(3) {
-  animation-delay: -4.6s;
-}
-@keyframes ripple {
-  0% {
-    transform: scale(0.2);
-    opacity: 0.9;
-  }
-  100% {
-    transform: scale(1.5);
-    opacity: 0;
-  }
+  animation: fade 0.6s ease-out;
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  background: rgb(8 9 13 / 74%);
+  backdrop-filter: blur(12px);
 }
 .loading-inner {
   display: grid;
-  grid-template-columns: minmax(240px, 0.8fr) minmax(0, 1.5fr) minmax(
-      220px,
-      0.7fr
-    );
-  gap: clamp(16px, 3vw, 44px);
-  align-items: center;
-  min-height: 100%;
-  padding: clamp(20px, 4vw, 56px);
+  grid-template-columns: minmax(0, 1.6fr) minmax(220px, 0.8fr);
+  gap: 22px clamp(18px, 3vw, 36px);
+  align-items: start;
+  padding: clamp(18px, 3vw, 28px);
 }
 .loading-copy {
+  grid-column: 1 / -1;
   display: grid;
   gap: 12px;
   align-content: center;
 }
 .loading-copy h1 {
-  font-size: clamp(28px, 3.4vw, 44px);
+  font-size: clamp(24px, 3vw, 34px);
   line-height: 1.05;
   font-weight: 500;
   letter-spacing: -0.03em;
-  background: linear-gradient(100deg, #fff, #9bd4ff);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--ink);
 }
 .loading-copy p {
   color: var(--ink-2);
@@ -151,7 +106,7 @@
     background: transparent;
   }
   18% {
-    background: linear-gradient(90deg, rgb(79 176 255 / 14%), transparent 80%);
+    background: rgb(79 176 255 / 9%);
   }
   40% {
     background: transparent;
@@ -390,17 +345,8 @@
   align-items: center;
   justify-content: space-between;
 }
-@media (max-width: 1100px) {
-  .loading-inner {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-  .loading-copy {
-    grid-column: 1 / -1;
-  }
-}
 @media (max-width: 760px) {
   .loading-inner {
     grid-template-columns: minmax(0, 1fr);
-    align-items: start;
   }
 }

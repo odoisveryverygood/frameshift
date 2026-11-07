@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   ArrowDownToLine,
@@ -37,11 +37,11 @@ import {
   fmt,
   runVerdict,
 } from "./parts.jsx";
+import Dashboard from "./Dashboard.jsx";
 import Loading from "./Loading.jsx";
+import Hero from "./Hero.jsx";
+import Rip, { snapshotHtml } from "./Rip.jsx";
 import "./style.css";
-// The home page carries the WebGL backdrop, so it loads separately.
-const Home = lazy(() => import("./Home.jsx"));
-const Dashboard = lazy(() => import("./Dashboard.jsx"));
 const liveStatuses = ["queued", "running", "recovering"];
 const terminalStatuses = [
   "accepted",
@@ -114,16 +114,20 @@ function App() {
     [source, setSource] = useState(null),
     [frameCapture, setFrameCapture] = useState(null),
     [failedBaseline, setFailedBaseline] = useState(null),
-    [home, setHome] = useState(false),
-    [tab, setTab] = useState("scene");
+    [phase, setPhase] = useState("hero"),
+    [rip, setRip] = useState(null);
   const preview = useRef(null),
     reference = useRef(null),
     viewport = useRef(null),
-    activityList = useRef(null),
     recordingRef = useRef(false),
     recordedRef = useRef([]),
     recordStart = useRef(0),
     lastActiveRun = useRef(null),
+    sceneRef = useRef(null),
+    heroRef = useRef(null),
+    phaseRef = useRef("hero"),
+    afterRip = useRef(null),
+    starting = useRef(false),
     autoRun = useRef(null),
     prevJob = useRef(null);
   const refresh = async () => {
@@ -187,7 +191,6 @@ function App() {
     project?.lastAcceptedRun === resultRun.id &&
     project?.lastAcceptedExperiment === resultExperiment?.id;
   const dashRun = run?.baseline ? run : projectRuns.find((r) => r.baseline);
-  const showHome = !project || home;
   const view = !project
     ? "welcome"
     : projectJob
@@ -245,14 +248,25 @@ function App() {
     setRecorded([]);
   }, [project?.id]);
   useEffect(() => {
+    phaseRef.current = phase;
+    if (phase === "results") window.scrollTo(0, 0);
+  }, [phase]);
+  useEffect(() => {
     if (projectJob && lastActiveRun.current !== projectJob.id) {
       setRunId(projectJob.id);
       setExperimentId(null);
       setCompare(false);
       lastActiveRun.current = projectJob.id;
     }
-  }, [projectJob?.id]);
-  // A finished improvement opens the results dashboard.
+    // A run that started elsewhere (a reload mid-run, "Profile again") shows its progress.
+    if (
+      projectJob &&
+      !starting.current &&
+      (phase === "hero" || phase === "results")
+    )
+      setPhase("work");
+  }, [projectJob?.id, phase]);
+  // When a run ends, the dashboard opens (unless the improvement is about to follow the build).
   useEffect(() => {
     const previous = prevJob.current;
     if (projectJob) {
@@ -262,16 +276,26 @@ function App() {
     if (!previous) return;
     prevJob.current = null;
     const finished = data.runs.find((r) => r.id === previous);
+    if (!finished || !terminalStatuses.includes(finished.status)) return;
     if (
-      finished?.kind === "optimize" &&
-      terminalStatuses.includes(finished.status)
-    ) {
-      setRunId(previous);
-      setExperimentId(null);
-      setTab("results");
-    }
+      finished.kind === "profile" &&
+      finished.status === "completed" &&
+      autoRun.current
+    )
+      return;
+    setRunId(previous);
+    setExperimentId(null);
+    if (phaseRef.current === "work" || phaseRef.current === "rip") finishWork();
   }, [projectJob?.id, data.runs]);
-  // A goal typed on the home page starts the improvement once the first build lands.
+  // Never leave the page on a progress screen with nothing running.
+  useEffect(() => {
+    if (phase !== "work" || projectJob) return;
+    const timer = setTimeout(() => {
+      if (!autoRun.current) setPhase(dashRun ? "results" : "hero");
+    }, 6000);
+    return () => clearTimeout(timer);
+  }, [phase, projectJob?.id, data.runs.length]);
+  // After the first build, the improvement starts on the goal from the hero.
   useEffect(() => {
     const id = autoRun.current;
     if (!id || !project || project.id !== id || running || busy) return;
@@ -283,16 +307,13 @@ function App() {
       try {
         goal = localStorage.getItem("earl:mission:" + id) || "";
       } catch {}
-      if (!goal.trim()) return;
       if (data.provider.configured) launch("optimize", goal);
-      else setNotice("Preview ready. Connect a model to run your improvement.");
+      else {
+        setNotice("Baseline ready. Connect a model to run the optimization.");
+        finishWork();
+      }
     } else if (terminalStatuses.includes(first.status)) autoRun.current = null;
   }, [data, busy]);
-  // Scroll only the rail's own list; on narrow screens the page itself scrolls.
-  useEffect(() => {
-    const list = activityList.current;
-    if (list) list.scrollTop = list.scrollHeight;
-  }, [activityRun?.id, activityEvents.length, view]);
   useEffect(() => {
     if (!modal && !drawer && !details) return;
     const close = (e) => {
@@ -391,10 +412,12 @@ function App() {
   async function act(fn) {
     setBusy(true);
     try {
-      await fn();
+      const value = await fn();
       await refresh();
+      return { ok: true, value };
     } catch (e) {
       setNotice(e.message);
+      return { ok: false };
     } finally {
       setBusy(false);
     }
@@ -422,53 +445,102 @@ function App() {
     setProjectId(id);
     setRunId(null);
     setExperimentId(null);
-    setHome(false);
-    setTab("scene");
   }
-  async function example(name) {
-    await act(async () => {
-      const p = await api("/examples/" + name, {});
-      if (mission.trim()) {
-        try {
-          localStorage.setItem("earl:mission:" + p.id, mission);
-        } catch {}
-      }
-      chooseProject(p.id);
-      setModal(null);
-      if (!p.built) {
-        const r = await api("/projects/" + p.id + "/runs", { kind: "profile" });
-        setRunId(r.id);
-      }
-    });
+  function goHero() {
+    setRip(null);
+    setPhase("hero");
+    window.scrollTo(0, 0);
   }
-  function connectProject({ mission: goal, ...body }) {
-    return act(async () => {
-      const p = await api("/projects", body);
-      const text = (goal ?? mission).trim();
-      if (text) {
-        try {
-          localStorage.setItem("earl:mission:" + p.id, text);
-        } catch {}
-      }
-      if (goal?.trim()) autoRun.current = p.id;
-      chooseProject(p.id);
-      setModal(null);
-      await refresh();
+  // Real source for the code revealed under the hero; falls back to nothing.
+  async function loadCode(p) {
+    const files = p.discovery?.files || [];
+    const picks = (
+      files.some((f) => f.usesThree) ? files.filter((f) => f.usesThree) : files
+    ).slice(0, 2);
+    const out = [];
+    for (const f of picks) {
       try {
-        const firstRun = await api("/projects/" + p.id + "/runs", {
-          kind: "profile",
+        const src = await api(
+          "/projects/" + p.id + "/source?path=" + encodeURIComponent(f.path),
+        );
+        out.push({
+          path: f.path,
+          lines: String(src.content || "")
+            .split("\n")
+            .slice(0, 46)
+            .map((l) => l.slice(0, 96)),
         });
-        setRunId(firstRun.id);
-        setNotice(
-          "Project connected. Building your first preview automatically.",
-        );
-      } catch (error) {
-        setNotice(
-          "Project connected, but its preview could not start: " +
-            error.message,
-        );
+      } catch {}
+    }
+    return out;
+  }
+  // Starts an optimization from the hero. The rip transition plays only once a
+  // run really exists, so a refused request never tears the page apart.
+  async function beginOptimize(getProject, origin) {
+    const el = heroRef.current;
+    const html = el ? snapshotHtml(el) : "";
+    const box = el
+      ? el.getBoundingClientRect()
+      : { left: 0, top: 0, width: innerWidth, height: innerHeight };
+    starting.current = true;
+    const goal = mission.trim();
+    const result = await act(async () => {
+      const p = await getProject();
+      try {
+        localStorage.setItem("earl:mission:" + p.id, goal);
+      } catch {}
+      chooseProject(p.id);
+      await refresh();
+      if (p.built) {
+        if (!data.provider.configured) {
+          setModal("settings");
+          return null;
+        }
+        await api("/projects/" + p.id + "/runs", {
+          kind: "optimize",
+          count,
+          mission: goal,
+        });
+      } else {
+        autoRun.current = p.id;
+        await api("/projects/" + p.id + "/runs", { kind: "profile" });
       }
+      return p;
     });
+    if (!result.ok || !result.value) {
+      starting.current = false;
+      return;
+    }
+    setRip({
+      html,
+      rect: {
+        left: box.left,
+        top: box.top,
+        width: box.width,
+        height: box.height,
+      },
+      origin: origin || { x: innerWidth / 2, y: innerHeight / 2 },
+      code: null,
+    });
+    setPhase("rip");
+    starting.current = false;
+    loadCode(result.value).then((code) =>
+      setRip((r) => (r ? { ...r, code } : r)),
+    );
+  }
+  const optimizeFromHero = (body, origin) =>
+    beginOptimize(() => (body ? api("/projects", body) : project), origin);
+  const optimizeExample = (name, origin) =>
+    beginOptimize(() => api("/examples/" + name, {}), origin);
+  function ripDone() {
+    const next = afterRip.current;
+    afterRip.current = null;
+    setRip(null);
+    setPhase(next || "work");
+  }
+  function finishWork() {
+    if (phaseRef.current === "rip") afterRip.current = "results";
+    else setPhase("results");
   }
   function updateMission(value) {
     setMission(value);
@@ -479,10 +551,10 @@ function App() {
     }
   }
   async function launch(kind, goal) {
-    if (!project) return setModal("connect");
+    if (!project) return;
     if (kind === "optimize" && !data.provider.configured)
       return setModal("settings");
-    await act(async () => {
+    return act(async () => {
       setCompare(false);
       setExperimentId(null);
       const r = await api("/projects/" + project.id + "/runs", {
@@ -602,32 +674,52 @@ function App() {
     },
   }[view];
   return (
-    <div className={"app " + (showHome ? "is-home" : "")}>
-      {showHome ? (
+    <div
+      className={
+        "app " + (phase === "hero" || phase === "rip" ? "is-hero" : "")
+      }
+    >
+      {phase === "hero" && (
         <div inert={modal || drawer ? true : undefined}>
-          <Suspense fallback={<div className="home" />}>
-            <Home
-              projects={data.projects}
-              busy={busy}
-              onInspect={(path) => api("/inspect", { path })}
-              onConnect={connectProject}
-              onExample={example}
-              onOpenProject={chooseProject}
-              onSettings={() => setModal("settings")}
-              onHelp={() => setModal("help")}
-            />
-          </Suspense>
+          <Hero
+            ref={heroRef}
+            projects={data.projects}
+            project={project}
+            onPickProject={chooseProject}
+            onResults={dashRun ? () => setPhase("results") : undefined}
+            onSettings={() => setModal("settings")}
+            onHelp={() => setModal("help")}
+            sourceCount={files.length}
+            busy={busy}
+            running={running}
+            mission={mission}
+            onMission={updateMission}
+            providerConfigured={Boolean(data.provider.configured)}
+            onInspect={(path) => api("/inspect", { path })}
+            onOptimize={optimizeFromHero}
+            onExample={optimizeExample}
+          />
         </div>
-      ) : (
+      )}
+      {phase === "rip" && rip && (
+        <Rip
+          html={rip.html}
+          rect={rip.rect}
+          origin={rip.origin}
+          code={rip.code}
+          onDone={ripDone}
+        />
+      )}
+      {(phase === "work" || phase === "results") && (
         <>
           <header className="topbar" inert={modal || drawer ? true : undefined}>
             <a
               href="./"
               className="wordmark"
-              aria-label="Sift home"
+              aria-label="Sift"
               onClick={(e) => {
                 e.preventDefault();
-                setHome(true);
+                window.scrollTo({ top: 0, behavior: "smooth" });
               }}
             >
               sift<span>.</span>
@@ -654,25 +746,32 @@ function App() {
                 {discovery.threeVersion ? " · " + discovery.threeVersion : ""}
               </span>
             )}
-            {project && (
-              <nav className="tabs" aria-label="Views">
-                <button
-                  aria-current={tab === "scene" ? "page" : undefined}
-                  onClick={() => setTab("scene")}
-                >
-                  Scene
-                </button>
-                <button
-                  aria-current={tab === "results" ? "page" : undefined}
-                  disabled={!dashRun}
-                  title={dashRun ? undefined : "Build a preview first"}
-                  onClick={() => setTab("results")}
-                >
-                  Results
-                </button>
-              </nav>
-            )}
+
             <div className="topbar-end">
+              {phase === "results" && (
+                <button className="secondary-button" onClick={goHero}>
+                  New optimization
+                </button>
+              )}
+              {phase === "work" && projectJob && (
+                <>
+                  <button
+                    className="link-button"
+                    onClick={() => setDrawer("logs")}
+                  >
+                    Full log
+                  </button>
+                  <button
+                    className="secondary-button"
+                    disabled={busy}
+                    onClick={() =>
+                      act(() => api("/stop", { runId: projectJob.id }))
+                    }
+                  >
+                    <Square size={11} /> Stop
+                  </button>
+                </>
+              )}
               <span
                 className={
                   "connection " +
@@ -697,8 +796,8 @@ function App() {
                 icon={MoreHorizontal}
                 items={[
                   {
-                    label: "Connect project…",
-                    onClick: () => setModal("connect"),
+                    label: "New optimization",
+                    onClick: goHero,
                   },
                   project && {
                     label: latestBaseline ? "Profile again" : "Build preview",
@@ -743,432 +842,27 @@ function App() {
               />
             </div>
           </header>
-          {projectJob ? (
-            <Loading
-              inert={modal || drawer ? true : undefined}
-              job={projectJob}
-              project={project}
-              goal={mission}
-              baselineSrc={
-                projectJob.baseline && failedBaseline !== projectJob.id
-                  ? "/api/runs/" + projectJob.id + "/baseline/baseline-0.png"
-                  : null
-              }
-              stopping={busy}
-              onStop={() => act(() => api("/stop", { runId: projectJob.id }))}
-              onLog={() => setDrawer("logs")}
-            />
-          ) : tab === "results" && dashRun ? (
-            <Suspense fallback={<div className="dash" />}>
-              <Dashboard
-                inert={modal || drawer ? true : undefined}
-                project={project}
-                run={dashRun}
-                runs={projectRuns}
-                experimentId={experimentId}
-                onExperiment={setExperimentId}
-                onSelectRun={(id) => {
-                  setRunId(id);
-                  setExperimentId(null);
-                }}
-                busy={busy}
-                provider={data.provider}
-                onScene={() => setTab("scene")}
-                onCompare={() => {
-                  setTab("scene");
-                  setCompare(true);
-                }}
-                onApply={() => setModal("apply")}
-                onLogs={() => setDrawer("logs")}
-              />
-            </Suspense>
-          ) : (
-            <div
-              className="workspace"
-              inert={modal || drawer ? true : undefined}
-            >
-              <main
-                className={"stage " + (compare ? "is-comparing" : "")}
-                ref={viewport}
-                aria-label="Project scene"
-              >
-                {projectJob || view === "elsewhere" ? (
-                  <div className="stage-paused">
-                    {showBaselineImage && (
-                      <img
-                        src={
-                          "/api/runs/" +
-                          projectJob.id +
-                          "/baseline/baseline-0.png"
-                        }
-                        alt="Baseline frame captured for this run"
-                        onError={() => setFailedBaseline(projectJob.id)}
-                      />
-                    )}
-                    <div className="stage-badge">
-                      <Pause size={12} aria-hidden="true" />
-                      {view === "queued"
-                        ? "Queued · preview paused"
-                        : view === "elsewhere"
-                          ? "Paused while another project is measured"
-                          : "Paused for measurement"}
-                    </div>
-                    {!showBaselineImage && (
-                      <div className="stage-message">
-                        <Loader2
-                          className="spin"
-                          size={20}
-                          aria-hidden="true"
-                        />
-                        <p>
-                          {view === "queued"
-                            ? "Waiting for the local worker."
-                            : view === "elsewhere"
-                              ? "The live preview is off so measurements stay uncontended."
-                              : "Building the project. The live preview is off while Sift measures."}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ) : project?.built ? (
-                  <>
-                    <div className="frames">
-                      <figure className="frame">
-                        <iframe
-                          sandbox="allow-scripts"
-                          ref={preview}
-                          key={
-                            project.id +
-                            ":" +
-                            (project.lastAcceptedExperiment || "initial")
-                          }
-                          src={"/preview/" + project.id + "/index.html"}
-                          title="Current project scene"
-                          onLoad={() => {
-                            if (paused) replay();
-                            preview.current?.contentWindow?.postMessage(
-                              { type: "frameshift:objects" },
-                              "*",
-                            );
-                          }}
-                        />
-                        {compare && (
-                          <figcaption>
-                            {project.lastAcceptedExperiment
-                              ? "With accepted changes"
-                              : "Current workspace"}
-                          </figcaption>
-                        )}
-                      </figure>
-                      {compare && (
-                        <figure className="frame">
-                          <iframe
-                            sandbox="allow-scripts"
-                            ref={reference}
-                            src={"/baseline/" + project.id + "/index.html"}
-                            title="Original project scene"
-                            onLoad={() => replay()}
-                          />
-                          <figcaption>Original</figcaption>
-                        </figure>
-                      )}
-                    </div>
-                    {recording && (
-                      <div className="stage-badge recording" role="status">
-                        <i aria-hidden="true" />
-                        Recording · {recorded.length} action
-                        {recorded.length === 1 ? "" : "s"}
-                      </div>
-                    )}
-                    {selectedName && !recording && (
-                      <div className="selection-chip">
-                        <Box size={12} aria-hidden="true" />
-                        <span>{selectedName}</span>
-                        <button
-                          aria-label="Clear object selection"
-                          onClick={() => {
-                            setSelectedObject(null);
-                            send({ type: "frameshift:select", id: null });
-                          }}
-                        >
-                          <X size={12} />
-                        </button>
-                      </div>
-                    )}
-                    <div
-                      className="scene-toolbar"
-                      role="toolbar"
-                      aria-label="Scene"
-                    >
-                      <button
-                        className="tool"
-                        aria-label={paused ? "Resume scene" : "Pause scene"}
-                        title={paused ? "Resume" : "Pause"}
-                        onClick={pause}
-                      >
-                        {paused ? <Play size={15} /> : <Pause size={15} />}
-                      </button>
-                      <button
-                        className={
-                          "tool labeled " + (recording ? "is-recording" : "")
-                        }
-                        disabled={!canRecord && !recording}
-                        onClick={record}
-                        title={
-                          !project.config?.autoInstrument
-                            ? "Recording needs the automatic integration"
-                            : "Record actions for replay checks"
-                        }
-                      >
-                        {recording ? <Square size={11} /> : <Radio size={14} />}
-                        <span>{recording ? "Stop & save" : "Record"}</span>
-                      </button>
-                      <button
-                        className={"tool labeled " + (compare ? "is-on" : "")}
-                        aria-pressed={compare}
-                        disabled={recording}
-                        onClick={() => {
-                          setCompare(!compare);
-                          replay();
-                        }}
-                      >
-                        <Layers3 size={14} />
-                        <span>Compare</span>
-                      </button>
-                      <button
-                        className={"tool labeled " + (details ? "is-on" : "")}
-                        aria-expanded={details}
-                        aria-controls="scene-details"
-                        onClick={() => setDetails(!details)}
-                      >
-                        <SlidersHorizontal size={14} />
-                        <span>Details</span>
-                      </button>
-                    </div>
-                    {details && (
-                      <section
-                        className="scene-details"
-                        id="scene-details"
-                        aria-label="Scene details"
-                      >
-                        <header>
-                          <h2>Details</h2>
-                          <button
-                            className="icon-button"
-                            aria-label="Close details"
-                            onClick={() => setDetails(false)}
-                          >
-                            <X size={15} />
-                          </button>
-                        </header>
-                        <label className="field">
-                          <span>
-                            Replay time{" "}
-                            <b>{paused ? fmt(time) + "s" : "Live"}</b>
-                          </span>
-                          <input
-                            type="range"
-                            min="0"
-                            max="8"
-                            step=".1"
-                            value={time}
-                            onChange={(e) => replay(Number(e.target.value))}
-                          />
-                        </label>
-                        <div className="details-row">
-                          <label className="field inline">
-                            <span>Viewpoint</span>
-                            <select
-                              value={camera}
-                              onChange={(e) =>
-                                replay(time, Number(e.target.value))
-                              }
-                            >
-                              {[0, 1, 2].map((v) => (
-                                <option key={v} value={v}>
-                                  View {v + 1}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                          <button
-                            className="ghost-button"
-                            onClick={() => replay(0, 0)}
-                          >
-                            <RotateCcw size={13} /> Reset
-                          </button>
-                          <button
-                            className="ghost-button"
-                            onClick={() =>
-                              viewport.current?.requestFullscreen?.()
-                            }
-                          >
-                            <Maximize2 size={13} /> Fullscreen
-                          </button>
-                        </div>
-                        <dl className="details-facts">
-                          <div>
-                            <dt>Live preview</dt>
-                            <dd>
-                              {telemetry
-                                ? `${telemetry.calls.toLocaleString()} draw calls · ${telemetry.triangles.toLocaleString()} triangles`
-                                : "No telemetry reported"}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt>Recorded interactions</dt>
-                            <dd>
-                              {project.config?.autoInstrument
-                                ? scenarioCount
-                                  ? `${scenarioCount} saved for replay`
-                                  : "None saved"
-                                : "Needs automatic integration"}
-                            </dd>
-                          </div>
-                          {selectedName && (
-                            <div>
-                              <dt>Selected object</dt>
-                              <dd>
-                                {selectedName}
-                                {selectedObjectInfo?.type ||
-                                selectedObjectInfo?.geometryType
-                                  ? " · " +
-                                    (selectedObjectInfo.type ||
-                                      selectedObjectInfo.geometryType)
-                                  : ""}
-                                {selectedObjectInfo?.instances
-                                  ? ` · ${selectedObjectInfo.instances} instances`
-                                  : ""}
-                              </dd>
-                            </div>
-                          )}
-                        </dl>
-                        {selectedObjectInfo?.source && (
-                          <button
-                            className="ghost-button"
-                            onClick={() =>
-                              inspectFile({ path: selectedObjectInfo.source })
-                            }
-                          >
-                            <FileCode2 size={13} /> Related source
-                          </button>
-                        )}
-                        <p className="fine-print">
-                          Live preview numbers are for orientation only. Patches
-                          are accepted from separate, uncontended measurements.
-                        </p>
-                      </section>
-                    )}
-                  </>
-                ) : (
-                  <div className="stage-empty">
-                    {view === "welcome" ? (
-                      <>
-                        <h1>Your scene goes here.</h1>
-                        <p>
-                          Connect a local Vite + Three.js project, or try one of
-                          the included examples.
-                        </p>
-                        <div className="button-row">
-                          <button
-                            className="primary-button"
-                            onClick={() => setModal("connect")}
-                          >
-                            Connect project <ArrowRight size={15} />
-                          </button>
-                          <button
-                            className="ghost-button"
-                            disabled={busy || running}
-                            onClick={() => example("warehouse")}
-                          >
-                            Try the warehouse example
-                          </button>
-                        </div>
-                      </>
-                    ) : view === "build-failed" ? (
-                      <>
-                        <TriangleAlert size={22} className="tone-error" />
-                        <h1>The preview could not be built.</h1>
-                        <p>{firstLine(run?.error || run?.phase)}</p>
-                        <div className="button-row">
-                          <button
-                            className="primary-button"
-                            disabled={busy || running}
-                            onClick={() => launch("profile")}
-                          >
-                            Try again
-                          </button>
-                          <button
-                            className="ghost-button"
-                            onClick={() => setDrawer("logs")}
-                          >
-                            View build output
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <h1>{project.name}</h1>
-                        <p>
-                          The running app appears here after a first build and
-                          baseline measurement.
-                        </p>
-                        <div className="button-row">
-                          <button
-                            className="primary-button"
-                            disabled={busy || running}
-                            onClick={() => launch("profile")}
-                          >
-                            {busy ? (
-                              <Loader2 className="spin" size={15} />
-                            ) : (
-                              <ScanLine size={15} />
-                            )}
-                            Build preview
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-              </main>
-              <aside className="rail" aria-label="Sift activity">
-                <div className="rail-status">
-                  <ol className="steps" aria-label="Progress">
-                    {steps.map((label, i) => (
-                      <li
-                        key={label}
-                        className={
-                          i === stepIndex
-                            ? "current"
-                            : i < stepIndex && stepIndex !== 0
-                              ? "done"
-                              : ""
-                        }
-                        aria-current={i === stepIndex ? "step" : undefined}
-                      >
-                        {label}
-                      </li>
-                    ))}
-                  </ol>
-                  <h2 aria-live="polite">
-                    {liveStatuses.includes(projectJob?.status) &&
-                      view !== "queued" && (
-                        <Loader2
-                          className="spin"
-                          size={15}
-                          aria-hidden="true"
-                        />
-                      )}
-                    {status.title}
-                  </h2>
-                  {status.text && <p>{status.text}</p>}
-                </div>
-                <div
-                  className="activity"
-                  aria-label="Run activity"
-                  ref={activityList}
-                >
+          <div className="page" inert={modal || drawer ? true : undefined}>
+            {phase === "work" ? (
+              projectJob ? (
+                <Loading
+                  job={projectJob}
+                  project={project}
+                  goal={mission}
+                  baselineSrc={
+                    projectJob.baseline && failedBaseline !== projectJob.id
+                      ? "/api/runs/" +
+                        projectJob.id +
+                        "/baseline/baseline-0.png"
+                      : null
+                  }
+                />
+              ) : (
+                <p className="results-empty">Finishing up…</p>
+              )
+            ) : (
+              <>
+                <div className="notes">
                   {(connectionError || data.worker?.alive === false) && (
                     <Note tone="error">
                       {connectionError
@@ -1181,240 +875,421 @@ function App() {
                     <Note tone="error">
                       This project is outside the supported Vite + Three.js
                       path.
-                      {Array.isArray(discovery.issues) &&
-                        discovery.issues.slice(0, 2).map((issue, i) => (
-                          <span key={i} className="note-line">
-                            {typeof issue === "string"
-                              ? issue
-                              : issue.message || issue.detail || issue.code}
-                          </span>
-                        ))}
                     </Note>
                   )}
-                  {view === "welcome" && (
-                    <div className="starter-list">
-                      {[
-                        [
-                          "warehouse",
-                          "Warehouse robotics",
-                          "1,600 moving objects",
-                        ],
-                        ["fleet", "Circular fleet", "800 moving objects"],
-                        ["assembly", "Assembly floor", "1,200 moving objects"],
-                      ].map(([id, title, detail]) => (
-                        <button
-                          key={id}
-                          disabled={busy || running}
-                          onClick={() => example(id)}
-                        >
-                          <span>
-                            <b>{title}</b>
-                            <small>{detail}</small>
-                          </span>
-                          <ArrowUpRight size={14} />
+                </div>
+                <section className="block" aria-labelledby="step-results">
+                  <h2 className="block-title" id="step-results">
+                    Results
+                  </h2>
+                  {dashRun ? (
+                    <Dashboard
+                      project={project}
+                      run={dashRun}
+                      runs={projectRuns}
+                      experimentId={experimentId}
+                      onExperiment={setExperimentId}
+                      onSelectRun={(id) => {
+                        setRunId(id);
+                        setExperimentId(null);
+                      }}
+                      busy={busy}
+                      provider={data.provider}
+                      onScene={() =>
+                        sceneRef.current?.scrollIntoView({ behavior: "smooth" })
+                      }
+                      onCompare={() => {
+                        setCompare(true);
+                        sceneRef.current?.scrollIntoView({
+                          behavior: "smooth",
+                        });
+                      }}
+                      onApply={() => setModal("apply")}
+                      onLogs={() => setDrawer("logs")}
+                    />
+                  ) : (
+                    <div className="results-empty">
+                      <p>
+                        {run?.error || run?.phase
+                          ? firstLine(run.error || run.phase)
+                          : "Sift has no measurements for this project yet."}
+                      </p>
+                      <div className="button-row">
+                        <button className="primary-button" onClick={goHero}>
+                          Back to start
                         </button>
-                      ))}
-                    </div>
-                  )}
-                  {activityRun && (
-                    <div className="activity-run">
-                      <div className="activity-heading">
-                        <span>
-                          {activityRun.kind === "optimize"
-                            ? "Improvement run"
-                            : activityRun.kind === "profile"
-                              ? "Build & measure"
-                              : "Verifier test"}
-                          {" · "}
-                          {new Date(activityRun.createdAt).toLocaleTimeString(
-                            [],
-                            {
-                              hour: "numeric",
-                              minute: "2-digit",
-                            },
-                          )}
-                        </span>
-                        {projectRuns.length > 1 && (
-                          <button onClick={() => setDrawer("history")}>
-                            History
+                        {run && (
+                          <button
+                            className="secondary-button"
+                            onClick={() => setDrawer("logs")}
+                          >
+                            View log
                           </button>
                         )}
                       </div>
-                      {activityRun.mission && (
-                        <p className="activity-goal">{activityRun.mission}</p>
-                      )}
-                      <ol className="events">
-                        {activityEvents.map((event, i) => (
-                          <li key={i} className={"event " + event.type}>
-                            <i aria-hidden="true" />
-                            <p>{event.message}</p>
-                            <time dateTime={event.at}>
-                              {new Date(event.at).toLocaleTimeString([], {
-                                hour: "numeric",
-                                minute: "2-digit",
-                                second: "2-digit",
-                              })}
-                            </time>
-                          </li>
-                        ))}
-                        {!activityEvents.length && (
-                          <li className="event">
-                            <i aria-hidden="true" />
-                            <p>{activityRun.phase || "Waiting to start"}</p>
-                          </li>
-                        )}
-                      </ol>
-                      {projectJob && (
-                        <button
-                          className="link-button"
-                          onClick={() => setDrawer("logs")}
-                        >
-                          Full log <ChevronRight size={12} />
-                        </button>
-                      )}
                     </div>
                   )}
-                  {view === "ready" && baseline && run?.kind === "profile" && (
-                    <div className="finding">
-                      <span className="eyebrow">Baseline on this machine</span>
-                      <dl>
-                        <div>
-                          <dt>Draw calls</dt>
-                          <dd>{baseline.calls?.toLocaleString() ?? "—"}</dd>
-                        </div>
-                        <div>
-                          <dt>CPU submit p95</dt>
-                          <dd>{fmt(baseline.submitP95)} ms</dd>
-                        </div>
-                        <div>
-                          <dt>Frame p95</dt>
-                          <dd>{fmt(baseline.frameP95)} ms</dd>
-                        </div>
-                      </dl>
-                      <button
-                        className="link-button"
-                        onClick={() => setDrawer("measurements")}
-                      >
-                        Conditions & all measurements <ChevronRight size={12} />
-                      </button>
-                    </div>
-                  )}
-                  {(view === "attention" || view === "build-failed") && (
-                    <Note tone="error">
-                      {firstLine(run?.error || run?.phase)}
-                      <button
-                        className="link-button"
-                        onClick={() => setDrawer("logs")}
-                      >
-                        Open error details <ChevronRight size={12} />
-                      </button>
-                    </Note>
-                  )}
-                  {resultRun && (
-                    <ResultCard
-                      run={resultRun}
-                      experiment={resultExperiment}
-                      verdict={verdict}
-                      acceptedCount={accepted.length}
-                      isWorkspace={resultIsWorkspace}
-                      compare={compare}
-                      busy={busy}
-                      project={project}
-                      onCompare={() => {
-                        setCompare(!compare);
-                        replay();
-                      }}
-                      onCode={() => openResult("experiment")}
-                      onEvidence={() => openResult("evidence")}
-                      onLogs={() => setDrawer("logs")}
-                      onApply={() => setModal("apply")}
-                      onShowWorkspaceRun={() => {
-                        setRunId(project.lastAcceptedRun);
-                        setExperimentId(null);
-                      }}
-                    />
-                  )}
-                </div>
-                <form
-                  className="composer"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    if (!running && !busy) launch("optimize");
-                  }}
+                </section>
+                <section
+                  className="block"
+                  aria-labelledby="step-scene"
+                  ref={sceneRef}
                 >
-                  <label htmlFor="earl-mission">What feels slow?</label>
-                  <textarea
-                    id="earl-mission"
-                    rows={3}
-                    placeholder="It stutters when more robots are on screen. Keep it looking and behaving the same."
-                    value={mission}
-                    maxLength={4000}
-                    onChange={(e) => updateMission(e.target.value)}
-                    disabled={running || busy || !project}
-                    onKeyDown={(e) => {
-                      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                        e.preventDefault();
-                        if (!running && !busy) launch("optimize");
-                      }
-                    }}
-                  />
-                  {project && !data.provider.configured && !running && (
-                    <p className="composer-note">
-                      Improvements need a model connection.{" "}
-                      <button
-                        type="button"
-                        onClick={() => setModal("settings")}
-                      >
-                        Set up model
-                      </button>
+                  <h2 className="block-title" id="step-scene">
+                    Scene
+                  </h2>
+                  <div className="status-line" aria-live="polite">
+                    <p>
+                      <b>{status.title}</b>
+                      {status.text ? " · " + status.text : ""}
                     </p>
-                  )}
-                  <div className="composer-actions">
-                    {projectJob ? (
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        disabled={busy}
-                        onClick={() =>
-                          act(() => api("/stop", { runId: projectJob.id }))
-                        }
-                      >
-                        <Square size={11} /> Stop
-                      </button>
-                    ) : (
-                      <label className="attempts">
-                        <span className="visually-hidden">Attempt limit</span>
-                        <select
-                          value={count}
-                          onChange={(e) => setCount(Number(e.target.value))}
-                          disabled={running}
-                        >
-                          {[1, 2, 3, 5].map((n) => (
-                            <option key={n} value={n}>
-                              {n} attempt{n === 1 ? "" : "s"}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    )}
-                    <button
-                      className="primary-button"
-                      type="submit"
-                      disabled={running || busy || (project && !project.built)}
-                      title={
-                        project && !project.built
-                          ? "Build a preview first"
-                          : undefined
-                      }
-                    >
-                      {busy ? <Loader2 className="spin" size={15} /> : null}
-                      {project ? "Improve performance" : "Connect a project"}
-                    </button>
                   </div>
-                </form>
-              </aside>
-            </div>
-          )}
+                  <main
+                    className={"stage " + (compare ? "is-comparing" : "")}
+                    ref={viewport}
+                    aria-label="Project scene"
+                  >
+                    {view === "elsewhere" ? (
+                      <div className="stage-paused">
+                        {showBaselineImage && (
+                          <img
+                            src={
+                              "/api/runs/" +
+                              projectJob.id +
+                              "/baseline/baseline-0.png"
+                            }
+                            alt="Baseline frame captured for this run"
+                            onError={() => setFailedBaseline(projectJob.id)}
+                          />
+                        )}
+                        <div className="stage-badge">
+                          <Pause size={12} aria-hidden="true" />
+                          {view === "queued"
+                            ? "Queued · preview paused"
+                            : view === "elsewhere"
+                              ? "Paused while another project is measured"
+                              : "Paused for measurement"}
+                        </div>
+                        {!showBaselineImage && (
+                          <div className="stage-message">
+                            <Loader2
+                              className="spin"
+                              size={20}
+                              aria-hidden="true"
+                            />
+                            <p>
+                              {view === "queued"
+                                ? "Waiting for the local worker."
+                                : view === "elsewhere"
+                                  ? "The live preview is off so measurements stay uncontended."
+                                  : "Building the project. The live preview is off while Sift measures."}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ) : project?.built ? (
+                      <>
+                        <div className="frames">
+                          <figure className="frame">
+                            <iframe
+                              sandbox="allow-scripts"
+                              ref={preview}
+                              key={
+                                project.id +
+                                ":" +
+                                (project.lastAcceptedExperiment || "initial")
+                              }
+                              src={"/preview/" + project.id + "/index.html"}
+                              title="Current project scene"
+                              onLoad={() => {
+                                if (paused) replay();
+                                preview.current?.contentWindow?.postMessage(
+                                  { type: "frameshift:objects" },
+                                  "*",
+                                );
+                              }}
+                            />
+                            {compare && (
+                              <figcaption>
+                                {project.lastAcceptedExperiment
+                                  ? "With accepted changes"
+                                  : "Current workspace"}
+                              </figcaption>
+                            )}
+                          </figure>
+                          {compare && (
+                            <figure className="frame">
+                              <iframe
+                                sandbox="allow-scripts"
+                                ref={reference}
+                                src={"/baseline/" + project.id + "/index.html"}
+                                title="Original project scene"
+                                onLoad={() => replay()}
+                              />
+                              <figcaption>Original</figcaption>
+                            </figure>
+                          )}
+                        </div>
+                        {recording && (
+                          <div className="stage-badge recording" role="status">
+                            <i aria-hidden="true" />
+                            Recording · {recorded.length} action
+                            {recorded.length === 1 ? "" : "s"}
+                          </div>
+                        )}
+                        {selectedName && !recording && (
+                          <div className="selection-chip">
+                            <Box size={12} aria-hidden="true" />
+                            <span>{selectedName}</span>
+                            <button
+                              aria-label="Clear object selection"
+                              onClick={() => {
+                                setSelectedObject(null);
+                                send({ type: "frameshift:select", id: null });
+                              }}
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        )}
+                        <div
+                          className="scene-toolbar"
+                          role="toolbar"
+                          aria-label="Scene"
+                        >
+                          <button
+                            className="tool"
+                            aria-label={paused ? "Resume scene" : "Pause scene"}
+                            title={paused ? "Resume" : "Pause"}
+                            onClick={pause}
+                          >
+                            {paused ? <Play size={15} /> : <Pause size={15} />}
+                          </button>
+                          <button
+                            className={
+                              "tool labeled " +
+                              (recording ? "is-recording" : "")
+                            }
+                            disabled={!canRecord && !recording}
+                            onClick={record}
+                            title={
+                              !project.config?.autoInstrument
+                                ? "Recording needs the automatic integration"
+                                : "Record actions for replay checks"
+                            }
+                          >
+                            {recording ? (
+                              <Square size={11} />
+                            ) : (
+                              <Radio size={14} />
+                            )}
+                            <span>{recording ? "Stop & save" : "Record"}</span>
+                          </button>
+                          <button
+                            className={
+                              "tool labeled " + (compare ? "is-on" : "")
+                            }
+                            aria-pressed={compare}
+                            disabled={recording}
+                            onClick={() => {
+                              setCompare(!compare);
+                              replay();
+                            }}
+                          >
+                            <Layers3 size={14} />
+                            <span>Compare</span>
+                          </button>
+                          <button
+                            className={
+                              "tool labeled " + (details ? "is-on" : "")
+                            }
+                            aria-expanded={details}
+                            aria-controls="scene-details"
+                            onClick={() => setDetails(!details)}
+                          >
+                            <SlidersHorizontal size={14} />
+                            <span>Details</span>
+                          </button>
+                        </div>
+                        {details && (
+                          <section
+                            className="scene-details"
+                            id="scene-details"
+                            aria-label="Scene details"
+                          >
+                            <header>
+                              <h2>Details</h2>
+                              <button
+                                className="icon-button"
+                                aria-label="Close details"
+                                onClick={() => setDetails(false)}
+                              >
+                                <X size={15} />
+                              </button>
+                            </header>
+                            <label className="field">
+                              <span>
+                                Replay time{" "}
+                                <b>{paused ? fmt(time) + "s" : "Live"}</b>
+                              </span>
+                              <input
+                                type="range"
+                                min="0"
+                                max="8"
+                                step=".1"
+                                value={time}
+                                onChange={(e) => replay(Number(e.target.value))}
+                              />
+                            </label>
+                            <div className="details-row">
+                              <label className="field inline">
+                                <span>Viewpoint</span>
+                                <select
+                                  value={camera}
+                                  onChange={(e) =>
+                                    replay(time, Number(e.target.value))
+                                  }
+                                >
+                                  {[0, 1, 2].map((v) => (
+                                    <option key={v} value={v}>
+                                      View {v + 1}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                              <button
+                                className="ghost-button"
+                                onClick={() => replay(0, 0)}
+                              >
+                                <RotateCcw size={13} /> Reset
+                              </button>
+                              <button
+                                className="ghost-button"
+                                onClick={() =>
+                                  viewport.current?.requestFullscreen?.()
+                                }
+                              >
+                                <Maximize2 size={13} /> Fullscreen
+                              </button>
+                            </div>
+                            <dl className="details-facts">
+                              <div>
+                                <dt>Live preview</dt>
+                                <dd>
+                                  {telemetry
+                                    ? `${telemetry.calls.toLocaleString()} draw calls · ${telemetry.triangles.toLocaleString()} triangles`
+                                    : "No telemetry reported"}
+                                </dd>
+                              </div>
+                              <div>
+                                <dt>Recorded interactions</dt>
+                                <dd>
+                                  {project.config?.autoInstrument
+                                    ? scenarioCount
+                                      ? `${scenarioCount} saved for replay`
+                                      : "None saved"
+                                    : "Needs automatic integration"}
+                                </dd>
+                              </div>
+                              {selectedName && (
+                                <div>
+                                  <dt>Selected object</dt>
+                                  <dd>
+                                    {selectedName}
+                                    {selectedObjectInfo?.type ||
+                                    selectedObjectInfo?.geometryType
+                                      ? " · " +
+                                        (selectedObjectInfo.type ||
+                                          selectedObjectInfo.geometryType)
+                                      : ""}
+                                    {selectedObjectInfo?.instances
+                                      ? ` · ${selectedObjectInfo.instances} instances`
+                                      : ""}
+                                  </dd>
+                                </div>
+                              )}
+                            </dl>
+                            {selectedObjectInfo?.source && (
+                              <button
+                                className="ghost-button"
+                                onClick={() =>
+                                  inspectFile({
+                                    path: selectedObjectInfo.source,
+                                  })
+                                }
+                              >
+                                <FileCode2 size={13} /> Related source
+                              </button>
+                            )}
+                            <p className="fine-print">
+                              Live preview numbers are for orientation only.
+                              Patches are accepted from separate, uncontended
+                              measurements.
+                            </p>
+                          </section>
+                        )}
+                      </>
+                    ) : (
+                      <div className="stage-empty">
+                        {view === "welcome" ? (
+                          <>
+                            <h1>Your scene appears here.</h1>
+                            <p>
+                              Add a project above. Sift builds it and shows the
+                              running app in this space.
+                            </p>
+                          </>
+                        ) : view === "build-failed" ? (
+                          <>
+                            <TriangleAlert size={22} className="tone-error" />
+                            <h1>The preview could not be built.</h1>
+                            <p>{firstLine(run?.error || run?.phase)}</p>
+                            <div className="button-row">
+                              <button
+                                className="primary-button"
+                                disabled={busy || running}
+                                onClick={() => launch("profile")}
+                              >
+                                Try again
+                              </button>
+                              <button
+                                className="ghost-button"
+                                onClick={() => setDrawer("logs")}
+                              >
+                                View build output
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <h1>{project.name}</h1>
+                            <p>
+                              The running app appears here after a first build
+                              and baseline measurement.
+                            </p>
+                            <div className="button-row">
+                              <button
+                                className="primary-button"
+                                disabled={busy || running}
+                                onClick={() => launch("profile")}
+                              >
+                                {busy ? (
+                                  <Loader2 className="spin" size={15} />
+                                ) : (
+                                  <ScanLine size={15} />
+                                )}
+                                Build preview
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </main>
+                </section>
+              </>
+            )}
+          </div>
         </>
       )}
       {notice && (
@@ -1436,7 +1311,6 @@ function App() {
             aria-modal="true"
             aria-label={
               {
-                connect: "Connect project",
                 settings: "Model settings",
                 help: "Help",
                 apply: "Apply accepted changes",
@@ -1453,13 +1327,7 @@ function App() {
             >
               <X size={18} />
             </button>
-            {modal === "connect" ? (
-              <Connect
-                busy={busy}
-                onExample={example}
-                onConnect={connectProject}
-              />
-            ) : modal === "settings" ? (
+            {modal === "settings" ? (
               <Settings
                 provider={data.provider}
                 busy={busy}
@@ -1887,201 +1755,6 @@ function Menu({ label, hideLabel, icon: Icon, items }) {
     </div>
   );
 }
-function ResultCard({
-  run,
-  experiment,
-  verdict,
-  acceptedCount,
-  isWorkspace,
-  compare,
-  busy,
-  project,
-  onCompare,
-  onCode,
-  onEvidence,
-  onLogs,
-  onApply,
-  onShowWorkspaceRun,
-}) {
-  const before = experiment?.reference,
-    after = experiment?.candidate;
-  const rows = before
-    ? [
-        ["Draw calls", "calls", 0, ""],
-        ["CPU submit p95", "submitP95", 1, " ms"],
-        ["Frame p95", "frameP95", 1, " ms"],
-      ]
-    : [];
-  const value = (summary, key, digits, unit) =>
-    !Number.isFinite(summary?.[key])
-      ? "—"
-      : (digits
-          ? summary[key].toFixed(digits)
-          : summary[key].toLocaleString()) + unit;
-  const good = verdict === "accepted";
-  return (
-    <section
-      className={"result-card " + (good ? "is-accepted" : "is-" + verdict)}
-      aria-label="Run result"
-    >
-      <header>
-        <span className={"verdict " + verdict}>
-          {good ? <Check size={13} /> : <X size={13} />}
-          {
-            {
-              accepted:
-                acceptedCount > 1
-                  ? `${acceptedCount} changes accepted`
-                  : "Accepted",
-              rejected: "Rejected",
-              inconclusive: "Inconclusive",
-              failed: "Failed",
-              stopped: "Stopped",
-              interrupted: "Interrupted",
-              "no-attempt": "No candidate",
-            }[verdict]
-          }
-        </span>
-        {run.metric && (
-          <small>
-            Target:{" "}
-            {run.metric === "drawCalls" ? "draw calls" : "CPU submission p95"}
-          </small>
-        )}
-      </header>
-      {experiment?.title && <h3>{experiment.title}</h3>}
-      {!good && (
-        <p className="result-reason">
-          {experiment?.reason ||
-            run.error ||
-            run.phase ||
-            "No candidate passed the checks."}{" "}
-          Your project is unchanged.
-        </p>
-      )}
-      {rows.length > 0 && (
-        <table className="result-table">
-          <thead>
-            <tr>
-              <th scope="col">
-                <span className="visually-hidden">Measurement</span>
-              </th>
-              <th scope="col">Before</th>
-              <th scope="col">{good ? "After" : "Candidate"}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(([label, key, digits, unit]) => (
-              <tr key={key}>
-                <th scope="row">{label}</th>
-                <td>{value(before, key, digits, unit)}</td>
-                <td>{value(after, key, digits, unit)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-      {good && !isWorkspace && project?.lastAcceptedRun && (
-        <p className="result-reason">
-          A later accepted change is now the current workspace.{" "}
-          <button className="link-button" onClick={onShowWorkspaceRun}>
-            Show that run
-          </button>
-        </p>
-      )}
-      {!good &&
-        project?.lastAcceptedRun &&
-        project.lastAcceptedRun !== run.id && (
-          <p className="result-reason">
-            An earlier accepted change is still in your workspace.{" "}
-            <button className="link-button" onClick={onShowWorkspaceRun}>
-              Review it
-            </button>
-          </p>
-        )}
-      <div className="result-actions">
-        {good && isWorkspace && (
-          <button
-            className={"secondary-button " + (compare ? "is-on" : "")}
-            aria-pressed={compare}
-            onClick={onCompare}
-          >
-            <Layers3 size={14} /> Compare
-          </button>
-        )}
-        {experiment && (
-          <button className="secondary-button" onClick={onCode}>
-            <Code2 size={14} /> View code
-          </button>
-        )}
-        {good && isWorkspace && (
-          <button className="primary-button" disabled={busy} onClick={onApply}>
-            Apply <ArrowRight size={14} />
-          </button>
-        )}
-      </div>
-      <details className="result-more">
-        <summary>Evidence, receipt & logs</summary>
-        <div>
-          {experiment?.guards && (
-            <button className="link-button" onClick={onEvidence}>
-              Verification images & checks <ChevronRight size={12} />
-            </button>
-          )}
-          {experiment?.verifier && (
-            <a
-              className="link-button"
-              href={
-                "/api/runs/" +
-                run.id +
-                "/experiments/" +
-                experiment.id +
-                "/verdict"
-              }
-              target="_blank"
-              rel="noreferrer"
-            >
-              Verifier receipt <ArrowUpRight size={12} />
-            </a>
-          )}
-          <button className="link-button" onClick={onLogs}>
-            Full run log <ChevronRight size={12} />
-          </button>
-          <a
-            className="link-button"
-            href={"/api/runs/" + run.id + "/report"}
-            download
-          >
-            Download run report <ArrowDownToLine size={12} />
-          </a>
-          {good && isWorkspace && (
-            <a
-              className="link-button"
-              href={"/api/projects/" + project.id + "/patch"}
-              download
-            >
-              Export patch <ArrowDownToLine size={12} />
-            </a>
-          )}
-          {run.experiments?.length > 1 && (
-            <ol className="attempt-list">
-              {run.experiments.map((e, i) => (
-                <li key={e.id}>
-                  <span>{i + 1}.</span> {e.title || "Untitled attempt"}{" "}
-                  <Status value={e.status} />
-                </li>
-              ))}
-            </ol>
-          )}
-          <p className="fine-print">
-            Checks cover the configured workload and recorded interactions. They
-            do not prove every possible application state.
-          </p>
-        </div>
-      </details>
-    </section>
-  );
-}
 function Fact({ label, value }) {
   return (
     <div className="fact">
@@ -2221,139 +1894,6 @@ function WorkerStatus({ worker }) {
         </small>
       </div>
     </div>
-  );
-}
-function Connect({ onConnect, onExample, busy }) {
-  const [path, setPath] = useState(""),
-    [trusted, setTrusted] = useState(false),
-    [discovery, setDiscovery] = useState(null),
-    [scanning, setScanning] = useState(false),
-    [error, setError] = useState("");
-  async function scan() {
-    setScanning(true);
-    setError("");
-    try {
-      setDiscovery(await api("/inspect", { path }));
-    } catch (e) {
-      setError(e.message);
-      setDiscovery(null);
-    } finally {
-      setScanning(false);
-    }
-  }
-  return (
-    <>
-      <span className="dialog-symbol">
-        <Box size={25} strokeWidth={1.4} />
-      </span>
-      <span className="overline">CONNECT YOUR PROJECT</span>
-      <h2>Open your project.</h2>
-      <p>
-        Point Sift at a local project. It will inspect the framework, entry
-        points, dependencies, and build setup before connecting. Vite + Three.js
-        projects are the supported starting point. No ZIP or adapter required.
-      </p>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          onConnect({ path, trusted });
-        }}
-      >
-        <label>
-          Project folder
-          <div className="path-field">
-            <input
-              placeholder="/path/to/your/three-scene"
-              value={path}
-              onChange={(e) => {
-                setPath(e.target.value);
-                setDiscovery(null);
-              }}
-              required
-            />
-            <button type="button" disabled={!path || scanning} onClick={scan}>
-              {scanning ? (
-                <Loader2 size={14} className="spin" />
-              ) : (
-                <ScanLine size={14} />
-              )}{" "}
-              Inspect
-            </button>
-          </div>
-        </label>
-        {error && (
-          <div className="problem">
-            <TriangleAlert size={14} />
-            {error}
-          </div>
-        )}
-        {discovery && (
-          <div className="inspected-project">
-            <header>
-              <Check size={15} />
-              <b>{discovery.name || "Project inspected"}</b>
-            </header>
-            <Fact label="Framework" value={discovery.framework} />
-            <Fact
-              label="Three.js"
-              value={discovery.threeVersion || "Not detected"}
-            />
-            <Fact
-              label="Entry points"
-              value={discovery.entryPoints?.join(", ") || "Not detected"}
-            />
-            {discovery.issues?.map((issue, i) => (
-              <p key={i}>
-                {typeof issue === "string"
-                  ? issue
-                  : issue.message || issue.detail}
-              </p>
-            ))}
-          </div>
-        )}
-        <label className="checkbox">
-          <input
-            type="checkbox"
-            checked={trusted}
-            onChange={(e) => setTrusted(e.target.checked)}
-          />
-          <span>
-            I trust this project's code and build setup. Only connect projects I
-            am allowed to run.
-          </span>
-        </label>
-        <button
-          type="submit"
-          className="primary-button full"
-          disabled={
-            !trusted || busy || scanning || discovery?.supported === false
-          }
-        >
-          Connect project
-          <ArrowRight size={15} />
-        </button>
-      </form>
-      <div className="dialog-divider">OR START WITH A WORKLOAD</div>
-      {[
-        ["warehouse", "Warehouse robotics", "1,600 moving objects"],
-        ["fleet", "Circular fleet", "800 moving objects"],
-        ["assembly", "Assembly floor", "1,200 moving objects"],
-      ].map(([id, title, detail]) => (
-        <button
-          className="example-option"
-          key={id}
-          disabled={busy}
-          onClick={() => onExample(id)}
-        >
-          <Box size={17} />
-          <span>
-            <b>{title}</b>
-            <small>{detail}</small>
-          </span>
-          <ArrowUpRight size={14} />
-        </button>
-      ))}
-    </>
   );
 }
 function Settings({ provider, onSave, busy }) {

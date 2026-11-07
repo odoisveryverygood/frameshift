@@ -143,13 +143,6 @@ function Dial({ percent, tone }) {
         role="img"
         aria-label={`Change: ${shownText} percent`}
       >
-        <defs>
-          <linearGradient id="dial-grad" x1="0" y1="1" x2="1" y2="0">
-            <stop offset="0" stopColor="#ff4f7a" />
-            <stop offset="0.55" stopColor="#b03adf" />
-            <stop offset="1" stopColor="#6c88ff" />
-          </linearGradient>
-        </defs>
         <path
           d={arc(88, start, start + sweep)}
           className="dial-track"
@@ -241,12 +234,6 @@ export default function Dashboard({
   onLogs,
 }) {
   const [tab, setTab] = useState("overview");
-  const nav = useRef(null);
-  const [pill, setPill] = useState(0);
-  useEffect(() => {
-    const active = nav.current?.querySelector('[aria-current="page"]');
-    if (active) setPill(active.offsetTop);
-  }, [tab]);
   const experiments = run.experiments || [];
   const accepted = experiments.filter((e) => e.status === "accepted");
   const exp =
@@ -292,13 +279,7 @@ export default function Dashboard({
   const cardProps = { before, after };
   return (
     <div className="dash" inert={inert}>
-      <div className="dash-glow" aria-hidden="true" />
-      <nav className="dash-nav" aria-label="Result categories" ref={nav}>
-        <span
-          className="dash-pill"
-          style={{ transform: `translateY(${pill}px)` }}
-          aria-hidden="true"
-        />
+      <nav className="dash-nav" aria-label="Result categories">
         {categories.map(([id, label, Icon]) => (
           <button
             key={id}

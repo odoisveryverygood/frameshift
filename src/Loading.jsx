@@ -1,5 +1,4 @@
 import React from "react";
-import { ChevronRight, Square } from "lucide-react";
 import "./loading.css";
 
 const stages = [
@@ -67,16 +66,7 @@ function Agent({ index, duration, delay }) {
 
 // Shown while a run is live. The agents are an illustration of the work; the
 // document rows, goal, step and log lines are the run's real data.
-export default function Loading({
-  job,
-  project,
-  baselineSrc,
-  onStop,
-  onLog,
-  stopping,
-  inert,
-  goal,
-}) {
+export default function Loading({ job, project, baselineSrc, inert, goal }) {
   const files = (
     project?.discovery?.files?.filter((f) => f.usesThree).length
       ? project.discovery.files.filter((f) => f.usesThree)
@@ -106,11 +96,6 @@ export default function Loading({
   const events = (job.events || []).slice(-4);
   return (
     <section className="loading" aria-label="Sift is working" inert={inert}>
-      <div className="loading-water" aria-hidden="true">
-        <i />
-        <i />
-        <i />
-      </div>
       <div className="loading-inner">
         <div className="loading-copy">
           <span className="eyebrow">
@@ -203,18 +188,6 @@ export default function Loading({
               </li>
             ))}
           </ul>
-          <div className="loading-actions">
-            <button
-              className="secondary-button"
-              disabled={stopping}
-              onClick={onStop}
-            >
-              <Square size={11} /> Stop
-            </button>
-            <button className="link-button" onClick={onLog}>
-              Full log <ChevronRight size={12} />
-            </button>
-          </div>
         </aside>
       </div>
     </section>
