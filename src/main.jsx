@@ -63,12 +63,17 @@ function App() {
   const [data, setData] = useState({ projects: [], runs: [], provider: {} }),
     [projectId, setProjectId] = useState(() => {
       try {
-        return localStorage.getItem("frameshift:project") || "";
+        return (
+          new URLSearchParams(location.search).get("project") ||
+          localStorage.getItem("frameshift:project") ||
+          ""
+        );
       } catch {
         return "";
       }
     }),
     [stage, setStage] = useState("diagnose"),
+    [mission, setMission] = useState(""),
     [runId, setRunId] = useState(null),
     [experimentId, setExperimentId] = useState(null),
     [modal, setModal] = useState(null),
@@ -87,7 +92,8 @@ function App() {
     [recording, setRecording] = useState(false),
     [recorded, setRecorded] = useState([]),
     [source, setSource] = useState(null),
-    [frameCapture, setFrameCapture] = useState(null);
+    [frameCapture, setFrameCapture] = useState(null),
+    [failedBaseline, setFailedBaseline] = useState(null);
   const preview = useRef(null),
     reference = useRef(null),
     viewport = useRef(null),
@@ -133,6 +139,18 @@ function App() {
   const lastAccepted = latestAcceptedRun?.experiments?.findLast(
     (e) => e.status === "accepted",
   );
+  // The Review summary is pinned to one accepted candidate. Historical drawer
+  // selection stays independent so inspecting a later rejection cannot change it.
+  const reviewRun = accepted.length ? run : latestAcceptedRun;
+  const reviewExperiment = accepted.at(-1) || lastAccepted;
+  const reviewBaseline = reviewExperiment?.reference || reviewRun?.baseline;
+  const reviewBest = reviewExperiment?.candidate || reviewRun?.best;
+  function openReviewDrawer(kind) {
+    if (!reviewRun || !reviewExperiment) return;
+    setRunId(reviewRun.id);
+    setExperimentId(reviewExperiment.id);
+    setDrawer(kind);
+  }
   const baseline = run?.baseline,
     best = run?.best || baseline;
   const discovery = project?.discovery || {};
@@ -148,6 +166,9 @@ function App() {
     if (!project) return;
     try {
       localStorage.setItem("frameshift:project", project.id);
+    } catch {}
+    try {
+      setMission(localStorage.getItem("earl:mission:" + project.id) || "");
     } catch {}
     setTelemetry(null);
     setObjects([]);
@@ -303,6 +324,11 @@ function App() {
   async function example(name) {
     await act(async () => {
       const p = await api("/examples/" + name, {});
+      if (mission.trim()) {
+        try {
+          localStorage.setItem("earl:mission:" + p.id, mission);
+        } catch {}
+      }
       chooseProject(p.id);
       setModal(null);
       if (!p.built) {
@@ -311,6 +337,14 @@ function App() {
       }
     });
   }
+  function updateMission(value) {
+    setMission(value);
+    if (project) {
+      try {
+        localStorage.setItem("earl:mission:" + project.id, value);
+      } catch {}
+    }
+  }
   async function launch(kind) {
     if (!project) return setModal("connect");
     if (kind === "optimize" && !data.provider.configured)
@@ -318,7 +352,11 @@ function App() {
     await act(async () => {
       setCompare(false);
       setExperimentId(null);
-      const r = await api("/projects/" + project.id + "/runs", { kind, count });
+      const r = await api("/projects/" + project.id + "/runs", {
+        kind,
+        count,
+        mission: mission.trim(),
+      });
       setRunId(r.id);
       setStage(kind === "optimize" ? "optimize" : "diagnose");
     });
@@ -373,13 +411,17 @@ function App() {
   const primary =
     stage === "diagnose"
       ? {
-          label: baseline ? "Profile again" : "Profile scene",
+          label: !project
+            ? "Open a local project"
+            : baseline
+              ? "Profile again"
+              : "Profile scene",
           icon: ScanLine,
           click: () => launch("profile"),
         }
       : stage === "optimize"
         ? {
-            label: "Start optimization",
+            label: "Run experiment",
             icon: Sparkles,
             click: () => launch("optimize"),
           }
@@ -401,16 +443,20 @@ function App() {
         <a
           href="#"
           className="wordmark"
-          aria-label="FrameShift home"
+          aria-label="Earl home"
           onClick={(e) => {
             e.preventDefault();
             setStage("diagnose");
           }}
         >
           <span className="wordmark-symbol">
-            <Layers3 size={23} strokeWidth={1.5} />
+            <span className="earl-mark">
+              <i />
+              <i />
+              <i />
+            </span>
           </span>
-          frameshift<span className="wordmark-dot">.</span>
+          earl<span className="wordmark-dot">.</span>
         </a>
         <span className="header-divider" />
         <div className="project-switch">
@@ -431,15 +477,15 @@ function App() {
             <span>
               {project
                 ? `${discovery.framework || "Three.js"}${discovery.threeVersion ? " · " + discovery.threeVersion : ""}`
-                : "A clearer path to a better frame"}
+                : "Your local performance engineer"}
             </span>
           </div>
           <ChevronDown size={12} />
         </div>
         <nav className="stage-nav" aria-label="Optimization stages">
           {[
-            ["diagnose", "01", "Diagnose"],
-            ["optimize", "02", "Optimize"],
+            ["diagnose", "01", "Investigate"],
+            ["optimize", "02", "Experiment"],
             ["review", "03", "Review"],
           ].map(([id, num, label]) => (
             <button
@@ -482,12 +528,12 @@ function App() {
             <div>
               <span className="overline">
                 {stage === "diagnose"
-                  ? "YOUR SCENE, UNDERSTOOD"
+                  ? "PERFORMANCE, WITH PROOF"
                   : stage === "optimize"
-                    ? "ONE CHANGE AT A TIME"
+                    ? "A HYPOTHESIS. A PATCH. A TEST."
                     : "MEASURED. THEN REVIEWED."}
               </span>
-              <h1>{project?.name || "A better frame starts here."}</h1>
+              <h1>{project?.name || "Make room for a better frame."}</h1>
             </div>
             <div className="canvas-heading-right">
               {project && (
@@ -508,34 +554,118 @@ function App() {
               </button>
             </div>
           </div>
+          <form
+            className="mission-composer"
+            onSubmit={(e) => {
+              e.preventDefault();
+              launch("optimize");
+            }}
+          >
+            <div className="mission-heading">
+              <span className="mission-avatar">e.</span>
+              <label htmlFor="earl-mission">What should Earl improve?</label>
+              <span className="mission-local">
+                <span className="tiny-dot" />{" "}
+                {project ? "Local project" : "On your machine"}
+              </span>
+            </div>
+            <textarea
+              id="earl-mission"
+              aria-label="Performance goal"
+              placeholder="This scene stutters when I add more robots. Make it smoother without changing how it works."
+              value={mission}
+              maxLength={4000}
+              onChange={(e) => updateMission(e.target.value)}
+              disabled={running || busy}
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                  e.preventDefault();
+                  if (!running && !busy) launch("optimize");
+                }
+              }}
+            />
+            <div className="mission-actions">
+              <span>
+                {running
+                  ? isThisRunActive
+                    ? "Experiment in progress · your goal is saved with this run"
+                    : "Another project is using the local worker"
+                  : project
+                    ? "Inspects source · edits a copy · verifies the result"
+                    : "Connect your project or try a real example below"}
+              </span>
+              <button
+                className="mission-submit"
+                type="submit"
+                disabled={running || busy}
+                aria-label={
+                  project
+                    ? "Run experiment"
+                    : "Connect project to run experiment"
+                }
+              >
+                {busy ? (
+                  <Loader2 className="spin" size={15} />
+                ) : (
+                  <ArrowUpRight size={18} />
+                )}
+                <span>{project ? "Run experiment" : "Connect project"}</span>
+              </button>
+            </div>
+          </form>
           <section
             className={"viewport " + (compare ? "is-comparing" : "")}
             ref={viewport}
             aria-label="Project scene"
           >
             {running ? (
-              <div className="run-cover">
-                <div className="run-orbit">
-                  <ScanLine size={27} />
+              <div
+                className={
+                  "run-cover " +
+                  (active?.baseline &&
+                  active.projectId === project?.id &&
+                  failedBaseline !== active.id
+                    ? "has-baseline"
+                    : "")
+                }
+              >
+                {active?.baseline &&
+                  active.projectId === project?.id &&
+                  failedBaseline !== active.id && (
+                    <img
+                      className="running-baseline"
+                      src={
+                        "/api/runs/" + active.id + "/baseline/baseline-0.png"
+                      }
+                      alt="Captured baseline of this project before optimization"
+                      onError={() => setFailedBaseline(active.id)}
+                    />
+                  )}
+                <div className="run-status">
+                  <div className="run-orbit">
+                    <ScanLine size={27} />
+                  </div>
+                  <span className="overline">
+                    {active?.status === "queued"
+                      ? "QUEUED FOR THE LOCAL WORKER"
+                      : "INDEPENDENT WORKER / " + active?.kind?.toUpperCase()}
+                  </span>
+                  <h2>{active?.phase || "Preparing your project"}</h2>
+                  <p>
+                    {active?.status === "queued"
+                      ? "The job is saved and will start when the worker is available."
+                      : active?.baseline
+                        ? "Baseline capture · live rendering is paused for uncontended measurements."
+                        : "The scene is paused while the worker builds, measures, and checks the project."}
+                  </p>
+                  <button
+                    className="subtle-button"
+                    onClick={() => setDrawer("logs")}
+                  >
+                    <Terminal size={13} /> View run details
+                    <ArrowRight size={13} />
+                  </button>
                 </div>
-                <span className="overline">
-                  {active?.status === "queued"
-                    ? "QUEUED FOR THE LOCAL WORKER"
-                    : "INDEPENDENT WORKER / " + active?.kind?.toUpperCase()}
-                </span>
-                <h2>{active?.phase || "Preparing your project"}</h2>
-                <p>
-                  {active?.status === "queued"
-                    ? "The job is saved and will start when the worker is available."
-                    : "The scene is paused while the worker builds, measures, and checks the project."}
-                </p>
-                <button
-                  className="subtle-button"
-                  onClick={() => setDrawer("logs")}
-                >
-                  <Terminal size={13} /> View run details
-                  <ArrowRight size={13} />
-                </button>
               </div>
             ) : project?.built ? (
               <>
@@ -604,39 +734,62 @@ function App() {
               </>
             ) : (
               <div className="empty-canvas">
-                <div className="empty-object">
-                  <span />
-                  <span />
-                  <span />
-                  <Box size={64} strokeWidth={0.75} />
+                <div className="empty-editorial">
+                  <span className="overline">
+                    {project
+                      ? "PROJECT CONNECTED / READY TO INVESTIGATE"
+                      : "YOUR CODE. A LITTLE MORE POSSIBILITY."}
+                  </span>
+                  <h2>
+                    {project ? "Your scene." : "Less work."}
+                    <br />
+                    <em>{project ? "Better frames." : "Better worlds."}</em>
+                  </h2>
+                  <p>
+                    {project ? (
+                      "Build a measured baseline, or give Earl a goal. Your running application will appear here."
+                    ) : (
+                      <>
+                        Earl investigates slow 3D applications,
+                        <br />
+                        experiments on their code, and checks the result.
+                      </>
+                    )}
+                  </p>
+                  <div className="empty-actions">
+                    <button
+                      className="primary-button"
+                      disabled={busy || running}
+                      onClick={() =>
+                        project ? launch("profile") : setModal("connect")
+                      }
+                    >
+                      {project
+                        ? "Build & profile scene"
+                        : "Open a local project"}{" "}
+                      <ArrowRight size={15} />
+                    </button>
+                    <button
+                      className="subtle-button"
+                      disabled={busy || running}
+                      onClick={() => example("warehouse")}
+                    >
+                      Try a robotics example <ArrowUpRight size={13} />
+                    </button>
+                  </div>
+                  <span className="compatibility-label">
+                    VITE + THREE.JS · RUNS ON YOUR MACHINE
+                  </span>
                 </div>
-                <span className="overline">ROOM TO DO MORE</span>
-                <h2>
-                  Your scene.
-                  <br />
-                  <em>A little more possibility.</em>
-                </h2>
-                <p>
-                  Connect a Three.js project. Find the expensive work.
-                  <br />
-                  Keep the improvements you can prove.
-                </p>
-                <button
-                  className="primary-button"
-                  disabled={busy}
-                  onClick={() => setModal("connect")}
-                >
-                  Connect a project
-                  <ArrowRight size={15} />
-                </button>
-                <button
-                  className="subtle-button"
-                  disabled={busy}
-                  onClick={() => example("warehouse")}
-                >
-                  Explore the robotics scene
-                  <ArrowUpRight size={13} />
-                </button>
+                <div className="earl-sculpture" aria-hidden="true">
+                  <div className="sculpture-orbit" />
+                  <div className="sculpture-column column-one" />
+                  <div className="sculpture-column column-two" />
+                  <div className="sculpture-column column-three" />
+                  <span className="sculpture-caption">
+                    LESS OVERHEAD. MORE POSSIBILITY.
+                  </span>
+                </div>
               </div>
             )}
             {project?.built && !running && (
@@ -780,9 +933,9 @@ function App() {
           <div className="panel-stage">
             <span className="overline">
               {stage === "diagnose"
-                ? "01 / DIAGNOSE"
+                ? "01 / INVESTIGATE"
                 : stage === "optimize"
-                  ? "02 / OPTIMIZE"
+                  ? "02 / EXPERIMENT"
                   : "03 / REVIEW"}
             </span>
             <button
@@ -801,14 +954,14 @@ function App() {
                   <ScanLine size={23} strokeWidth={1.4} />
                 </span>
                 <h2>
-                  Understand
+                  A clear place
                   <br />
-                  the frame.
+                  to start.
                 </h2>
                 <p>
                   {project
                     ? "Start with the project and the work it actually asks the browser to do."
-                    : "A local project, a measured baseline, and a useful place to start."}
+                    : "Start with your own code or explore a working example. Earl measures before it changes anything."}
                 </p>
               </div>
               {connectionError && (
@@ -999,15 +1152,21 @@ function App() {
                   <Sparkles size={23} strokeWidth={1.4} />
                 </span>
                 <h2>
-                  A considered
+                  One experiment.
                   <br />
-                  change.
+                  Real evidence.
                 </h2>
                 <p>
                   Read the source. Form a hypothesis. Keep only what survives
                   the checks.
                 </p>
               </div>
+              {run?.mission && (
+                <div className="run-mission">
+                  <span className="overline">THIS RUN’S GOAL</span>
+                  <p>{run.mission}</p>
+                </div>
+              )}
               {!data.provider.configured && (
                 <div className="quiet-note">
                   <Settings2 size={17} />
@@ -1154,19 +1313,19 @@ function App() {
                     <span className="overline">
                       {accepted.length ? "THIS RUN" : "LATEST ACCEPTED CHANGE"}
                     </span>
-                    <h3>{(accepted.at(-1) || lastAccepted)?.title}</h3>
-                    {baseline && best && (
+                    <h3>{reviewExperiment?.title}</h3>
+                    {reviewBaseline && reviewBest && (
                       <div className="comparison-readings">
                         <Reading
                           label="CPU submission · p95"
-                          before={fmt(baseline.submitP95)}
-                          value={fmt(best.submitP95)}
+                          before={fmt(reviewBaseline.submitP95)}
+                          value={fmt(reviewBest.submitP95)}
                           unit="ms"
                         />
                         <Reading
                           label="Draw calls"
-                          before={baseline.calls?.toLocaleString()}
-                          value={best.calls?.toLocaleString()}
+                          before={reviewBaseline.calls?.toLocaleString()}
+                          value={reviewBest.calls?.toLocaleString()}
                         />
                       </div>
                     )}
@@ -1175,30 +1334,30 @@ function App() {
                     <span>VERIFICATION</span>
                     <Status
                       value={
-                        experiment?.guards?.pass
+                        reviewExperiment?.guards?.pass
                           ? "passed"
-                          : experiment?.status || "pending"
+                          : reviewExperiment?.status || "pending"
                       }
                     />
                   </div>
-                  {experiment?.guards ? (
+                  {reviewExperiment?.guards ? (
                     <div className="check-list">
                       <CheckRow
-                        pass={experiment.guards.checks.every(
+                        pass={reviewExperiment.guards.checks.every(
                           (c) => c.visualPass,
                         )}
                         title="Rendered appearance"
-                        text={`${experiment.guards.checks.length} configured viewpoints compared`}
+                        text={`${reviewExperiment.guards.checks.length} configured viewpoints compared`}
                       />
                       <CheckRow
-                        pass={experiment.guards.checks.every(
+                        pass={reviewExperiment.guards.checks.every(
                           (c) => c.statePass,
                         )}
                         title="Scene state"
                         text="Semantic transforms and object counts checked"
                       />
                       <CheckRow
-                        pass={experiment.guards.checks.every(
+                        pass={reviewExperiment.guards.checks.every(
                           (c) => c.pickingPass !== false,
                         )}
                         title="Interactions"
@@ -1206,7 +1365,7 @@ function App() {
                       />
                       <button
                         className="subtle-button"
-                        onClick={() => setDrawer("evidence")}
+                        onClick={() => openReviewDrawer("evidence")}
                       >
                         Inspect the evidence
                         <ArrowRight size={13} />
@@ -1218,7 +1377,7 @@ function App() {
                     </p>
                   )}
                   <div className="review-actions">
-                    <button onClick={() => setDrawer("experiment")}>
+                    <button onClick={() => openReviewDrawer("experiment")}>
                       <Code2 size={15} /> Review source changes
                       <ArrowUpRight size={13} />
                     </button>
@@ -1226,8 +1385,27 @@ function App() {
                       <ArrowDownToLine size={15} /> Export cumulative patch
                       <ArrowUpRight size={13} />
                     </a>
-                    {run && (
-                      <a href={"/api/runs/" + run.id + "/report"} download>
+                    {reviewExperiment?.verifier && reviewRun && (
+                      <a
+                        href={
+                          "/api/runs/" +
+                          reviewRun.id +
+                          "/experiments/" +
+                          reviewExperiment.id +
+                          "/verdict"
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <ShieldCheck size={15} /> Inspect verifier receipt
+                        <ArrowUpRight size={13} />
+                      </a>
+                    )}
+                    {reviewRun && (
+                      <a
+                        href={"/api/runs/" + reviewRun.id + "/report"}
+                        download
+                      >
                         <FileCode2 size={15} /> Download run report
                         <ArrowUpRight size={13} />
                       </a>
@@ -1250,7 +1428,7 @@ function App() {
                     className="subtle-button"
                     onClick={() => setStage("optimize")}
                   >
-                    Go to Optimize
+                    Go to experiments
                     <ArrowRight size={13} />
                   </button>
                 </div>
@@ -1287,7 +1465,7 @@ function App() {
                 className="stage-next"
                 onClick={() => setStage("optimize")}
               >
-                Continue to Optimize
+                Explore experiments
                 <ArrowRight size={12} />
               </button>
             )}
@@ -1304,7 +1482,7 @@ function App() {
         className="studio-footer"
         inert={modal || drawer ? true : undefined}
       >
-        <span>Less work per frame.</span>
+        <span>A little less work. A better frame.</span>
         <div>
           <button onClick={() => setDrawer("measurements")}>
             <Cpu size={11} /> Measurements
@@ -1313,7 +1491,7 @@ function App() {
             <Terminal size={11} /> Run details
           </button>
           <button onClick={() => setModal("help")}>
-            Adapter & help
+            Help & compatibility
             <ArrowUpRight size={10} />
           </button>
         </div>
@@ -1322,7 +1500,7 @@ function App() {
             ? "Automatic integration"
             : "Local workspace"}
           <i />
-          v0.2
+          EARL / LOCAL
         </span>
       </footer>
       {notice && (
@@ -1361,10 +1539,15 @@ function App() {
                 onConnect={(body) =>
                   act(async () => {
                     const p = await api("/projects", body);
+                    if (mission.trim()) {
+                      try {
+                        localStorage.setItem("earl:mission:" + p.id, mission);
+                      } catch {}
+                    }
                     chooseProject(p.id);
                     setModal(null);
                     setNotice(
-                      "Project connected. Profile it to build and measure the scene.",
+                      "Project connected. Describe your goal and run an experiment, or profile the scene first.",
                     );
                   })
                 }
@@ -1391,8 +1574,8 @@ function App() {
                 <span className="overline">APPLY ACCEPTED CHANGES</span>
                 <h2>Ready for your project.</h2>
                 <p>
-                  FrameShift will check for conflicting edits and save a backup
-                  before writing the accepted source changes.
+                  Earl will check for conflicting edits and save a backup before
+                  writing the accepted source changes.
                 </p>
                 <code className="project-path">{project?.original}</code>
                 <div className="dialog-actions">
@@ -1655,6 +1838,30 @@ function App() {
                         {experiment.reason ||
                           "The worker is evaluating this candidate."}
                       </p>
+                      {experiment.verifier && run && (
+                        <a
+                          className="verifier-receipt"
+                          href={
+                            "/api/runs/" +
+                            run.id +
+                            "/experiments/" +
+                            experiment.id +
+                            "/verdict"
+                          }
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <ShieldCheck size={17} />
+                          <span>
+                            <b>Independent verifier receipt</b>
+                            <small>
+                              Inspect the sealed policy, decision, and evidence
+                              hashes.
+                            </small>
+                          </span>
+                          <ArrowUpRight size={14} />
+                        </a>
+                      )}
                       {experiment.diff ? (
                         <Diff text={experiment.diff} />
                       ) : (
@@ -2025,10 +2232,11 @@ function Connect({ onConnect, onExample, busy }) {
         <Box size={25} strokeWidth={1.4} />
       </span>
       <span className="overline">CONNECT YOUR PROJECT</span>
-      <h2>Bring your own scene.</h2>
+      <h2>Open your project.</h2>
       <p>
-        Point FrameShift at a local project. It will inspect the framework,
-        entry points, dependencies, and build setup before connecting.
+        Point Earl at a local project. It will inspect the framework, entry
+        points, dependencies, and build setup before connecting. Vite + Three.js
+        projects are the supported starting point. No ZIP or adapter required.
       </p>
       <form
         onSubmit={(e) => {

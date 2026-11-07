@@ -1,0 +1,417 @@
+{
+  "at": "2026-11-07T17:44:56.773Z",
+  "runId": "c464c35a-259",
+  "projectId": "9c1f9d92-e26",
+  "mission": "Reduce draw calls and redundant geometry/material allocations in this moving-cell scene. Use GPU instancing where appropriate, preserve every cell's animation, appearance, name, and click-selection behavior. Keep the application working.",
+  "status": "completed",
+  "baseline": {
+    "frameMedian": 16.699999999999818,
+    "frameP95": 16.799999999999727,
+    "submitMedian": 1.399999976158142,
+    "submitP95": 3.100000023841858,
+    "fps": 59.88023952095874,
+    "calls": 400,
+    "triangles": 4800,
+    "geometries": 400,
+    "repeatMetrics": [
+      3.300000011920929,
+      3,
+      3.199999988079071
+    ],
+    "samples": 3,
+    "frameCount": 180,
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+    "hardware": {
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+      "cores": 10,
+      "viewport": [
+        960,
+        640
+      ],
+      "dpr": 1
+    },
+    "gpuSupported": true,
+    "gpuP95": 1.259749
+  },
+  "experiments": [
+    {
+      "id": "72cf732b-995",
+      "title": "Instance identical cells with per-instance picking",
+      "status": "accepted",
+      "reason": "Correctness checks passed and submission time improved beyond the measured noise band.",
+      "reference": {
+        "frameMedian": 16.699999999999818,
+        "frameP95": 16.799999999999955,
+        "submitMedian": 1.4000000357627869,
+        "submitP95": 3,
+        "fps": 59.88023952095874,
+        "calls": 400,
+        "triangles": 4800,
+        "geometries": 400,
+        "repeatMetrics": [
+          3.699999988079071,
+          1.800000011920929,
+          2.5
+        ],
+        "samples": 3,
+        "frameCount": 180,
+        "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+        "hardware": {
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+          "cores": 10,
+          "viewport": [
+            960,
+            640
+          ],
+          "dpr": 1
+        },
+        "uncertainty": {
+          "repeats": 3,
+          "min": 1.800000011920929,
+          "max": 3.699999988079071,
+          "relativeSpread": 0.7599999904632568,
+          "note": "Limited repeat count; differences inside observed variability are inconclusive."
+        },
+        "gpuSupported": true,
+        "gpuP95": 0.794083
+      },
+      "candidate": {
+        "frameMedian": 16.699999999999818,
+        "frameP95": 16.799999999999955,
+        "submitMedian": 0.30000001192092896,
+        "submitP95": 0.6000000238418579,
+        "fps": 59.88023952095874,
+        "calls": 2,
+        "triangles": 4800,
+        "geometries": 1,
+        "repeatMetrics": [
+          0.6000000238418579,
+          0.30000001192092896,
+          0.699999988079071
+        ],
+        "samples": 3,
+        "frameCount": 180,
+        "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+        "hardware": {
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+          "cores": 10,
+          "viewport": [
+            960,
+            640
+          ],
+          "dpr": 1
+        },
+        "uncertainty": {
+          "repeats": 3,
+          "min": 0.30000001192092896,
+          "max": 0.699999988079071,
+          "relativeSpread": 0.6666666004392862,
+          "note": "Limited repeat count; differences inside observed variability are inconclusive."
+        },
+        "gpuSupported": true,
+        "gpuP95": 0.7235
+      },
+      "guards": {
+        "interactions": {
+          "events": 1,
+          "statePass": true,
+          "behaviorPass": true,
+          "errors": []
+        },
+        "coverage": {
+          "checkpoints": 8,
+          "semanticObjects": 400,
+          "pickingProbes": 40,
+          "replayedEvents": 1
+        },
+        "pass": true,
+        "checks": [
+          {
+            "firstTransformMismatch": null,
+            "view": 0,
+            "time": 0,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 400,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 1,
+            "time": 0.6,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 400,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 2,
+            "time": 1.2,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 400,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 3,
+            "time": 2,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 400,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 4,
+            "time": 3,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 400,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 5,
+            "time": 4.2,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 400,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 6,
+            "time": 5,
+            "cameraPass": true,
+            "visualDifference": 0.0000016276041666666668,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 400,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 7,
+            "time": 6,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 400,
+            "pickingPass": true
+          }
+        ],
+        "errors": []
+      },
+      "verifier": {
+        "version": 1,
+        "policyHash": "3a7f4e4dcdfe0893ba04ccc332ec5cd107791b22c6293f06940c174594f1f11d",
+        "artifact": "verdict.json"
+      }
+    },
+    {
+      "id": "aa962eca-ab9",
+      "title": "Skip per-frame instanced uploads after full rotations",
+      "status": "inconclusive",
+      "reason": "Improvement did not clear the acceptance threshold and reference variability.",
+      "reference": {
+        "frameMedian": 16.700000000000045,
+        "frameP95": 16.700000000000045,
+        "submitMedian": 0.3999999761581421,
+        "submitP95": 0.6000000238418579,
+        "fps": 59.88023952095792,
+        "calls": 2,
+        "triangles": 4800,
+        "geometries": 1,
+        "repeatMetrics": [
+          0.6000000238418579,
+          0.699999988079071,
+          0.699999988079071
+        ],
+        "samples": 3,
+        "frameCount": 180,
+        "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+        "hardware": {
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+          "cores": 10,
+          "viewport": [
+            960,
+            640
+          ],
+          "dpr": 1
+        },
+        "uncertainty": {
+          "repeats": 3,
+          "min": 0.6000000238418579,
+          "max": 0.699999988079071,
+          "relativeSpread": 0.14285709420028916,
+          "note": "Limited repeat count; differences inside observed variability are inconclusive."
+        },
+        "gpuSupported": true,
+        "gpuP95": 0.708375
+      },
+      "candidate": {
+        "frameMedian": 16.700000000000045,
+        "frameP95": 16.799999999999955,
+        "submitMedian": 0.30000001192092896,
+        "submitP95": 0.6000000238418579,
+        "fps": 59.88023952095792,
+        "calls": 2,
+        "triangles": 4800,
+        "geometries": 1,
+        "repeatMetrics": [
+          0.5,
+          0.6000000238418579,
+          0.699999988079071
+        ],
+        "samples": 3,
+        "frameCount": 180,
+        "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+        "hardware": {
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+          "cores": 10,
+          "viewport": [
+            960,
+            640
+          ],
+          "dpr": 1
+        },
+        "uncertainty": {
+          "repeats": 3,
+          "min": 0.5,
+          "max": 0.699999988079071,
+          "relativeSpread": 0.3333333002196431,
+          "note": "Limited repeat count; differences inside observed variability are inconclusive."
+        },
+        "gpuSupported": true,
+        "gpuP95": 0.678625
+      },
+      "guards": {
+        "interactions": {
+          "events": 1,
+          "statePass": true,
+          "behaviorPass": true,
+          "errors": []
+        },
+        "coverage": {
+          "checkpoints": 8,
+          "semanticObjects": 400,
+          "pickingProbes": 40,
+          "replayedEvents": 1
+        },
+        "pass": true,
+        "checks": [
+          {
+            "firstTransformMismatch": null,
+            "view": 0,
+            "time": 0,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 400,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 1,
+            "time": 0.6,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 400,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 2,
+            "time": 1.2,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 400,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 3,
+            "time": 2,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 400,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 4,
+            "time": 3,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 400,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 5,
+            "time": 4.2,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 400,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 6,
+            "time": 5,
+            "cameraPass": true,
+            "visualDifference": 0.0000016276041666666668,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 400,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 7,
+            "time": 6,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 400,
+            "pickingPass": true
+          }
+        ],
+        "errors": []
+      },
+      "verifier": {
+        "version": 1,
+        "policyHash": "3a7f4e4dcdfe0893ba04ccc332ec5cd107791b22c6293f06940c174594f1f11d",
+        "artifact": "verdict.json"
+      }
+    }
+  ],
+  "notes": "Authored automatic-integration fixture, 400 moving objects, one recorded click. Live model run through browser. Receipt source-provenance hardening was added after this run; separate receipt check records re-evaluation of the second candidate."
+}

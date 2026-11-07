@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "open": "node scripts/open.mjs",
     "dev": "node scripts/start.mjs",
     "start": "NODE_ENV=production node scripts/start.mjs",
     "build": "vite build",

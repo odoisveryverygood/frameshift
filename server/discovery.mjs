@@ -171,7 +171,7 @@ export async function discoverProject(input) {
       severity: "error",
       code: "NEXT_REQUIRES_ADAPTER",
       message:
-        "Next.js was detected. Automatic build instrumentation currently supports Vite applications. Export a Vite scene harness or provide a custom FrameShift adapter.",
+        "Next.js was detected. Automatic build instrumentation currently supports Vite applications. Export a Vite scene harness or provide a custom Earl adapter.",
     });
   else if (!vite)
     issues.push({
@@ -191,7 +191,7 @@ export async function discoverProject(input) {
       severity: "warning",
       code: "DEPENDENCIES_NOT_INSTALLED",
       message:
-        "Install this project’s dependencies before profiling. FrameShift does not install arbitrary project packages automatically.",
+        "Install this project’s dependencies before profiling. Earl does not install arbitrary project packages automatically.",
     });
   if (!entryPoints.length)
     issues.push({

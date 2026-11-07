@@ -15,10 +15,10 @@ The engine probe is a source/internal compatibility probe, not a runtime profile
 Source: https://github.com/JoaquinMulet/Artificial-General-Research
 Read snapshot: f4d7db29b395ab95d5f3fb9981115baa9bef22e5
 
-FrameShift's custom runner adapts AGR's experiment-history, fresh-context,
+Earl's custom runner (originally FrameShift) adapts AGR's experiment-history, fresh-context,
 metric/guard separation, same-window reference and keep/discard concepts.
 AGR's CLI and Docker stack are not embedded. License acknowledgment is included
-in vendor/agr-LICENSE (MIT). AGR's reported speedups are not FrameShift results.
+in vendor/agr-LICENSE (MIT). AGR's reported speedups are not Earl results.
 
 ## Runtime libraries
 
@@ -31,4 +31,10 @@ npm and retain their package licenses. See package-lock.json and node_modules.
 Spline's viewport-and-panel workflow, NASA Eyes' replay/data relationship,
 and Unseen/Lusion's cinematic 3D presentation informed the interface direction.
 No site source, brand assets, models, or screenshots from those sites are used.
-The example scenes and dashboard visuals are authored for FrameShift.
+The example scenes and dashboard visuals are authored for FrameShift/Earl.
+
+Earl’s workbench redesign references the user’s Morf project and Rive’s contextual
+editor structure. Morf was inspected as an authorized local design reference; its
+CAD/circuit backend is not embedded. Rive and Spline site source and assets are not
+embedded. OpenHands, pg-boss and Podman were evaluated as possible future foundations;
+they are not installed dependencies or claimed integrations.

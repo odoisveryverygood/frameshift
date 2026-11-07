@@ -1,5 +1,5 @@
 {
-  "at": "2026-11-07T08:11:31.514Z",
+  "at": "2026-11-07T17:44:21.042Z",
   "checks": [
     {
       "name": "Import a local project through the public API",
@@ -38,7 +38,7 @@
       "pass": true
     }
   ],
-  "fixtureProjectId": "9738314d-90c",
-  "profileRunId": "96c1ec54-c1d",
+  "fixtureProjectId": "49732062-c34",
+  "profileRunId": "ee223b23-f69",
   "notes": "Authored local fixture; no model calls. Does not establish third-party generalization."
 }

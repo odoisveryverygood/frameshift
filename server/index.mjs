@@ -125,7 +125,7 @@ app.post("/api/projects/:id/archive", async (req, res) => {
 });
 app.post("/api/projects/:id/runs", async (req, res) => {
   if (captureBusy) throw Error("Wait for frame capture to finish");
-  res.json(await start(req.params.id, req.body.kind, req.body.count));
+  res.json(await start(req.params.id, req.body.kind, req.body.count, req.body.mission));
 });
 app.post("/api/stop", async (req, res) =>
   res.json({ id: await stop(req.body.runId) }),
@@ -229,7 +229,7 @@ app.get("/api/projects/:id/patch", async (req, res) => {
   if (!p) return res.sendStatus(404);
   res.setHeader(
     "Content-Disposition",
-    'attachment; filename="frameshift.patch"',
+    'attachment; filename="earl.patch"',
   );
   res.type("text/plain").send(await exportPatch(p));
 });
@@ -243,7 +243,7 @@ app.get("/api/runs/:id/report", async (req, res) => {
   if (!run) return res.sendStatus(404);
   res.setHeader(
     "Content-Disposition",
-    'attachment; filename="frameshift-report.json"',
+    'attachment; filename="earl-report.json"',
   );
   res.json({
     ...run,
@@ -255,6 +255,33 @@ app.get("/api/runs/:id/report", async (req, res) => {
       "Visual and semantic guards cover configured views and interactions, not all application behavior",
     ],
   });
+});
+app.get("/api/runs/:id/experiments/:exp/verdict", async (req, res) => {
+  const run = runs.find((r) => r.id === req.params.id);
+  if (!run || !run.experiments.some((e) => e.id === req.params.exp))
+    return res.status(404).json({ error: "Experiment not found" });
+  try {
+    const file = await safeFile(path.join(runDir(run), req.params.exp), "verdict.json");
+    res.setHeader("Cache-Control", "no-store");
+    res.json(await json(file));
+  } catch (error) {
+    if (error.code === "ENOENT")
+      return res.status(404).json({ error: "No verification receipt exists for this experiment yet" });
+    throw error;
+  }
+});
+app.get("/api/runs/:id/baseline/:file", async (req, res) => {
+  if (!/^baseline-[0-7]\.png$/.test(req.params.file)) return res.sendStatus(404);
+  const run = runs.find((r) => r.id === req.params.id);
+  if (!run) return res.sendStatus(404);
+  try {
+    const file = await safeFile(runDir(run), req.params.file);
+    res.setHeader("Cache-Control", "no-store");
+    res.sendFile(file);
+  } catch (error) {
+    if (error.code === "ENOENT") return res.sendStatus(404);
+    throw error;
+  }
 });
 app.get("/api/runs/:id/artifacts/:exp/:file", async (req, res) => {
   if (!/^[\w-]+\.png$/.test(req.params.file)) return res.sendStatus(404);
@@ -359,7 +386,7 @@ app.get("/api/projects/:id/capture", async (req, res) => {
 });
 app.get("/api/compatibility", async (req, res) =>
   res.json({
-    supported: "Vite + Three.js WebGL projects with a FrameShift adapter",
+    supported: "Local Vite + Three.js WebGL projects with automatic integration; configured adapters also supported",
     gpuTiming:
       "Optional EXT_disjoint_timer_query_webgl2 GPU queries, when supplied by the adapter",
     engineProbe:
@@ -395,5 +422,5 @@ app.use((err, req, res, next) => {
     .json({ error: String(err.message).replace(/sk-[\w-]+/g, "[redacted]") });
 });
 app.listen(port, "127.0.0.1", () =>
-  console.log(`FrameShift ready at http://127.0.0.1:${port}`),
+  console.log(`Earl ready at http://127.0.0.1:${port}`),
 );

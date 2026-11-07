@@ -23,7 +23,7 @@ for (let attempt = 0; attempt < 2; attempt++) {
     if (e.code !== "EEXIST") throw e;
     const owner = Number(await fs.readFile(lock, "utf8").catch(() => ""));
     if (processAlive(owner)) {
-      console.log("A FrameShift worker is already running.");
+      console.log("An Earl worker is already running.");
       process.exit(0);
     }
     await fs.unlink(lock).catch(() => {});
@@ -90,7 +90,7 @@ for (const run of runs.filter((r) =>
   await persistRun(run);
 }
 await heartbeat();
-console.log("FrameShift worker ready:", process.pid);
+console.log("Earl worker ready:", process.pid);
 while (!closing) {
   await initialize();
   const next = runs

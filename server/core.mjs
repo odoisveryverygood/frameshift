@@ -184,7 +184,37 @@ export function compareState(reference, candidate) {
   }
   return JSON.stringify(reference.picks) === JSON.stringify(candidate.picks);
 }
-export function decision(reference, candidate, guards, config) {
+export function assertVerificationContinuation(previous, policyHash) {
+  if (previous?.policyHash && previous.policyHash !== policyHash) {
+    const error = Error("Verification policy or implementation changed since this run started. Start a new run.");
+    error.code = "VERIFICATION_POLICY_CHANGED";
+    throw error;
+  }
+}
+export function decision(reference, candidate, guards, config = {}) {
+  // Never accept incomplete/invalid telemetry: NaN comparisons otherwise silently
+  // bypass regression checks, especially for a draw-call optimization.
+  const required = ["submitP95", "frameP95", ...(config.metric === "drawCalls" ? ["calls"] : [])];
+  const valid = (sample) => sample && required.every((key) =>
+    Number.isFinite(sample[key]) && sample[key] >= 0 &&
+    (key !== "frameP95" || sample[key] > 0));
+  if (!valid(reference) || !valid(candidate) ||
+      (config.metric === "drawCalls" ? reference?.calls <= 0 : reference?.submitP95 <= 0))
+    return { status: "rejected", improvement: null,
+      reason: "Missing or invalid performance measurements. Candidate was discarded." };
+  const validRepeats = (sample) => Array.isArray(sample.repeatMetrics) &&
+    sample.repeatMetrics.length >= 2 && sample.repeatMetrics.every((value) =>
+      Number.isFinite(value) && value >= 0);
+  if (!validRepeats(reference) || !validRepeats(candidate))
+    return { status: "rejected", improvement: null,
+      reason: "At least two valid repeated measurements are required for each version. Candidate was discarded." };
+  if (guards?.pass !== true)
+    return { status: "rejected", improvement: null,
+      reason: "Correctness verification did not explicitly pass. Candidate was discarded." };
+  if (config.minImprovement != null &&
+      (!Number.isFinite(config.minImprovement) || config.minImprovement < 0 || config.minImprovement > 1))
+    return { status: "rejected", improvement: null,
+      reason: "Invalid acceptance threshold. Candidate was discarded." };
   if (config.metric === "drawCalls") {
     const improvement = 1 - candidate.calls / reference.calls;
     const cpuRegressed =

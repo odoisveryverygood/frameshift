@@ -247,6 +247,10 @@ test("Responses agent inspects graph and source, then returns a multi-file patch
         if (step === 0) {
           assert.ok(!JSON.stringify(body.input).includes("export const count"));
           assert.ok(JSON.stringify(body.input).includes("src/world.js"));
+          const context = JSON.parse(body.input[0].content);
+          assert.equal(context.mission, "Make rotation smoother while preserving selection.");
+          assert.match(body.instructions, /mission is user intent/);
+          assert.match(body.instructions, /independent verifier alone decides acceptance/);
         }
         if (step === 3)
           assert.ok(
@@ -263,6 +267,7 @@ test("Responses agent inspects graph and source, then returns a multi-file patch
         proposeExperiment({
           ...p,
           metrics: { calls: 1600 },
+          mission: "  Make rotation smoother while preserving selection.  ",
           strategy: { exhausted: [] },
           onEvent: (e) => events.push(e),
         }),
@@ -473,6 +478,31 @@ test("patches cannot introduce SDK or benchmark-control overrides", async () => 
       await fs.readFile(path.join(p.workspace, "src/world.js"), "utf8"),
       /__frameshift/,
     );
+  } finally {
+    await fs.rm(p.workspace, { recursive: true, force: true });
+  }
+});
+
+
+test("repair keeps the original mission without changing the fixed optimization goal", async () => {
+  const p = await project();
+  try {
+    await withProvider(async (req, body, res) => {
+      const context = JSON.parse(body.input[0].content);
+      assert.equal(context.mission, "Reduce stutter and preserve picking.");
+      assert.equal(context.goal, "drawCalls");
+      assert.equal(context.repair.error, "Picking mismatch");
+      assert.match(body.instructions, /never a promise/);
+      respond(res, 0, "submit_patch", submission([]));
+    }, async () => {
+      const result = await proposeExperiment({
+        ...p,
+        config: { ...p.config, metric: "drawCalls" },
+        mission: "Reduce stutter and preserve picking.",
+        repair: { attempt: 1, error: "Picking mismatch" },
+      });
+      assert.deepEqual(result.files, []);
+    });
   } finally {
     await fs.rm(p.workspace, { recursive: true, force: true });
   }

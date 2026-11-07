@@ -1,0 +1,123 @@
+{
+  "version": 1,
+  "evaluatedAt": "2026-11-07T17:44:56.788Z",
+  "authority": "Earl deterministic verifier; optimizer cannot set the verdict",
+  "policyHash": "704e7353e1a480f4fd7f6a7aa5a7c95ba7f542689ecddd8533a63c543d79082b",
+  "policy": {
+    "name": "plain-three-instrumentation-fixture",
+    "buildCommand": [
+      "npm",
+      "run",
+      "build"
+    ],
+    "outputDir": "dist",
+    "editableFiles": [
+      "src/main.js"
+    ],
+    "autoInstrument": true,
+    "metric": "submitP95",
+    "minImprovement": 0.08,
+    "maxVisualDifference": 0.01,
+    "samples": 60,
+    "repeats": 3,
+    "checkpoints": [
+      {
+        "time": 0,
+        "view": 0
+      },
+      {
+        "time": 0.6,
+        "view": 1
+      },
+      {
+        "time": 1.2,
+        "view": 2
+      },
+      {
+        "time": 2,
+        "view": 0
+      },
+      {
+        "time": 3,
+        "view": 1
+      },
+      {
+        "time": 4.2,
+        "view": 2
+      },
+      {
+        "time": 5,
+        "view": 0
+      },
+      {
+        "time": 6,
+        "view": 1
+      }
+    ],
+    "scenario": {
+      "name": "Recorded interaction replay",
+      "events": [
+        {
+          "type": "click",
+          "at": 0.5,
+          "x": 0.5,
+          "y": 0.5
+        }
+      ],
+      "savedAt": "2026-11-07T17:41:10.644Z"
+    }
+  },
+  "implementations": {
+    "server/verifier.mjs": "f6ebb2e980b9a54d34543e30b2e641296bbb48f3e81a285ea002664098475520",
+    "server/core.mjs": "83a5ff46871c95c18cf4860cd111b606dd7480c6f39a55f75ce33d8c2b2fe74b",
+    "server/benchmark.mjs": "8aabf1c41d2a68cfeb3c9fdba624b5735d25ee8beb4fd48a2c658bb49e217492",
+    "server/integration.mjs": "e61258c3fcb728cc04efad15a398f81d7ab1a75d36e573afaccc314e32250599",
+    "sdk/runtime.mjs": "6fdb6c0866f87a42723a814566e00b3215f4f5d893419ed231bb70b2c1d5600d",
+    "server/instrument-build.mjs": "bac993b6b4d4af906506117731a686cb6af61eeb6f07658c5c4f236358bcf5cb"
+  },
+  "artifacts": {
+    "reference-metrics.json": {
+      "sha256": "42813a542d11efc792bb1f4d287469b9a52706361d191e5f9e347e9ed75cc369",
+      "bytes": 18061
+    },
+    "candidate-metrics.json": {
+      "sha256": "ae53d3b41b8011277ea8985c76b9e80aadbffedc518dd36af677fdf729cc5583",
+      "bytes": 18333
+    },
+    "guards.json": {
+      "sha256": "12732f7b8d779cdeea0de2c402aa8a9e9177b60eab442f420a99ea8ee7c7b101",
+      "bytes": 2253
+    },
+    "measurement-order.json": {
+      "sha256": "a21640ea586a0177ab49b4117cc29c09daa5f333b4fc50a032defe7c0c66818f",
+      "bytes": 548
+    },
+    "change.patch": {
+      "sha256": "96481c3d7605095d17e10a4974f5faba1cbff80a694339d49a403b0eee8ca5ca",
+      "bytes": 3470
+    }
+  },
+  "sources": {
+    "reference": {
+      "src/main.js": "d76af0715724acc83bb01a524c12923c1010e20ae5ea14f16f4ff2d5373dc69e"
+    },
+    "candidate": {
+      "src/main.js": "462d540a7d52b66585b987bd6ab5b2fb9365aa0da28a1bba7c1b5f34a0f611d8"
+    }
+  },
+  "verdict": {
+    "status": "inconclusive",
+    "reason": "Improvement did not clear the acceptance threshold and reference variability.",
+    "improvement": 0,
+    "threshold": 0.14285709420028916
+  },
+  "coverage": {
+    "checkpoints": 8,
+    "recordedEvents": 1,
+    "limitations": [
+      "Passing checks establishes only the sampled scenes and interactions.",
+      "Browser application state is observed through instrumentation; this is not a hostile-code security proof.",
+      "CPU submission timing and frame pacing are not GPU utilization."
+    ]
+  }
+}

@@ -15,8 +15,8 @@ import {
   copyProject,
   dependencies,
   command,
-  decision,
   experimentStrategy,
+  assertVerificationContinuation,
 } from "./core.mjs";
 import { measure, measurePair, capture, verify } from "./benchmark.mjs";
 import { propose } from "./model.mjs";
@@ -24,6 +24,8 @@ import { projectUpdate, promotion } from "./jobs.mjs";
 import { discoverProject } from "./discovery.mjs";
 import { buildInstrumented } from "./integration.mjs";
 import { proposeExperiment } from "./agent.mjs";
+import { normalizeMission } from "./mission.mjs";
+import { sealVerificationPolicy, writeVerificationVerdict } from "./verifier.mjs";
 export const events = new EventEmitter();
 const projectsFile = path.join(DATA, "projects.json");
 export let projects = [];
@@ -183,7 +185,8 @@ async function log(run, type, message) {
   run.phase = message;
   await persistRun(run);
 }
-export async function start(projectId, kind = "profile", count = 2) {
+export async function start(projectId, kind = "profile", count = 2, mission = "") {
+  mission = normalizeMission(mission);
   await initialize();
   const project = projects.find((p) => p.id === projectId);
   if (!project) throw Error("Project not found");
@@ -206,6 +209,7 @@ export async function start(projectId, kind = "profile", count = 2) {
     id: id(),
     projectId,
     projectName: project.name,
+    mission,
     kind,
     status: "queued",
     createdAt: new Date().toISOString(),
@@ -410,6 +414,10 @@ async function execute(project, run) {
     );
     return;
   }
+  const verificationSeal = await sealVerificationPolicy(project.config, run.metric);
+  assertVerificationContinuation(run.verifier, verificationSeal.hash);
+  run.verifier = { version: 1, policyHash: verificationSeal.hash };
+  await persistRun(run);
   const finished = run.experiments.filter((e) =>
     ["accepted", "rejected", "inconclusive"].includes(e.status),
   ).length;
@@ -438,6 +446,7 @@ async function execute(project, run) {
     await save(path.join(projectDir(project), "strategy.json"), strategy);
     const proposal = await proposeExperiment({
       workspace: best,
+      mission: run.mission,
       manifest: project.discovery,
       onEvent: async (event) => {
         exp.trace = exp.trace || [];
@@ -634,9 +643,13 @@ async function execute(project, run) {
         exp.candidate = candidateMetrics.summary;
         Object.assign(
           exp,
-          decision(exp.reference, exp.candidate, exp.guards, {
-            ...project.config,
+          await writeVerificationVerdict({
+            seal: verificationSeal,
+            config: project.config,
             metric: run.metric,
+            evidenceDir: evidence,
+            referenceSourceDir: best,
+            candidateSourceDir: candidate,
           }),
         );
         if (exp.status === "accepted") {
@@ -664,7 +677,7 @@ async function execute(project, run) {
         );
         break;
       } catch (e) {
-        if (signal.aborted) throw e;
+        if (signal.aborted || e.code === "VERIFICATION_POLICY_CHANGED") throw e;
         if (repairAttempt < 2) {
           exp.repairs = exp.repairs || [];
           exp.repairs.push({
@@ -680,6 +693,7 @@ async function execute(project, run) {
           try {
             const repaired = await proposeExperiment({
               workspace: candidate,
+              mission: run.mission,
               manifest: project.discovery,
               metrics: run.best,
               history: [],

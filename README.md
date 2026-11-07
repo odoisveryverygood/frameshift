@@ -1,8 +1,8 @@
-# FrameShift
+# Earl
 
-### Less work per frame.
+### Better frames, with proof.
 
-FrameShift is a local AI performance engineer for 3D web applications. Connect an
+Earl is a local AI performance engineer for 3D web applications. Connect an
 existing project, measure its rendering workload, let an agent investigate and
 experiment with the code, and review a patch with evidence explaining what
 improved and what was preserved.
@@ -11,7 +11,7 @@ The current implementation supports automatic integration with **Vite + Three.js
 WebGL projects**. It combines project discovery, a source-inspecting coding agent,
 a protected browser profiler, repeatable checks, and an independent job worker.
 
-![FrameShift's Diagnose workspace](verification/workspace-v0.2.jpg)
+![Earl workspace](verification/earl-workspace.png)
 
 ## Quick start
 
@@ -32,12 +32,63 @@ The application stores its key in an ignored local `.env.local` file with mode
 `0600`; the browser never receives that key. `.env.example` documents the available
 environment variables. Credentials are not included in this repository.
 
-On macOS, `Launch FrameShift.command` also performs setup and starts the app.
+On macOS, `Launch Earl.command` also performs setup and starts the app.
 For development, use `npm run dev`.
 
 The start command launches a separate worker and the web server. Restarting the
 web server does not cancel an executing job. `npm run worker` can start the worker
 separately; interrupted work can resume when that worker restarts.
+
+## Give Earl a mission
+
+From this repository, connect a trusted local project:
+
+```sh
+npm run open -- /absolute/path/to/your-project
+```
+
+Earl starts or reuses its local service and opens the selected project. Enter a
+performance goal such as “Reduce draw calls while preserving animation and object
+selection,” then choose **Run experiment**. Earl captures a baseline, inspects
+source, proposes a patch, and verifies the candidate. A performance target is a
+goal, not a promise or permission to weaken correctness checks.
+
+`--no-browser` prints the workspace URL. `--port 4320` selects another web port.
+Connections are source snapshots; use `--fresh` to reconnect after external edits
+while retaining the previous snapshot and history. No project ZIP upload is needed.
+Project source remains local except for relevant source/context sent to your
+configured model provider during an optimization. Builds execute project code;
+connect projects you trust. Dependencies should be installed in the original folder.
+
+## Independent verification receipts
+
+The optimizer proposes edits; a deterministic verifier decides whether to promote
+them. The optimizer cannot edit the protected test, configuration, or SDK paths.
+Verification policy and verifier/profiler implementation hashes are sealed before
+an experiment. After a successful correctness check and paired benchmark, the
+verifier re-reads persisted evidence and writes `verdict.json` with artifact hashes, source and patch fingerprints,
+policy, verdict, and coverage limits. Review offers **Inspect verifier receipt**.
+A changing policy, missing evidence, invalid measurements, or a non-explicit guard
+success blocks acceptance. Receipts establish provenance; they are not a guarantee
+against hostile application code or proof of all possible application behavior.
+
+The startup process supervises workers it launches with bounded restart backoff.
+A pre-existing detached worker remains independent of the web process. Interrupted
+jobs retain their safe checkpoints and mission; recovery does not repeat accepted
+workspace promotions blindly.
+
+## Hackathon contribution boundary
+
+Earl builds on the pre-existing FrameShift engine and UI work. The Earl mission
+flow, local connection command, redesigned workbench, verification receipts,
+acceptance hardening, and worker supervision are incremental contributions; they
+must be dated and distinguished from prior work in any event submission. This
+repository's history and third-party credits preserve that distinction.
+
+The primary problem statement is **Trust but Verify**. Experiment history informs
+subsequent optimization attempts. Earl does **not** yet implement held-out adoption
+of versioned agent skills, so it should not claim the full **System That Gets Better**
+problem statement on that basis.
 
 ## The original vision
 
@@ -45,7 +96,7 @@ Developers building browser-based games, robotics simulators, CAD tools, and
 interactive visualizations can spend substantial time finding and fixing low
 frame rates, excessive rendering submissions, and inefficient update code.
 
-FrameShift's original plan was to automate that investigation:
+Earl's original plan was to automate that investigation:
 
 1. Run the application and establish a performance baseline.
 2. Identify likely bottlenecks from measurements and source code.
@@ -65,15 +116,15 @@ Arbitrary repositories and rendering engines are not automatically compatible.
 
 ## The workflow
 
-The interface centers the actual project, with three focused stages:
+The interface centers the actual project and a natural-language performance mission, with three focused stages:
 
-- **Diagnose:** inspect the detected project, rendering workload, source, and baseline.
-- **Optimize:** follow the agent's source inspection, hypothesis, patch, and checks.
+- **Investigate:** inspect the detected project, rendering workload, source, and baseline.
+- **Experiment:** follow the agent's source inspection, hypothesis, patch, and checks.
 - **Review:** inspect code changes, visual evidence, decisions, and the accepted version.
 
 Measurements, logs, history, source details, and verification images live in
-contextual drawers. The lighter paper background, blue ink, and restrained cobalt
-palette replace the original dense dashboard. Morf, Foundry, and Simtra informed
+contextual drawers. The warm ivory background, charcoal type, and restrained rust accent
+keep attention on the running application and its current experiment. Morf, Foundry, and Simtra informed
 the design direction, especially Morf's scene-centered workspace.
 
 ### Connect a project
@@ -85,7 +136,7 @@ the design direction, especially Morf's scene-centered workspace.
 5. Profile the application and optionally record interactions for replay.
 6. Run an optimization and review its evidence before exporting or applying changes.
 
-FrameShift copies the project into a working area. The original source remains
+Earl copies the project into a working area. The original source remains
 unchanged until you explicitly choose **Apply**. Apply checks for conflicting
 original-file edits and saves a backup.
 
@@ -129,7 +180,7 @@ It has bounded tools to:
 - Submit exact search-and-replace edits across eligible files.
 
 Every changed file must have been inspected. Before a candidate is written,
-FrameShift validates inspected-file hashes and uniquely matched edit text.
+Earl validates inspected-file hashes and uniquely matched edit text.
 Stale or ambiguous edits are rejected.
 
 The model has **no shell-command tool**. Its source tools cannot edit the protected
@@ -143,7 +194,7 @@ inspection; private chain-of-thought is not requested or displayed.
 
 ### What “self-improving” means
 
-FrameShift improves the project's code through experiments. It retains successful
+Earl improves the project's code through experiments. It retains successful
 changes, failed approaches, reasons, and strategy information between iterations.
 New iterations use that recorded context. This is **not model-weight training**.
 
@@ -230,14 +281,14 @@ model provider during optimization. Local profiling does not make a model reques
 
 The two starting repositories supplied complementary foundations:
 
-| Repository | Contribution to FrameShift |
+| Repository | Contribution to Earl |
 |---|---|
 | [hiddentao/3d-web-scene-performance-skill](https://github.com/hiddentao/3d-web-scene-performance-skill) | Performance guidance, verification principles, and the included engine compatibility probe. Guidance and probe are retained with attribution. |
 | [JoaquinMulet/Artificial-General-Research](https://github.com/JoaquinMulet/Artificial-General-Research) | Experiment-loop ideas: fresh context, persistent history, metric/guard separation, reference remeasurement, and keep/discard decisions. |
 
-FrameShift does **not** embed AGR's complete CLI or Docker stack. Its runner,
+Earl does **not** embed AGR's complete CLI or Docker stack. Its runner,
 worker, browser harness, verification system, and interface are its own integration.
-The upstream repositories' published speedups are not FrameShift results.
+The upstream repositories' published speedups are not Earl results.
 
 Other runtime building blocks include:
 
