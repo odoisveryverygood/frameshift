@@ -1,5 +1,5 @@
 {
-  "at": "2026-11-07T17:44:21.042Z",
+  "at": "2026-11-07T17:47:02.569Z",
   "checks": [
     {
       "name": "Import a local project through the public API",
@@ -11,6 +11,10 @@
     },
     {
       "name": "Production build, real browser profile, screenshots, and raw metrics",
+      "pass": true
+    },
+    {
+      "name": "Serve only whitelisted baseline screenshots from private artifact storage",
       "pass": true
     },
     {
@@ -38,7 +42,7 @@
       "pass": true
     }
   ],
-  "fixtureProjectId": "49732062-c34",
-  "profileRunId": "ee223b23-f69",
+  "fixtureProjectId": "b5fb78ad-938",
+  "profileRunId": "46fd3beb-a7b",
   "notes": "Authored local fixture; no model calls. Does not establish third-party generalization."
 }

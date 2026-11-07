@@ -277,7 +277,7 @@ app.get("/api/runs/:id/baseline/:file", async (req, res) => {
   try {
     const file = await safeFile(runDir(run), req.params.file);
     res.setHeader("Cache-Control", "no-store");
-    res.sendFile(file);
+    res.sendFile(file, { dotfiles: "allow" });
   } catch (error) {
     if (error.code === "ENOENT") return res.sendStatus(404);
     throw error;
@@ -290,6 +290,7 @@ app.get("/api/runs/:id/artifacts/:exp/:file", async (req, res) => {
     return res.sendStatus(404);
   res.sendFile(
     await safeFile(path.join(runDir(r), req.params.exp), req.params.file),
+    { dotfiles: "allow" },
   );
 });
 app.use("/preview/:id", async (req, res, next) => {

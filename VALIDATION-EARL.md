@@ -10,9 +10,9 @@ under an event's new-work rules. Do not describe prior work as event-built work.
   transports, mission propagation/repair, discovery, isolation, repeated metrics,
   policy continuity, local CLI parsing, and independent verdict receipts.
 - `npm run build`: production UI build passes.
-- `npm run verify`: all 9 integration checks pass: import, cross-origin rejection,
+- `npm run verify`: all 10 integration checks pass: import, cross-origin rejection,
   real build/browser profile, patch export, explicit application with exact backup,
-  conflict rejection, cancellation, artifact protection, and disconnect/history.
+  conflict rejection, cancellation, artifact protection, baseline image delivery, and disconnect/history.
 - CLI: existing-server reuse, a fresh-server startup on port 4322, and `--fresh`
   reconnection were exercised. The temporary web server was stopped.
 - Controlled SIGKILL of an idle worker caused the running starter to launch a
@@ -65,3 +65,8 @@ dependencies. Native Meta-provider access, arbitrary frameworks, GPU utilization
 hosted multi-user execution, and held-out adoption of agent skill revisions are
 not established. The primary theme connection is independent verification.
 Build restrictions and receipts are not an audited hostile-code sandbox.
+
+A final route check exposed Express blocking image files under the private
+`.frameshift` ancestor. Whitelisted image routes now explicitly allow their
+validated files; arbitrary files remain inaccessible. The integration suite
+includes image content-type and non-image denial checks.
