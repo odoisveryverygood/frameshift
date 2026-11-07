@@ -11,6 +11,7 @@ import {
   abortCurrent,
 } from "./runner.mjs";
 import { processAlive, workerFile, recoverPromotions } from "./jobs.mjs";
+import { nextLabJob, processLabJob, recoverLabJobs, abortLabCurrent } from "./skills/service.mjs";
 await fs.mkdir(DATA, { recursive: true });
 const lock = path.join(DATA, "worker.lock");
 let handle;
@@ -60,8 +61,10 @@ for (const signal of ["SIGINT", "SIGTERM"])
   process.on(signal, () => {
     closing = true;
     abortCurrent();
+    abortLabCurrent();
   });
 await recoverPromotions();
+await recoverLabJobs();
 await initialize();
 for (const run of runs.filter((r) =>
   ["running", "recovering"].includes(r.status),
@@ -113,7 +116,17 @@ while (!closing) {
     }
     active = null;
     await heartbeat();
-  } else await new Promise((r) => setTimeout(r, 400));
+  } else {
+    const labJob = await nextLabJob();
+    if (labJob) {
+      active = labJob.id;
+      await heartbeat();
+      dotenv.config({ path: path.join(ROOT, ".env.local"), override: true, quiet: true });
+      await processLabJob(labJob);
+      active = null;
+      await heartbeat();
+    } else await new Promise((r) => setTimeout(r, 400));
+  }
 }
 
 await cleanup();

@@ -23,6 +23,7 @@ import { provider } from "./model.mjs";
 import { captureFrame } from "./capture.mjs";
 import { discoverProject } from "./discovery.mjs";
 import { workerStatus, projectUpdate } from "./jobs.mjs";
+import { labState, startLabRun, getLabRun, stopLabRun, getSkill, labRunDir } from "./skills/service.mjs";
 dotenv.config({ path: path.join(ROOT, ".env.local"), quiet: true });
 await initialize();
 const app = express();
@@ -63,21 +64,50 @@ app.use("/api", async (req, res, next) => {
     next(e);
   }
 });
-app.get("/api/state", async (req, res) =>
-  res.json({
+app.get("/api/state", async (req, res) => {
+  const lab = await labState();
+  const liveLab = lab.runs.find((r) => r.id === lab.activeRun);
+  const labProxy = liveLab ? { ...liveLab, kind: "skill-lab", projectId: null, projectName: "Skill Lab", experiments: [] } : null;
+  return res.json({
     projects: projects
       .filter((p) => !p.archived)
       .map(({ originalHashes, ...p }) => p),
-    runs,
-    activeRun: activeRun(),
+    runs: labProxy ? [labProxy, ...runs] : runs,
+    activeRun: activeRun() || lab.activeRun,
     provider: provider(),
     root: ROOT,
     worker: {
       ...(await workerStatus()),
       queue: runs.filter((r) => r.status === "queued").length,
     },
-  }),
-);
+  });
+});
+app.get("/api/lab", async (req, res) => res.json(await labState()));
+app.post("/api/lab/runs", async (req, res) => {
+  if (captureBusy) throw Error("Wait for the frame capture to finish before starting the lab.");
+  res.json(await startLabRun(req.body));
+});
+app.get("/api/lab/runs/:id", async (req, res) => {
+  const run = await getLabRun(req.params.id);
+  if (!run) return res.status(404).json({ error: "Skill-lab run not found" });
+  res.json(run);
+});
+app.post("/api/lab/runs/:id/stop", async (req, res) => res.json(await stopLabRun(req.params.id)));
+app.get("/api/lab/skills/:id", async (req, res) => {
+  const skill = await getSkill(req.params.id);
+  if (!skill) return res.status(404).json({ error: "Skill version not found" });
+  res.json(skill);
+});
+app.get("/api/lab/runs/:id/artifact", async (req, res) => {
+  const run = await getLabRun(req.params.id);
+  if (!run) return res.sendStatus(404);
+  const name = String(req.query.path || "");
+  if (!/^[\w/.-]+\.png$/.test(name) || name.split("/").some((p) => p === ".." || p.startsWith(".")))
+    return res.sendStatus(404);
+  const file = await safeFile(labRunDir(run.id), name);
+  res.sendFile(file, { dotfiles: "allow" });
+});
+app.use("/lab", express.static(path.join(ROOT, "lab", "ui"), { index: "index.html", etag: false, maxAge: 0 }));
 app.get("/api/events", (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -357,7 +387,7 @@ app.get("/api/help", async (req, res) =>
     .send(await fs.readFile(path.join(ROOT, "ADAPTER.md"), "utf8")),
 );
 app.post("/api/projects/:id/capture", async (req, res) => {
-  if (activeRun())
+  if (activeRun() || (await labState()).runs.some((r) => ["queued", "running"].includes(r.status)))
     throw Error(
       "Wait for the benchmark to finish before instrumenting a frame",
     );
