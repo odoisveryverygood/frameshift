@@ -102,9 +102,9 @@ export default function Slices({ heroRef }) {
         });
       }
       const seen = new Set();
-      const keepClear = [...hero.querySelectorAll(".intake, .hero-top")].map(
-        (n) => n.getBoundingClientRect(),
-      );
+      const keepClear = [
+        ...hero.querySelectorAll(".intake, .hero-top, .hero-art"),
+      ].map((n) => n.getBoundingClientRect());
       const covers = (x, y) =>
         keepClear.some(
           (r) =>
@@ -150,7 +150,7 @@ export default function Slices({ heroRef }) {
         x: e.clientX,
         y: e.clientY,
         // The form and the top bar stay clean so they are easy to use.
-        blocked: Boolean(e.target.closest?.(".intake, .hero-top")),
+        blocked: Boolean(e.target.closest?.(".intake, .hero-top, .hero-art")),
       };
       queue();
     };

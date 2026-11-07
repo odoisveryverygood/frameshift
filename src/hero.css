@@ -360,13 +360,27 @@
 
 .hero-art {
   position: relative;
+  display: grid;
+  place-items: center;
   height: min(74vh, 660px);
   min-height: 420px;
+  padding-bottom: 26px;
 }
-.agents-canvas {
+.engine-card {
+  position: relative;
+  border-radius: 14px;
+  background: #f2f2ef;
+  box-shadow:
+    0 30px 70px rgb(10 12 20 / 16%),
+    0 0 0 1px rgb(10 12 20 / 7%);
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+.engine-canvas {
   display: block;
   width: 100%;
   height: 100%;
+  border-radius: 14px;
 }
 @media (max-width: 860px) {
   .hero-art {
@@ -377,4 +391,26 @@
   .hero-bottom {
     display: none;
   }
+}
+
+.hero-art-hint {
+  position: absolute;
+  left: 50%;
+  bottom: -4px;
+  transform: translateX(-50%);
+  padding: 6px 14px;
+  border-radius: 999px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.hero-art-hint:hover {
+  color: var(--ink);
+  background: rgb(10 12 20 / 5%);
+}
+.hero-art-hint[aria-pressed="true"] {
+  color: #c8402b;
 }

@@ -3,7 +3,7 @@ import Intake from "./Intake.jsx";
 import "./hero.css";
 
 // three.js is large; the hero text appears first and the scene joins when ready.
-const AgentsScene = lazy(() => import("./AgentsScene.jsx"));
+const EngineScene = lazy(() => import("./EngineScene.jsx"));
 
 // The first screen. It is self-contained (its own gradient background, no blur
 // filters) so the rip transition can clone it into tiles that look identical.
@@ -67,7 +67,7 @@ const Hero = forwardRef(function Hero(
         </div>
         {wide && (
           <Suspense fallback={<div className="hero-art" />}>
-            <AgentsScene />
+            <EngineScene />
           </Suspense>
         )}
       </div>
