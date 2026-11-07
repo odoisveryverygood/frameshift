@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from "react";
-import { createRoot } from "react-dom/client";
 import {
   ArrowDownToLine,
   ArrowRight,
@@ -32,7 +31,7 @@ import {
   TriangleAlert,
   X,
 } from "lucide-react";
-import "./style.css";
+import "./legacy-workspace.css";
 import StlImport from "./StlImport.jsx";
 const RobotRepair=React.lazy(()=>import('./RobotRepair.jsx'));
 import {
@@ -3059,4 +3058,4 @@ function Help() {
     </>
   );
 }
-createRoot(document.getElementById("root")).render(location.pathname==='/repair'?<React.Suspense fallback={<p>Opening repair workspace…</p>}><RobotRepair/></React.Suspense>:<App />);
+export default App;

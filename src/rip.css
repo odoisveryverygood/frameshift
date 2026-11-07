@@ -1,0 +1,35 @@
+.rip {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  overflow: hidden;
+  background: transparent;
+  pointer-events: none;
+}
+.rip-tiles {
+  position: absolute;
+  inset: 0;
+  perspective: 1400px;
+  perspective-origin: 50% 50%;
+}
+.rip-tile {
+  position: absolute;
+  overflow: hidden;
+  background: #fff;
+  backface-visibility: visible;
+  box-shadow: 0 10px 30px rgb(10 12 20 / 14%);
+  will-change: transform, opacity;
+}
+.rip-clone {
+  position: absolute;
+  pointer-events: none;
+}
+.rip-clone .hero {
+  height: 100%;
+  min-height: 0;
+}
+.rip-clone .glow::before,
+.rip-clone .glow::after {
+  animation: none;
+  --glow-angle: var(--frozen-angle, 0deg);
+}
