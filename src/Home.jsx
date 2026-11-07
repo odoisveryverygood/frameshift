@@ -59,7 +59,8 @@ export default function Home({
     [scanning, setScanning] = useState(false),
     [error, setError] = useState(""),
     [hint, setHint] = useState(""),
-    [dragging, setDragging] = useState(false);
+    [dragging, setDragging] = useState(false),
+    [goal, setGoal] = useState("");
   const input = useRef(null),
     depth = useRef(0);
   async function scan() {
@@ -141,7 +142,7 @@ export default function Home({
           aria-label="Add your project"
           onSubmit={(e) => {
             e.preventDefault();
-            onConnect({ path, trusted });
+            onConnect({ path, trusted, mission: goal });
           }}
           onDragEnter={(e) => {
             e.preventDefault();
@@ -176,6 +177,20 @@ export default function Home({
               </li>
             ))}
           </ul>
+          <label className="goal" htmlFor="goal">
+            <span>
+              What feels slow?{" "}
+              <em>Optional — Sift starts on it right after the first build.</em>
+            </span>
+            <textarea
+              id="goal"
+              rows={2}
+              maxLength={4000}
+              value={goal}
+              placeholder="It stutters when more robots are on screen. Keep it looking and behaving the same."
+              onChange={(e) => setGoal(e.target.value)}
+            />
+          </label>
           <label className="visually-hidden" htmlFor="project-path">
             Project folder path
           </label>

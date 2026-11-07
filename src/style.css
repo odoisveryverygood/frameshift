@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&family=Outfit:wght@300;400&display=swap");
 :root {
   color-scheme: dark;
   --bg: #050608;
@@ -1610,6 +1610,55 @@ details summary {
 .replay-result h3 {
   font-size: 14px;
   margin-bottom: 6px;
+}
+
+.tabs {
+  display: flex;
+  gap: 2px;
+  margin-left: 6px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 5%);
+  border: 1px solid var(--line);
+}
+.tabs button {
+  padding: 5px 14px;
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+.tabs button:hover:not(:disabled) {
+  color: var(--ink);
+}
+.tabs button[aria-current="page"] {
+  background: rgb(255 255 255 / 11%);
+  color: var(--ink);
+}
+.goal {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.goal em {
+  color: var(--muted);
+  font-style: normal;
+  font-weight: 400;
+}
+.goal textarea {
+  width: 100%;
+  resize: none;
+  padding: 10px 13px;
+  border-radius: 10px;
+  border: 1px solid var(--line-strong);
+  background: rgb(0 0 0 / 45%);
+  line-height: 1.45;
+}
+.goal textarea:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 /* Home */
