@@ -81,44 +81,6 @@ export default function AgentField({
   const patched = [...(exp?.diff || "").matchAll(/^\+\+\+ b\/(.+)$/gm)].map(
     (m) => m[1],
   );
-  // Short lines the tiny people say in the close-up, from this run's own names.
-  const chatterFor = (id) => {
-    const p = partsFor(id);
-    const b = job.baseline;
-    return id === "scout"
-      ? [
-          ...files.slice(0, 6).map((x) => `reading ${x}`),
-          "following the imports",
-          "building the bundle",
-          "what does this file do?",
-        ]
-      : id === "gauge"
-        ? [
-            Number.isFinite(b?.calls)
-              ? `${b.calls.toLocaleString()} draw calls!`
-              : "counting draw calls",
-            Number.isFinite(b?.frameP95)
-              ? `frame p95 ${b.frameP95.toFixed(1)} ms`
-              : "timing every frame",
-            "sampling the CPU",
-            "same workload, again",
-          ]
-        : id === "smith"
-          ? [
-              ...(patched.length ? patched : files.slice(0, 3)).map(
-                (x) => `patching ${x}`,
-              ),
-              exp?.title || "trying a fix",
-              "rebuilding it",
-              "one more weld",
-            ]
-          : [
-              "do the frames match?",
-              "checking the picking",
-              "transforms look right",
-              ...p.map((x) => `checking ${x}`),
-            ];
-  };
   // What each agent's workers build in the close-up: real names from this run.
   const partsFor = (id) =>
     id === "scout"
@@ -142,14 +104,7 @@ export default function AgentField({
       state === "working"
         ? job.phase || mine.at(-1)?.message || a.role
         : mine.at(-1)?.message || a.waiting;
-    return {
-      ...a,
-      mine,
-      state,
-      task,
-      parts: partsFor(a.id),
-      chatter: chatterFor(a.id),
-    };
+    return { ...a, mine, state, task, parts: partsFor(a.id) };
   });
   const current = info.find((a) => a.state === "working");
   const focused = info.find((a) => a.id === focus);

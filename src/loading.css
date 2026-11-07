@@ -1,21 +1,21 @@
 .loading {
   animation: fade 0.6s ease-out;
-  /* The solar system behind is the page; only the copy and panel take input. */
-  pointer-events: none;
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  background: rgb(255 255 255 / 88%);
 }
 
 .loading-inner {
   display: grid;
   gap: 16px;
+  padding: clamp(20px, 3vw, 32px);
 }
 
 .loading-copy {
-  position: relative;
-  z-index: 2;
+  grid-column: 1 / -1;
   display: grid;
   gap: 6px;
-  max-width: 520px;
-  pointer-events: auto;
+  align-content: center;
 }
 
 .loading-copy h1 {
@@ -65,9 +65,4 @@
 .loading-hint {
   color: var(--muted);
   font-size: 15px;
-}
-@media (max-width: 1100px) {
-  .loading {
-    pointer-events: auto;
-  }
 }
