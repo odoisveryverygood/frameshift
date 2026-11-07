@@ -40,7 +40,7 @@ import {
 import Dashboard from "./Dashboard.jsx";
 import Loading from "./Loading.jsx";
 import Hero from "./Hero.jsx";
-import Rip, { snapshotHtml } from "./Rip.jsx";
+import Rip, { revokeSnapshots, snapshotHtml } from "./Rip.jsx";
 import Slices from "./Slices.jsx";
 import "./style.css";
 const liveStatuses = ["queued", "running", "recovering"];
@@ -612,6 +612,7 @@ function App() {
     const next = afterRip.current;
     afterRip.current = null;
     setRip(null);
+    revokeSnapshots();
     setPhase(next || "work");
   }
   function finishWork() {

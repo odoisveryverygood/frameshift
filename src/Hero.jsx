@@ -1,9 +1,25 @@
-import React, { forwardRef } from "react";
+import React, { Suspense, forwardRef, lazy, useEffect, useState } from "react";
 import Intake from "./Intake.jsx";
 import "./hero.css";
 
+// three.js is large; the hero text appears first and the scene joins when ready.
+const AgentsScene = lazy(() => import("./AgentsScene.jsx"));
+
 // The first screen. It is self-contained (its own gradient background, no blur
 // filters) so the rip transition can clone it into tiles that look identical.
+// The 3D scene only exists on screens wide enough to show it.
+function useWide() {
+  const query = "(min-width: 861px)";
+  const [wide, setWide] = useState(() => matchMedia(query).matches);
+  useEffect(() => {
+    const list = matchMedia(query);
+    const change = () => setWide(list.matches);
+    list.addEventListener("change", change);
+    return () => list.removeEventListener("change", change);
+  }, []);
+  return wide;
+}
+
 const Hero = forwardRef(function Hero(
   {
     projects,
@@ -16,6 +32,7 @@ const Hero = forwardRef(function Hero(
   },
   ref,
 ) {
+  const wide = useWide();
   return (
     <div className="hero" ref={ref}>
       <header className="hero-top">
@@ -45,13 +62,14 @@ const Hero = forwardRef(function Hero(
         <div className="hero-copy">
           <span className="hero-eyebrow">Measure · Patch · Verify</span>
           <h1>Sift</h1>
-          <p>
-            Drop in a 3D project. Sift finds what is slow, tries a fix on a
-            copy, and keeps it only when independent checks say it still looks
-            and behaves the same.
-          </p>
+          <p>Finds what is slow in your 3D project, and proves the fix.</p>
+          <Intake project={project} {...intake} onSettings={onSettings} />
         </div>
-        <Intake project={project} {...intake} onSettings={onSettings} />
+        {wide && (
+          <Suspense fallback={<div className="hero-art" />}>
+            <AgentsScene />
+          </Suspense>
+        )}
       </div>
       <footer className="hero-bottom">
         <span>Runs on your machine</span>

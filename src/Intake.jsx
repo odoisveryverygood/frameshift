@@ -228,7 +228,7 @@ export default function Intake({
         <div className="glow field-box">
           <textarea
             id="goal"
-            rows={3}
+            rows={2}
             maxLength={4000}
             value={mission}
             placeholder="It stutters when more robots are on screen. Keep it looking and behaving the same."

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { snapshotHtml } from "./Rip.jsx";
+import { revokeSnapshots, snapshotHtml } from "./Rip.jsx";
 import "./slices.css";
 
 const RADIUS = 200;
@@ -23,7 +23,7 @@ export default function Slices({ heroRef }) {
       rows = Math.round(innerHeight / 96),
       cw = innerWidth / cols,
       ch = innerHeight / rows;
-    let html = snapshotHtml(hero),
+    let html = snapshotHtml(hero, { owner: "slices" }),
       dirty = false,
       pointer = null,
       raf = 0;
@@ -95,7 +95,7 @@ export default function Slices({ heroRef }) {
       raf = 0;
       const rect = hero.getBoundingClientRect();
       if (dirty) {
-        html = snapshotHtml(hero);
+        html = snapshotHtml(hero, { owner: "slices", release: true });
         dirty = false;
         cells.forEach((c) => {
           c.tile.innerHTML = cloneHtml(c.i, c.j, rect);
@@ -170,6 +170,7 @@ export default function Slices({ heroRef }) {
       document.documentElement.removeEventListener("mouseleave", leave);
       removeEventListener("scroll", clear);
       clear();
+      revokeSnapshots("slices");
     };
   }, []);
   return <div className="slices" ref={host} aria-hidden="true" />;

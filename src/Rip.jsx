@@ -3,8 +3,35 @@ import "./rip.css";
 
 // A static copy of an element's markup, safe to place on screen next to the
 // original: form state is baked in and ids, focus and interaction are removed.
-export function snapshotHtml(el) {
+// Frames are tracked per owner, so the hover pieces can never revoke the rip's.
+const blobUrls = new Map();
+export function revokeSnapshots(owner = "rip") {
+  (blobUrls.get(owner) || []).forEach((u) => URL.revokeObjectURL(u));
+  blobUrls.delete(owner);
+}
+// A canvas is not copied by cloning, so its current frame becomes an image.
+function frameUrl(canvas, owner) {
+  const [, data] = canvas.toDataURL("image/png").split(",");
+  const bytes = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
+  const url = URL.createObjectURL(new Blob([bytes], { type: "image/png" }));
+  blobUrls.set(owner, [...(blobUrls.get(owner) || []), url]);
+  return url;
+}
+export function snapshotHtml(el, { owner = "rip", release = false } = {}) {
+  const previous = release ? blobUrls.get(owner) || [] : [];
+  if (release) blobUrls.delete(owner);
   const clone = el.cloneNode(true);
+  const canvases = el.querySelectorAll("canvas"),
+    copies = clone.querySelectorAll("canvas");
+  canvases.forEach((c, i) => {
+    try {
+      const img = document.createElement("img");
+      img.src = frameUrl(c, owner);
+      img.alt = "";
+      img.className = c.className;
+      copies[i].replaceWith(img);
+    } catch {}
+  });
   const from = el.querySelectorAll("textarea, input"),
     to = clone.querySelectorAll("textarea, input");
   from.forEach((field, i) => {
@@ -28,7 +55,9 @@ export function snapshotHtml(el) {
     .querySelectorAll("input, textarea, button, select, a")
     .forEach((n) => n.setAttribute("tabindex", "-1"));
   clone.setAttribute("aria-hidden", "true");
-  return clone.outerHTML;
+  const html = clone.outerHTML;
+  previous.forEach((u) => URL.revokeObjectURL(u));
+  return html;
 }
 
 const rand = (min, max) => min + Math.random() * (max - min);

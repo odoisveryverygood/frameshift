@@ -2,9 +2,9 @@
   position: relative;
   display: grid;
   grid-template-rows: auto 1fr auto;
-  gap: clamp(16px, 3vw, 40px);
+  gap: clamp(12px, 2vw, 28px);
   min-height: 100dvh;
-  padding: clamp(16px, 2.4vw, 32px) clamp(16px, 3.2vw, 44px);
+  padding: clamp(14px, 2vw, 28px) clamp(16px, 3.2vw, 44px);
   overflow: hidden;
   isolation: isolate;
   /* A static wash, so tiles cloned from it match. */
@@ -58,13 +58,14 @@
 }
 .hero-main {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(330px, 0.9fr);
-  gap: clamp(24px, 5vw, 80px);
+  grid-template-columns: minmax(340px, 560px) minmax(0, 1fr);
+  gap: clamp(24px, 4vw, 64px);
   align-items: center;
 }
 .hero-copy {
   display: grid;
   align-content: center;
+  gap: 0;
 }
 .hero-eyebrow {
   color: var(--accent);
@@ -74,26 +75,24 @@
   text-transform: uppercase;
 }
 .hero-copy h1 {
-  margin: 6px 0 0 -0.04em;
-  font-size: clamp(110px, 21vw, 300px);
+  margin: 4px 0 0 -0.04em;
+  font-size: clamp(72px, 8.4vw, 128px);
   font-weight: 600;
   line-height: 0.84;
   letter-spacing: -0.055em;
 }
-.hero-copy p {
-  max-width: 30em;
-  margin-top: clamp(18px, 3vw, 34px);
+.hero-copy > p {
+  margin: clamp(12px, 1.6vw, 20px) 0 clamp(14px, 2vw, 22px);
   color: var(--ink-2);
-  font-size: clamp(16px, 1.5vw, 19px);
-  line-height: 1.55;
+  font-size: clamp(15px, 1.3vw, 18px);
 }
 
 /* Intake card */
 .intake {
   box-shadow: 0 24px 60px rgb(10 12 20 / 10%);
   display: grid;
-  gap: 14px;
-  padding: 22px;
+  gap: 10px;
+  padding: 18px;
   border: 1px solid var(--line-strong);
   border-radius: 18px;
   background: #ffffff;
@@ -110,7 +109,7 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 14px 16px;
+  padding: 10px 14px;
   border: 1px dashed var(--line-strong);
   border-radius: 12px;
   color: var(--ink-2);
@@ -194,7 +193,7 @@
 .intake-goal textarea {
   display: block;
   width: 100%;
-  min-height: 84px;
+  min-height: 56px;
   padding: 12px 14px;
   resize: none;
   border: 0;
@@ -236,7 +235,7 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
-  min-height: 54px;
+  min-height: 50px;
   border-radius: 14px;
   background: var(--ink);
   color: #fff;
@@ -357,4 +356,25 @@
 }
 .field-box:focus-within {
   border-color: transparent;
+}
+
+.hero-art {
+  position: relative;
+  height: min(74vh, 660px);
+  min-height: 420px;
+}
+.agents-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+@media (max-width: 860px) {
+  .hero-art {
+    display: none;
+  }
+}
+@media (max-height: 880px) {
+  .hero-bottom {
+    display: none;
+  }
 }
