@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { discoverProject } from "../server/discovery.mjs";
 
 export const ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -15,9 +16,11 @@ export function parseOptions(args, cwd = process.cwd()) {
   let browser = true;
   let fresh = false;
   let help = false;
+  let json = false;
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === "--no-browser") browser = false;
+    else if (arg === "--json") json = true;
     else if (arg === "--fresh") fresh = true;
     else if (arg === "--help" || arg === "-h") help = true;
     else if (arg === "--port") {
@@ -27,7 +30,10 @@ export function parseOptions(args, cwd = process.cwd()) {
       port = Number(value);
     } else if (arg.startsWith("-")) throw Error(`Unknown option: ${arg}`);
     else if (project !== undefined) throw Error("Pass one project folder.");
-    else project = arg;
+    else {
+      if (!arg.trim()) throw Error("Pass a nonempty project folder.");
+      project = arg.trim();
+    }
   }
   if (!Number.isInteger(port) || port < 1 || port > 65535)
     throw Error("Port must be between 1 and 65535.");
@@ -37,6 +43,7 @@ export function parseOptions(args, cwd = process.cwd()) {
     browser,
     fresh,
     help,
+    json,
   };
 }
 
@@ -165,27 +172,27 @@ export async function main(args = process.argv.slice(2), cwd = process.cwd()) {
   const options = parseOptions(args, cwd);
   if (options.help) {
     console.log(
-      "Usage: npm run open -- [project-folder] [--fresh] [--no-browser] [--port 4310]\nConnects a trusted local Vite + Three.js project to Earl. No source upload.\nWhen no folder is given, connects the current directory.\nUse --fresh to import a new snapshot after editing source outside Earl.",
+      "Usage: npm run open -- [project-folder] [--fresh] [--no-browser] [--json] [--port 4310]\nConnects a trusted local Vite + Three.js project to Earl. No source upload.\nWhen no folder is given, connects the current directory.\nUse --fresh to import a new snapshot after editing source outside Earl.\nUse --json for a single JSON result; combine with --no-browser for automation.\nDiagnose prerequisites first: node scripts/doctor.mjs [project-folder]",
     );
     return;
   }
-  const projectPath = await fs.realpath(options.project).catch(() => {
-    throw Error(`Project folder does not exist: ${options.project}`);
-  });
-  if (!(await fs.stat(projectPath)).isDirectory())
-    throw Error("Choose a project folder.");
-  await fs.access(path.join(projectPath, "package.json")).catch(() => {
-    throw Error("Choose a project folder containing package.json.");
-  });
+  // Reject invalid input before starting a persistent service.
+  const discovery = await discoverProject(options.project);
+  if (!discovery.supported && !discovery.manualConfig)
+    throw Error(discovery.issues.map((issue) => issue.message).join(" "));
+  const projectPath = discovery.root;
+  const log = (...values) => {
+    if (!options.json) console.log(...values);
+  };
   const origin = `http://127.0.0.1:${options.port}`;
-  console.log(`Connecting local project: ${projectPath}`);
+  log(`Connecting local project: ${projectPath}`);
   const current = await ensureServer(origin, options.port);
   await ensureWorker(current, origin);
   const existing =
     !options.fresh &&
     current.projects.find((project) => project.original === projectPath);
   if (existing)
-    console.log(
+    log(
       "Reopening the connected snapshot. Use --fresh to import external source changes.",
     );
   const project =
@@ -200,10 +207,11 @@ export async function main(args = process.argv.slice(2), cwd = process.cwd()) {
       180000,
     ));
   const url = `${origin}/?project=${encodeURIComponent(project.id)}`;
-  console.log(
+  log(
     `\nEarl is ready: ${url}\nSource stays local. Earl works in a separate copy; applying a patch is explicit.\nYour connected project may execute its build scripts when you run an experiment.`,
   );
   if (options.browser) await openBrowser(url);
+  if (options.json) console.log(JSON.stringify({ projectId: project.id, url }));
   return { projectId: project.id, url };
 }
 
