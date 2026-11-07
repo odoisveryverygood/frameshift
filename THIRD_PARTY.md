@@ -20,6 +20,18 @@ metric/guard separation, same-window reference and keep/discard concepts.
 AGR's CLI and Docker stack are not embedded. License acknowledgment is included
 in vendor/agr-LICENSE (MIT). AGR's reported speedups are not Earl results.
 
+## Anatomy (the hero's rocket-engine drawing)
+
+Source: https://github.com/wheresryan22/anatomy (MIT, Copyright (c) 2026 Ryan)
+License: vendor/anatomy-LICENSE
+
+public/engine/raptor.png is the Raptor 2 test-stand drawing from anatomy's
+examples/raptor-engine, rendered once in Chrome with the plume, labels, controls and
+paper background removed (cold, assembled state). The artwork is by the anatomy
+project. It is shown on the hero page (src/EngineScene.jsx); the flame, the orange
+nozzle glow, the paper-square melt, the hover lift and the sway are authored for Sift
+and do not use anatomy's plume shader or code.
+
 ## Runtime libraries
 
 Three.js, React, Express, Vite, Playwright Core, Pixelmatch, PNGJS, jsdiff,

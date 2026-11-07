@@ -1,0 +1,89 @@
+.loading {
+  animation: fade 0.6s ease-out;
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  background: rgb(255 255 255 / 88%);
+}
+
+.loading-inner {
+  display: grid;
+  gap: 16px;
+  padding: clamp(20px, 3vw, 32px);
+}
+
+.loading-copy {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 6px;
+  align-content: center;
+}
+
+.loading-copy h1 {
+  font-size: clamp(24px, 3vw, 34px);
+  line-height: 1.05;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+.loading-copy p {
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+.loading-copy blockquote {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgb(10 12 20 / 10%);
+  background: rgb(10 12 20 / 4%);
+  backdrop-filter: blur(10px);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6;
+  overflow: hidden;
+}
+
+.loading-copy blockquote span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 11.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.loading-preview {
+  color: var(--accent);
+  font-size: 14px;
+}
+
+.loading-hint {
+  color: var(--muted);
+  font-size: 15px;
+}
+
+/* No frame: the agents sit straight on the page, over a light Milky Way. */
+.loading {
+  position: relative;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+.loading-inner {
+  position: relative;
+  z-index: 1;
+  padding: clamp(8px, 2vw, 20px) 0;
+}
+.galaxy {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+}
