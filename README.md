@@ -13,6 +13,203 @@ a protected browser profiler, repeatable checks, and an independent job worker.
 
 ![Earl workspace](verification/earl-workspace.png)
 
+## Team handoff — start here
+
+> **TEAMMATES 2 AND 3: DO NOT PUSH TO `main`. Work on your own branch, push that
+> branch, and open a pull request targeting `main`. Do not merge your own PR.
+> The project owner reviews and merges. This also applies to fixes and docs.**
+
+### Shared context
+
+Earl is a local performance engineer for existing interactive 3D web apps. A user
+connects a project folder, describes what feels slow, and watches Earl measure,
+inspect source, try an optimization, independently verify behavior and performance,
+and offer a patch. The intended experience is: **open project → show the problem →
+review a tested improvement**. The actual running app is the center of the product.
+
+The current UI is too busy: stage tabs, perspective tools, metrics, controls and
+side panels compete for attention. The goal is a simple professional tool, not a
+metrics dashboard or a generic chat app. Preserve real execution while simplifying
+its presentation. Our design reference is the owner's Morf project: generous scene
+space, warm surfaces, restrained type, and contextual controls. Existing screenshots
+in `verification/` show Earl's current state, not the final target design.
+
+The AIE Code Summit problem statement we primarily target is **Trust but Verify**:
+AI-generated improvements must survive independent, repeatable checks. The guide
+weights the first round as technical demo 35%, implementation difficulty 30%,
+impact 20%, and creativity 15%. A coherent working flow matters more than additional
+panels. A dashboard cannot be the project's main feature. Existing project and
+third-party code must be attributed; event-built work must be clearly identified.
+
+**Current reality:** local Vite + Three.js WebGL is the supported automatic path.
+Next.js and arbitrary engines are not established. We have measured a 400-object
+fixture dropping from 400 to 2 draw calls with CPU submission p95 about 3.0 to 0.6 ms;
+frame pacing stayed about 60 FPS. This is a fixture result, not a universal speedup.
+See `VALIDATION-EARL.md`. Do not invent metrics or claim every interaction is proven.
+
+**Owner / teammate 1 owns the core:** coding agent, Meta/Subquadratic integrations,
+patch-specific risk review, independent verification, recorded interaction contract,
+acceptance rules, protected profiler, patch promotion and final integration. These
+are reserved for the owner. Sponsor award integrations are planned, not live-verified.
+
+### Setup for both teammates
+
+```sh
+git clone https://github.com/odoisveryverygood/frameshift.git
+cd frameshift
+npm ci
+npm run dev
+```
+
+Use Node 22+ and Google Chrome. Open `http://127.0.0.1:4310`. A local profile/example
+build does not need a model key. Do not block your task on an AI optimization call;
+the owner handles provider access. Never commit `.env.local`, API keys, `.frameshift`,
+`node_modules`, private source or personal paths. Preserve licensed-code attribution.
+
+Read your assignment and inspect its files before editing. Prefer the installed
+React/Vite/Three.js/Express/Playwright stack. Propose dependency additions in your PR;
+do not replace the framework or rewrite the backend. No fake success states or
+silent mock fallbacks. If a check was not run, report it as not run.
+
+### Teammate 2 — simple, excellent application UI
+
+**Branch:** `teammate-2/earl-ui`
+
+**Own:** `src/main.jsx`, `src/style.css`, `index.html`, and new frontend components
+under `src/`. You own frontend presentation and accessibility. Do not edit backend,
+SDK, examples, validation rules, credentials, or provider integrations. Coordinate
+shared `package.json`/lockfile edits with the owner before making them.
+
+**Deliverable:** a polished, responsive workspace where an unfamiliar user can
+connect a project, enter a goal, understand progress, and review a real result
+without learning the internals of our profiler.
+
+Build this flow:
+
+1. A slim header with Earl, the current project, and a small project/settings menu.
+2. The user's running app occupies most of the workspace. Use its native controls;
+   remove default Earl perspective buttons, axis decoration, and prominent scene
+   editing tools. Keep useful inspection tools under Details when needed.
+3. A narrow conversation/activity rail with one goal composer: “What feels slow?”
+   and one primary action: “Improve performance.” This sends the existing mission
+   to the real run endpoint. Render actual run events and findings as activity;
+   do not fabricate a chat conversation or pretend unsupported chat endpoints exist.
+4. Replace permanent Investigate/Experiment/Review navigation with automatic states:
+   ready, building/measuring, trying a patch, checking, result. Keep advanced controls
+   discoverable through a menu; do not remove capabilities merely to hide clutter.
+5. While measuring, show an actual baseline image with a clear paused-for-measurement
+   label. Do not keep a live WebGL preview running alongside performance benchmarks.
+6. A result card shows the actual verdict and measurement with Compare, View code,
+   and Apply. Code, evidence images, receipts and full logs expand on demand. A
+   rejected/inconclusive result must be as clear as a successful one. No default wall
+   of metric cards. All result elements must refer to the same run and experiment.
+7. Keep working project connection, automatic first build, URL selection persistence,
+   interaction recording, replay, comparison, export, apply confirmation/conflict
+   errors, settings and cancellation. Simplify the controls; preserve their behavior.
+
+**Visual direction:** warm ivory, charcoal, restrained rust accent, subtle borders,
+clear hierarchy and generous spacing. Small intentional motion for state changes;
+no decorative spinning 3D background, neon gradients, oversized cards, or extra
+marketing page. Reference [Rive's contextual interface](https://rive.app/docs/editor/interface-overview)
+and [Spline's scene-first editor](https://docs.spline.design/basics/understanding-splines-ui).
+
+**Existing API contract — use it, do not redesign it:**
+
+- `GET /api/state`: projects, runs, activeRun, worker and provider metadata.
+- `POST /api/inspect` with `{path}`; `POST /api/projects` with `{path,trusted:true}`.
+- `POST /api/projects/:id/runs` with `{kind:"profile"|"optimize",count,mission}`.
+- `GET /api/events`: refresh notifications. `POST /api/stop` with `{runId}`.
+- Existing source, scenario, preview, baseline, patch, apply, report, artifact and
+  verifier-receipt endpoints remain authoritative; inspect current handlers and UI
+  before wiring them. Preserve sandboxed iframe and internal `frameshift:*` messages.
+- A connected project needs an initial profile to create its preview. Changing the
+  project must update `?project=<id>` so refresh never returns to the wrong app.
+
+**Done means:** `npm run build` and `npm test` pass; manually exercise connection,
+first build, project switch+refresh, recording, stopping, and review; no browser
+console errors; keyboard-accessible fields/buttons/dialogs; no horizontal overflow
+at 390px; useful states for unsupported project, missing provider, build failure,
+queued job, and no accepted changes. Save desktop/mobile screenshots and a short
+walkthrough in your PR. Identify which end-to-end checks required the owner/model.
+Do not label a browser fixture or screenshot as a live optimization run.
+
+### Teammate 3 — project doctor, portable demo, reliable smoke checks
+
+**Branch:** `teammate-3/project-readiness`
+
+This is a complete developer-experience task, not placeholder documentation. Make
+Earl easy to start and demonstrate on another laptop. You do not own the core AI,
+sponsor integration, verifier, optimization algorithm, or UI redesign.
+
+**Own:** `server/discovery.mjs`, `scripts/open.mjs`, a new `scripts/doctor.mjs`, related
+readiness/CLI tests, a new standalone demo under `examples/orbit-lab/`, and your task
+notes under `docs/team/`. Do not edit `src/`, `sdk/`, `server/agent.mjs`, `model.mjs`,
+`runner.mjs`, `benchmark.mjs`, `verifier.mjs`, `core.mjs`, `worker.mjs`, or `jobs.mjs`.
+Request owner integration for new API routes or runner hooks. Agree on package script
+changes before touching `package.json` or the lockfile. Do not change existing demo
+sources or recorded benchmark artifacts to make numbers look better.
+
+Build these three pieces:
+
+1. **Project doctor:** `node scripts/doctor.mjs /path/to/project`, plus `--json`.
+   Read-only checks for folder/package validity, supported framework, Three.js version,
+   identified entry, production build script, Node runtime, installed dependencies,
+   and Chrome availability. Return structured findings with code, severity and
+   actionable remediation. Use exit 0 when ready, exit 1 when blocked; warnings are
+   distinct from blockers. Do not install packages, execute build scripts, invoke a
+   model, open browsers, or mutate source during diagnosis. Do not print secrets.
+   Preserve the `/api/inspect` response shape; additive findings are acceptable.
+2. **Portable Orbit Lab demo:** a small real Vite + Three.js application with named
+   animated objects, visible click-selection output, pause/resume and resize handling.
+   Use authored simple geometry and no external asset URLs. Make ordinary inefficient
+   mesh rendering a clearly documented optimization exercise, preserving all behavior.
+   Include package/build files and straightforward standalone setup. No handwritten
+   profiler adapter should be needed. The owner will run and evaluate AI optimization;
+   your task is a dependable interactive input project, not a prewritten winning patch.
+3. **Smoke verification:** reproducible commands that check doctor positive/negative
+   cases, build the demo, connect it using the existing local CLI, wait for an actual
+   profile to finish, and verify the preview loads. Assert behavior, not just HTTP 200:
+   canvas renders, selection output changes after a real click, pause/resume works,
+   resize produces a usable viewport. Use existing Playwright tooling. A failed step
+   exits nonzero with a useful error. Keep model access optional and never mock a live
+   result. Clean only resources the test created and preserve other users' jobs.
+
+**Done means:** doctor checks cover missing folder, trailing spaces, invalid package,
+unsupported framework and missing dependency/build prerequisites; unit tests use
+portable temporary folders; demo builds from its own directory; a fresh checkout has
+copy-paste setup; the smoke check captures actual results and reports failures.
+Document requirements, expected outputs, teardown, and what is not verified in
+`docs/team/teammate-3-readiness.md`. The owner's machine path must not be required.
+If automatic scene instrumentation fails, report the boundary to the owner rather
+than altering verification or hardcoding synthetic success.
+
+### Branch, PR, and integration rules — both teammates
+
+**NO DIRECT PUSH TO `main`. PUSH YOUR FEATURE BRANCH AND OPEN A PR ONLY.**
+
+```sh
+git fetch origin
+git switch -c teammate-2/earl-ui origin/main
+# Teammate 3 uses teammate-3/project-readiness instead.
+# Implement only your owned scope, then run its checks.
+git add <your-files>
+git commit -m "Describe your completed change"
+git push -u origin teammate-2/earl-ui
+# Open a pull request targeting main. Do not merge it yourself.
+```
+
+Teammate 3 replaces the branch name in both commands. If your branch already exists,
+switch to it rather than recreating it. Never force-push shared branches, reset
+someone else's work, stage `.env*`, or commit generated/private workspaces. Keep PRs
+focused; do not run formatters over files another teammate owns. Ask the owner to
+resolve shared-file changes and integration conflicts. The owner retains final merge
+control. This README policy does not itself configure GitHub branch protection.
+
+PR description must include: user-visible result, changed files, exact checks and
+observed outcomes, screenshots or terminal evidence, remaining issues, and reused
+code/licenses. Separate live, local, fixture/mock, and not-run evidence. Record your
+actual event contributions; do not present the pre-existing Earl engine as newly built.
+
 ## Quick start
 
 Requirements: **Node.js 22 or newer, npm, and Google Chrome**. A model provider
