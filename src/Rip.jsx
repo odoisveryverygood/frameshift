@@ -14,6 +14,14 @@ export function snapshotHtml(el) {
       else to[i].removeAttribute("checked");
     } else to[i].setAttribute("value", field.value);
   });
+  const live = el.querySelectorAll(".glow"),
+    frozen = clone.querySelectorAll(".glow");
+  live.forEach((g, i) => {
+    const angle = getComputedStyle(g, "::before").getPropertyValue(
+      "--glow-angle",
+    );
+    if (angle) frozen[i].style.setProperty("--frozen-angle", angle.trim());
+  });
   clone.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
   clone.querySelectorAll("[for]").forEach((n) => n.removeAttribute("for"));
   clone

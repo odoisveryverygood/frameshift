@@ -100,7 +100,7 @@ export default function Intake({
   }
   return (
     <form
-      className={"intake " + (dragging ? "is-dragging" : "")}
+      className={"glow glow-edge intake " + (dragging ? "is-dragging" : "")}
       aria-label="Add your project and optimize"
       onSubmit={submit}
       onDragEnter={(e) => {
@@ -149,19 +149,21 @@ export default function Intake({
             Project folder path
           </label>
           <div className="path-row">
-            <input
-              id="project-path"
-              ref={input}
-              placeholder="/Users/you/projects/my-scene"
-              value={path}
-              autoComplete="off"
-              spellCheck={false}
-              onChange={(e) => {
-                setPath(e.target.value);
-                setDiscovery(null);
-                setHint("");
-              }}
-            />
+            <div className="glow glow-focus field-box">
+              <input
+                id="project-path"
+                ref={input}
+                placeholder="/Users/you/projects/my-scene"
+                value={path}
+                autoComplete="off"
+                spellCheck={false}
+                onChange={(e) => {
+                  setPath(e.target.value);
+                  setDiscovery(null);
+                  setHint("");
+                }}
+              />
+            </div>
             <button
               type="button"
               className="secondary-button"
@@ -223,15 +225,17 @@ export default function Intake({
       )}
       <label className="intake-goal" htmlFor="goal">
         <span>What feels slow?</span>
-        <textarea
-          id="goal"
-          rows={3}
-          maxLength={4000}
-          value={mission}
-          placeholder="It stutters when more robots are on screen. Keep it looking and behaving the same."
-          onChange={(e) => onMission(e.target.value)}
-          disabled={busy || running}
-        />
+        <div className="glow field-box">
+          <textarea
+            id="goal"
+            rows={3}
+            maxLength={4000}
+            value={mission}
+            placeholder="It stutters when more robots are on screen. Keep it looking and behaving the same."
+            onChange={(e) => onMission(e.target.value)}
+            disabled={busy || running}
+          />
+        </div>
       </label>
       {!existing && (
         <label className="intake-trust">

@@ -144,14 +144,17 @@
   display: flex;
   gap: 8px;
 }
-.path-row input {
+.path-row .field-box {
   flex: 1;
   min-width: 0;
+}
+.path-row input {
+  width: 100%;
   min-height: 46px;
   padding: 0 14px;
-  border: 1px solid var(--line-strong);
+  border: 0;
   border-radius: 10px;
-  background: #f6f8fc;
+  background: transparent;
   font-family: var(--mono);
   font-size: 14.5px;
 }
@@ -189,21 +192,20 @@
   font-weight: 500;
 }
 .intake-goal textarea {
+  display: block;
   width: 100%;
   min-height: 84px;
   padding: 12px 14px;
   resize: none;
-  border: 1px solid var(--line-strong);
+  border: 0;
   border-radius: 12px;
-  background: #f6f8fc;
+  background: transparent;
   font-weight: 400;
   line-height: 1.5;
 }
 .path-row input:focus-visible,
 .intake-goal textarea:focus-visible {
   outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 .intake-goal textarea:disabled {
   opacity: 0.6;
@@ -282,4 +284,77 @@
 .intake-preview {
   color: var(--muted);
   font-size: 12.5px;
+}
+
+/* A small gradient that travels around a box's edge and leaks a little light. */
+@property --glow-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes glow-spin {
+  to {
+    --glow-angle: 360deg;
+  }
+}
+.glow {
+  --glow-colors: #1f4bff, #a855f7, #ff5c9d, #19c3a6, #ffb340, #1f4bff;
+  position: relative;
+}
+.field-box {
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: #f6f8fc;
+}
+.path-row .field-box {
+  border-radius: 10px;
+}
+.glow::before,
+.glow::after {
+  content: "";
+  position: absolute;
+  border-radius: inherit;
+  pointer-events: none;
+  background: conic-gradient(from var(--glow-angle), var(--glow-colors));
+  animation: glow-spin 7s linear infinite;
+}
+/* The travelling edge. */
+.glow::before {
+  inset: -1px;
+  padding: 1px;
+  opacity: 0.7;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+/* The light it leaks outside. */
+.glow::after {
+  inset: -2px;
+  z-index: -1;
+  opacity: 0.2;
+  filter: blur(14px);
+}
+.glow-edge::before {
+  opacity: 0.4;
+}
+.glow-edge::after {
+  opacity: 0.1;
+  filter: blur(22px);
+}
+/* The path field only lights up while it is being used. */
+.glow-focus::before,
+.glow-focus::after {
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.glow-focus:focus-within::before {
+  opacity: 0.8;
+}
+.glow-focus:focus-within::after {
+  opacity: 0.2;
+}
+.field-box:focus-within {
+  border-color: transparent;
 }

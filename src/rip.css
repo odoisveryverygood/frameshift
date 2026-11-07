@@ -76,3 +76,8 @@
   opacity: 0;
   transition: opacity 0.38s ease;
 }
+.rip-clone .glow::before,
+.rip-clone .glow::after {
+  animation: none;
+  --glow-angle: var(--frozen-angle, 0deg);
+}
