@@ -21,7 +21,7 @@ import {
 import { measure, measurePair, capture, verify } from "./benchmark.mjs";
 import { propose } from "./model.mjs";
 import { projectUpdate, promotion } from "./jobs.mjs";
-import { discoverProject } from "./discovery.mjs";
+import { discoverProject, resolveProjectFolder } from "./discovery.mjs";
 import { buildInstrumented } from "./integration.mjs";
 import { proposeExperiment } from "./agent.mjs";
 import { normalizeMission } from "./mission.mjs";
@@ -52,7 +52,7 @@ export async function initialize() {
   runs=loadedRuns.sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
 }
 export async function connect(source, { example = false, name } = {}) {
-  const original = await fs.realpath(source);
+  const original = await resolveProjectFolder(source);
   const pkg = await json(path.join(original, "package.json"), null);
   if (!pkg) throw Error("Choose a project folder containing package.json");
   const discovery = await discoverProject(original);

@@ -3,7 +3,14 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { discoverProject } from "../server/discovery.mjs";
+import { discoverProject, resolveProjectFolder } from "../server/discovery.mjs";
+test("pasted project paths ignore surrounding whitespace and explain missing folders", async () => {
+  const folder = new URL("./fixtures/plain-three", import.meta.url).pathname;
+  assert.equal(await resolveProjectFolder(" \n" + folder + " \n"), await fs.realpath(folder));
+  assert.equal((await discoverProject(folder + " ")).supported, true);
+  await assert.rejects(() => resolveProjectFolder(" "), /Paste the full path/);
+  await assert.rejects(() => resolveProjectFolder(folder + "/missing"), /Project folder was not found/);
+});
 test("discovers plain Vite Three.js entry and dependency graph without a manual adapter", async () => {
   const report = await discoverProject(
     new URL("./fixtures/plain-three", import.meta.url).pathname,

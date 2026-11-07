@@ -24,8 +24,23 @@ async function readJson(file, fallback = null) {
     throw new Error(`Cannot read ${path.basename(file)}: ${e.message}`);
   }
 }
+export async function resolveProjectFolder(input) {
+  if (typeof input !== "string" || !input.trim())
+    throw Error("Paste the full path to your project folder.");
+  const folder = input.trim();
+  try {
+    const root = await fs.realpath(folder);
+    if (!(await fs.stat(root)).isDirectory())
+      throw Error("Choose a project folder, rather than a file.");
+    return root;
+  } catch (error) {
+    if (["ENOENT", "ENOTDIR"].includes(error.code))
+      throw Error("Project folder was not found. Check the pasted path and try again.");
+    throw error;
+  }
+}
 export async function discoverProject(input) {
-  const root = await fs.realpath(input);
+  const root = await resolveProjectFolder(input);
   const pkg = await readJson(path.join(root, "package.json"));
   if (!pkg) throw new Error("Choose a project folder containing package.json.");
   const dependencies = { ...pkg.dependencies, ...pkg.devDependencies };
