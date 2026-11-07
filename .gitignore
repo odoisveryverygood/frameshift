@@ -10,3 +10,6 @@ dist/
 *.p12
 
 .playwright-cli/
+
+__pycache__/
+*.pyc

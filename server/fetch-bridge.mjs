@@ -83,3 +83,15 @@ export async function createFetchBridge({ signal, timeoutMs = 10000 } = {}) {
     async close() { stop(); },
   };
 }
+
+/** Registration evidence and process health are separate from local SDK handoffs. */
+export async function publicFetchAgentStatus() {
+  const fs = await import('node:fs/promises');
+  const directory = path.join(ROOT, '.frameshift/fetch/public');
+  const read = async name => { try {return JSON.parse(await fs.readFile(path.join(directory,name),'utf8'));}catch{return null;} };
+  const registration=await read('registration.json');
+  const heartbeat=await read('heartbeat.json');
+  let alive=false;
+  if(heartbeat && Date.now()-Date.parse(heartbeat.heartbeat)<45000 && heartbeat.pid>1){try{process.kill(heartbeat.pid,0);alive=true;}catch{}}
+  return {status:registration?'registered':'not-registered',alive,address:registration?.address||heartbeat?.address||null,handle:registration?.handle||null,mode:'agentverse-mailbox-acp',asiWorkflowVerifiedAt:registration?.asiWorkflowVerifiedAt||null};
+}

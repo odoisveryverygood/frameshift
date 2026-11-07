@@ -1,0 +1,14 @@
+{
+  "name": "Relay · 2,000 warehouse robots",
+  "buildCommand": ["npm", "run", "build"],
+  "outputDir": "dist",
+  "editableFiles": ["src/fleet.js"],
+  "autoInstrument": false,
+  "adapter": "__frameshift",
+  "metric": "submitP95",
+  "minImprovement": 0.08,
+  "maxVisualDifference": 0.01,
+  "samples": 60,
+  "repeats": 3,
+  "checkpoints": [{"time":0,"view":0},{"time":0.6,"view":1},{"time":1.2,"view":2},{"time":2,"view":0},{"time":3,"view":1},{"time":4.2,"view":2},{"time":5,"view":0},{"time":6,"view":1}]
+}

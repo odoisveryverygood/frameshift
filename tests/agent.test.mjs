@@ -507,3 +507,26 @@ test("repair keeps the original mission without changing the fixed optimization 
     await fs.rm(p.workspace, { recursive: true, force: true });
   }
 });
+
+test('investigator can correct an invalid brief after inspecting multiple modules', async () => {
+  const {investigateProject} = await import('../server/investigator.mjs');
+  const p = await project();
+  let step = 0;
+  const events=[];
+  try {
+    await withProvider(async (_req, body, res) => {
+      step++;
+      if(step===1)return respond(res,step,'list_source',{prefix:''});
+      if(step===2)return respond(res,step,'read_profile',{});
+      if(step>=3&&step<=5)return respond(res,step,'read_source',{path:['src/main.js','src/world.js','src/geometry.js'][step-3],startLine:1,endLine:50});
+      if(step===6)return respond(res,step,'search_source',{query:'count'});
+      const evidence=[{path:'src/world.js',observation:'The source declares the repeated workload count.'}];
+      return respond(res,step,'submit_investigation',{hypothesis:'Inspect repeated resource construction.',objective:'Measure a reduction in real CPU submission overhead.',evidence,relevantFiles:step===7?['src/main.js']:['src/world.js']});
+    }, async()=>{
+      const result=await investigateProject({...p,onEvent:async e=>events.push(e)});
+      assert.equal(result.budget.rounds,8);
+      assert.equal(result.evidence[0].sha256.length,64);
+      assert.ok(events.some(e=>e.type==='agent-tool-result'&&e.status==='rejected'));
+    });
+  } finally { await fs.rm(p.workspace,{recursive:true,force:true}); }
+});

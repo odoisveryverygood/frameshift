@@ -23,6 +23,7 @@ import { investigateSpatial, listFindings, spatialRevision, findingScreenshot, s
 import { receiveStlImport, getStlImport, stlImportDirectory, markStlConnected } from "./stl/imports.mjs";
 import {getRepairData,createRepairPlan,createGapRepairPlan,createRepairCandidate,getRepairCandidate,getRepairPlan,candidateFile,repairDirectory} from './stl/repairs.mjs';
 import {runRepairAgent} from './stl/repair-agent.mjs';
+import { publicFetchAgentStatus } from "./fetch-bridge.mjs";
 import { provider, redactProviderError } from "./model.mjs";
 import { captureFrame } from "./capture.mjs";
 import { discoverProject } from "./discovery.mjs";
@@ -114,6 +115,7 @@ app.use('/stl-preview/:id',async(req,res,next)=>{
 });
 app.get("/api/state", async (req, res) => {
   const lab = await labState();
+  const publicAgent = await publicFetchAgentStatus();
   const liveLab = lab.runs.find((r) => r.id === lab.activeRun);
   const labProxy = liveLab ? { ...liveLab, kind: "skill-lab", projectId: null, projectName: "Skill Lab", experiments: [] } : null;
   return res.json({
@@ -124,7 +126,7 @@ app.get("/api/state", async (req, res) => {
     activeRun: activeRun() || lab.activeRun,
     provider: provider(),
     spatialProvider: spatialProviderStatus(),
-    specialists: { enabled: process.env.EARL_SPONSOR_MODE === "1", meta: Boolean(process.env.MODEL_API_KEY), subquadratic: Boolean(process.env.SUBQ_API_KEY), fetch: "local-uagents", agentverse: "not-registered" },
+    specialists: { enabled: process.env.EARL_SPONSOR_MODE === "1", meta: Boolean(process.env.MODEL_API_KEY), subquadratic: Boolean(process.env.SUBQ_API_KEY), fetch: "local-uagents", agentverse: publicAgent.status, publicAgent },
     root: ROOT,
     worker: {
       ...(await workerStatus()),

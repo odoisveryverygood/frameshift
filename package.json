@@ -12,7 +12,11 @@
     "verify": "node scripts/verify.mjs",
     "worker": "node server/worker.mjs",
     "demo:repair": "node scripts/create-repair-demo.mjs",
-    "sdk:verify": "node sdk/verify.mjs"
+    "sdk:verify": "node sdk/verify.mjs",
+    "fetch:setup": "node scripts/setup-fetch-agent.mjs",
+    "fetch:agent": ".frameshift/fetch/venv/bin/python -u integrations/fetch/sift_agent.py",
+    "fetch:identity": ".frameshift/fetch/venv/bin/python integrations/fetch/sift_agent.py --identity",
+    "fetch:test": ".frameshift/fetch/venv/bin/python -m unittest discover -s integrations/fetch -p test_sift_tools.py -v"
   },
   "dependencies": {
     "diff": "^8.0.0",

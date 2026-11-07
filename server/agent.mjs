@@ -530,6 +530,7 @@ export async function proposeExperiment({
     } catch (e) {
       item.ok = false;
       item.error = redact(e.message).slice(0, 400);
+      await onEvent({ type: "agent-tool-result", role, tool: item.tool, status: "rejected", message: item.error });
       return { result: { error: item.error } };
     }
   }
