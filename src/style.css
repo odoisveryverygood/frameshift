@@ -1341,7 +1341,7 @@ body::before {
 .page {
   display: grid;
   gap: 40px;
-  width: min(1040px, 100%);
+  width: min(1240px, 100%);
   margin: 0 auto;
   padding: clamp(24px, 4vw, 48px) clamp(14px, 3vw, 32px) 96px;
 }
