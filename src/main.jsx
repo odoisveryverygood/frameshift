@@ -41,6 +41,7 @@ import Dashboard from "./Dashboard.jsx";
 import Loading from "./Loading.jsx";
 import Hero from "./Hero.jsx";
 import Rip, { snapshotHtml } from "./Rip.jsx";
+import Slices from "./Slices.jsx";
 import "./style.css";
 const liveStatuses = ["queued", "running", "recovering"];
 const terminalStatuses = [
@@ -51,6 +52,37 @@ const terminalStatuses = [
   "stopped",
   "failed",
   "interrupted",
+];
+// Generic placeholder shown under the hero in a preview with no project.
+const sampleCode = [
+  {
+    path: "preview/scene.js",
+    lines: [
+      "import * as THREE from 'three';",
+      "",
+      "const renderer = new THREE.WebGLRenderer({ antialias: true });",
+      "const scene = new THREE.Scene();",
+      "const camera = new THREE.PerspectiveCamera(50, aspect, 0.1, 200);",
+      "",
+      "for (let i = 0; i < count; i++) {",
+      "  const mesh = new THREE.Mesh(geometry, material);",
+      "  mesh.position.set(x(i), 0, z(i));",
+      "  scene.add(mesh);",
+      "}",
+      "",
+      "function animate() {",
+      "  requestAnimationFrame(animate);",
+      "  update(clock.getDelta());",
+      "  renderer.render(scene, camera);",
+      "}",
+    ],
+  },
+];
+const previewPhases = [
+  "Reading your files",
+  "Measuring the baseline",
+  "Trying a patch",
+  "Checking the patch",
 ];
 const steps = ["Ready", "Measure", "Patch", "Check", "Result"];
 async function api(url, body) {
@@ -115,7 +147,9 @@ function App() {
     [frameCapture, setFrameCapture] = useState(null),
     [failedBaseline, setFailedBaseline] = useState(null),
     [phase, setPhase] = useState("hero"),
-    [rip, setRip] = useState(null);
+    [rip, setRip] = useState(null),
+    [previewing, setPreviewing] = useState(false),
+    [previewStep, setPreviewStep] = useState(0);
   const preview = useRef(null),
     reference = useRef(null),
     viewport = useRef(null),
@@ -287,9 +321,15 @@ function App() {
     setExperimentId(null);
     if (phaseRef.current === "work" || phaseRef.current === "rip") finishWork();
   }, [projectJob?.id, data.runs]);
+  // In a preview the steps cycle so the progress screen can be seen moving.
+  useEffect(() => {
+    if (!previewing || phase !== "work") return;
+    const timer = setInterval(() => setPreviewStep((n) => (n + 1) % 4), 2400);
+    return () => clearInterval(timer);
+  }, [previewing, phase]);
   // Never leave the page on a progress screen with nothing running.
   useEffect(() => {
-    if (phase !== "work" || projectJob) return;
+    if (phase !== "work" || projectJob || previewing) return;
     const timer = setTimeout(() => {
       if (!autoRun.current) setPhase(dashRun ? "results" : "hero");
     }, 6000);
@@ -448,6 +488,7 @@ function App() {
   }
   function goHero() {
     setRip(null);
+    setPreviewing(false);
     setPhase("hero");
     window.scrollTo(0, 0);
   }
@@ -492,10 +533,7 @@ function App() {
       chooseProject(p.id);
       await refresh();
       if (p.built) {
-        if (!data.provider.configured) {
-          setModal("settings");
-          return null;
-        }
+        if (!data.provider.configured) return { p, preview: true };
         await api("/projects/" + p.id + "/runs", {
           kind: "optimize",
           count,
@@ -505,11 +543,19 @@ function App() {
         autoRun.current = p.id;
         await api("/projects/" + p.id + "/runs", { kind: "profile" });
       }
-      return p;
+      return { p };
     });
     if (!result.ok || !result.value) {
       starting.current = false;
       return;
+    }
+    const started = result.value.p;
+    if (result.value.preview) {
+      setNotice(
+        "Previewing the transition. Connect a model to run it for real.",
+      );
+      setPreviewing(true);
+      setPreviewStep(0);
     }
     setRip({
       html,
@@ -524,12 +570,42 @@ function App() {
     });
     setPhase("rip");
     starting.current = false;
-    loadCode(result.value).then((code) =>
-      setRip((r) => (r ? { ...r, code } : r)),
-    );
+    loadCode(started).then((code) => setRip((r) => (r ? { ...r, code } : r)));
+  }
+  // No project to run: play the transition anyway so it can be seen.
+  async function beginPreview(origin) {
+    const el = heroRef.current;
+    const html = el ? snapshotHtml(el) : "";
+    const box = el
+      ? el.getBoundingClientRect()
+      : { left: 0, top: 0, width: innerWidth, height: innerHeight };
+    starting.current = true;
+    setPreviewing(true);
+    setPreviewStep(0);
+    setRip({
+      html,
+      rect: {
+        left: box.left,
+        top: box.top,
+        width: box.width,
+        height: box.height,
+      },
+      origin: origin || { x: innerWidth / 2, y: innerHeight / 2 },
+      code: project ? null : sampleCode,
+    });
+    setPhase("rip");
+    starting.current = false;
+    if (project)
+      loadCode(project).then((code) =>
+        setRip((r) =>
+          r ? { ...r, code: code.length ? code : sampleCode } : r,
+        ),
+      );
   }
   const optimizeFromHero = (body, origin) =>
-    beginOptimize(() => (body ? api("/projects", body) : project), origin);
+    body === false
+      ? beginPreview(origin)
+      : beginOptimize(() => (body ? api("/projects", body) : project), origin);
   const optimizeExample = (name, origin) =>
     beginOptimize(() => api("/examples/" + name, {}), origin);
   function ripDone() {
@@ -673,12 +749,37 @@ function App() {
       text: resultRun?.phase,
     },
   }[view];
+  const previewJob = {
+    id: "preview",
+    kind: "optimize",
+    status: "running",
+    mission: mission.trim(),
+    phase: previewPhases[previewStep],
+    baseline: previewStep >= 2 ? {} : null,
+    events: [
+      { type: "build", message: "Reading your project files" },
+      ...(previewStep >= 1
+        ? [{ type: "profile", message: "Measuring the baseline" }]
+        : []),
+      ...(previewStep >= 2
+        ? [{ type: "agent", message: "Trying a patch" }]
+        : []),
+      ...(previewStep >= 3
+        ? [{ type: "verify", message: "Checking the patch" }]
+        : []),
+    ],
+    experiments:
+      previewStep >= 2
+        ? [{ status: previewStep === 2 ? "reasoning" : "checking" }]
+        : [],
+  };
   return (
     <div
       className={
         "app " + (phase === "hero" || phase === "rip" ? "is-hero" : "")
       }
     >
+      {phase === "hero" && <Slices heroRef={heroRef} />}
       {phase === "hero" && (
         <div inert={modal || drawer ? true : undefined}>
           <Hero
@@ -751,6 +852,11 @@ function App() {
               {phase === "results" && (
                 <button className="secondary-button" onClick={goHero}>
                   New optimization
+                </button>
+              )}
+              {phase === "work" && previewing && (
+                <button className="secondary-button" onClick={goHero}>
+                  Back to start
                 </button>
               )}
               {phase === "work" && projectJob && (
@@ -856,6 +962,14 @@ function App() {
                         "/baseline/baseline-0.png"
                       : null
                   }
+                />
+              ) : previewing ? (
+                <Loading
+                  preview
+                  job={previewJob}
+                  project={project}
+                  goal={mission}
+                  baselineSrc={null}
                 />
               ) : (
                 <p className="results-empty">Finishing up…</p>

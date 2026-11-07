@@ -1,26 +1,25 @@
 @import url("https://fonts.googleapis.com/css2?family=Oxanium:wght@300;400;500;600&family=Share+Tech+Mono&display=swap");
 :root {
-  color-scheme: dark;
-  --bg: #050608;
-  --surface: #0b0d12;
-  --surface-2: #141821;
-  --ink: #f1f2f5;
-  --ink-2: #b8bdc8;
-  --muted: #7d8492;
-  --line: #1b1f28;
-  --line-strong: #2b313d;
-  --accent: #ff4f7a;
-  --accent-ink: #ff7d9c;
-  --accent-soft: rgb(255 79 122 / 14%);
-  --violet: #3a1bd0;
-  --ok: #3ccf91;
-  --ok-soft: rgb(60 207 145 / 13%);
-  --error: #ff6b5b;
-  --error-soft: rgb(255 107 91 / 13%);
-  --warn: #f0b44c;
+  color-scheme: light;
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f3f5fb;
+  --ink: #0a0c14;
+  --ink-2: #3a4256;
+  --muted: #6a7287;
+  --line: #e8ebf2;
+  --line-strong: #d2d8e4;
+  --accent: #1f4bff;
+  --accent-ink: #1f4bff;
+  --accent-soft: rgb(31 75 255 / 10%);
+  --ok: #0f8a5f;
+  --ok-soft: rgb(15 138 95 / 10%);
+  --error: #c8402b;
+  --error-soft: rgb(200 64 43 / 10%);
+  --warn: #9a6a00;
   --radius: 10px;
   --radius-sm: 7px;
-  --shadow: 0 1px 2px rgb(0 0 0 / 40%), 0 12px 32px rgb(0 0 0 / 45%);
+  --shadow: 0 1px 2px rgb(10 12 20 / 8%), 0 12px 32px rgb(10 12 20 / 12%);
   --font: "Oxanium", system-ui, sans-serif;
   --mono: "Share Tech Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   font-family: var(--font);
@@ -136,11 +135,11 @@ svg {
 }
 .primary-button {
   background: var(--ink);
-  color: #07080c;
+  color: #fff;
   font-weight: 600;
 }
 .primary-button:not(:disabled):hover {
-  background: #fff;
+  background: var(--accent);
 }
 .secondary-button {
   background: var(--surface);
@@ -384,7 +383,7 @@ svg {
   left: 10px;
   padding: 3px 9px;
   border-radius: 999px;
-  background: rgb(11 13 18 / 82%);
+  background: rgb(255 255 255 / 90%);
   backdrop-filter: blur(8px);
   font-size: 12px;
   font-weight: 500;
@@ -399,7 +398,7 @@ svg {
   gap: 7px;
   padding: 6px 12px;
   border-radius: 999px;
-  background: rgb(11 13 18 / 82%);
+  background: rgb(255 255 255 / 90%);
   backdrop-filter: blur(10px);
   border: 1px solid var(--line-strong);
   box-shadow: var(--shadow);
@@ -436,6 +435,7 @@ svg {
   filter: saturate(0.85);
 }
 .stage-message {
+  color: #c8cee0;
   display: grid;
   justify-items: center;
   gap: 10px;
@@ -474,7 +474,7 @@ svg {
   max-width: calc(100% - 24px);
   padding: 4px 4px 4px 10px;
   border-radius: 999px;
-  background: rgb(11 13 18 / 82%);
+  background: rgb(255 255 255 / 90%);
   backdrop-filter: blur(10px);
   border: 1px solid var(--line-strong);
   font-size: 12.5px;
@@ -502,7 +502,7 @@ svg {
   gap: 2px;
   padding: 3px;
   border-radius: 10px;
-  background: rgb(11 13 18 / 82%);
+  background: rgb(255 255 255 / 90%);
   backdrop-filter: blur(10px);
   border: 1px solid var(--line-strong);
   box-shadow: var(--shadow);
@@ -648,7 +648,7 @@ svg {
   border-radius: 6px;
 }
 .toast button:hover {
-  background: rgb(255 255 255 / 12%);
+  background: rgb(10 12 20 / 12%);
 }
 
 /* Dialogs */
@@ -657,7 +657,7 @@ svg {
   position: fixed;
   inset: 0;
   z-index: 50;
-  background: rgb(0 0 0 / 60%);
+  background: rgb(10 12 20 / 40%);
   backdrop-filter: blur(3px);
   animation: fade 0.15s ease-out;
 }
@@ -1256,7 +1256,7 @@ details summary {
   margin-left: 6px;
   padding: 3px;
   border-radius: 999px;
-  background: rgb(255 255 255 / 5%);
+  background: rgb(10 12 20 / 5%);
   border: 1px solid var(--line);
 }
 .tabs button {
@@ -1270,7 +1270,7 @@ details summary {
   color: var(--ink);
 }
 .tabs button[aria-current="page"] {
-  background: rgb(255 255 255 / 11%);
+  background: rgb(10 12 20 / 11%);
   color: var(--ink);
 }
 .goal {
@@ -1290,7 +1290,7 @@ details summary {
   padding: 10px 13px;
   border-radius: 10px;
   border: 1px solid var(--line-strong);
-  background: rgb(0 0 0 / 45%);
+  background: #f6f8fc;
   line-height: 1.45;
 }
 .goal textarea:focus-visible {
@@ -1307,20 +1307,12 @@ body {
 body::before {
   content: "";
   position: fixed;
-  inset: -25%;
+  inset: 0;
   z-index: -1;
   background:
-    radial-gradient(38% 34% at 18% 22%, rgb(255 79 122 / 42%), transparent 70%),
-    radial-gradient(44% 40% at 82% 18%, rgb(58 27 208 / 62%), transparent 70%),
-    radial-gradient(42% 38% at 62% 88%, rgb(33 142 255 / 36%), transparent 70%);
-  filter: blur(36px);
-  animation: drift 28s ease-in-out infinite alternate;
+    radial-gradient(50% 40% at 90% 0%, rgb(31 75 255 / 7%), transparent 70%),
+    radial-gradient(45% 40% at 0% 100%, rgb(31 75 255 / 5%), transparent 70%);
   pointer-events: none;
-}
-@keyframes drift {
-  to {
-    transform: translate3d(4%, -3%, 0) scale(1.1) rotate(4deg);
-  }
 }
 .app {
   display: block;
@@ -1333,7 +1325,7 @@ body::before {
   z-index: 20;
   height: 58px;
   padding: 0 clamp(14px, 3vw, 32px);
-  background: rgb(5 6 8 / 68%);
+  background: rgb(255 255 255 / 82%);
   backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--line);
 }
@@ -1373,7 +1365,7 @@ body::before {
   gap: 10px;
   padding: 12px 14px;
   border-radius: 12px;
-  background: rgb(255 255 255 / 7%);
+  background: rgb(10 12 20 / 7%);
   font-size: 14px;
   overflow-wrap: anywhere;
 }
@@ -1413,7 +1405,7 @@ body::before {
   padding: 32px;
   border: 1px dashed var(--line-strong);
   border-radius: 14px;
-  background: rgb(8 9 13 / 74%);
+  background: rgb(255 255 255 / 84%);
   color: var(--ink-2);
   text-align: center;
   overflow-wrap: anywhere;
@@ -1437,7 +1429,7 @@ body::before {
 .verdict.stopped,
 .verdict.interrupted,
 .verdict.no-attempt {
-  background: rgb(255 255 255 / 9%);
+  background: rgb(10 12 20 / 9%);
   color: var(--ink-2);
 }
 .app.is-hero::before {

@@ -89,7 +89,11 @@ export default function Intake({
     const box = (
       e.nativeEvent.submitter || e.currentTarget
     ).getBoundingClientRect();
-    onOptimize(existing ? null : { path, trusted }, {
+    // With nothing to run (no project, or the trust box unticked) Optimize plays a
+    // preview of the transition instead of starting a real run.
+    const ready =
+      existing || (Boolean(path) && trusted && discovery?.supported !== false);
+    onOptimize(ready ? (existing ? null : { path, trusted }) : false, {
       x: box.left + box.width / 2,
       y: box.top + box.height / 2,
     });
@@ -253,16 +257,16 @@ export default function Intake({
       <button
         type="submit"
         className="optimize"
-        disabled={
-          busy ||
-          running ||
-          (!existing &&
-            (!path || !trusted || scanning || discovery?.supported === false))
-        }
+        disabled={busy || running || scanning}
       >
         {busy ? <Loader2 size={17} className="spin" /> : null}
         Optimize <ArrowRight size={17} aria-hidden="true" />
       </button>
+      {!existing && !(path && trusted) && (
+        <p className="intake-preview">
+          No project added yet. Optimize will play a preview of the transition.
+        </p>
+      )}
       {!existing && (
         <p className="intake-examples">
           or try

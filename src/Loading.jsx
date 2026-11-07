@@ -66,7 +66,14 @@ function Agent({ index, duration, delay }) {
 
 // Shown while a run is live. The agents are an illustration of the work; the
 // document rows, goal, step and log lines are the run's real data.
-export default function Loading({ job, project, baselineSrc, inert, goal }) {
+export default function Loading({
+  job,
+  project,
+  baselineSrc,
+  inert,
+  goal,
+  preview,
+}) {
   const files = (
     project?.discovery?.files?.filter((f) => f.usesThree).length
       ? project.discovery.files.filter((f) => f.usesThree)
@@ -99,11 +106,13 @@ export default function Loading({ job, project, baselineSrc, inert, goal }) {
       <div className="loading-inner">
         <div className="loading-copy">
           <span className="eyebrow">
-            {job.status === "queued"
-              ? "Queued"
-              : job.kind === "optimize"
-                ? "Improving performance"
-                : "Building & measuring"}
+            {preview
+              ? "Preview"
+              : job.status === "queued"
+                ? "Queued"
+                : job.kind === "optimize"
+                  ? "Improving performance"
+                  : "Building & measuring"}
           </span>
           <h1>
             {job.status === "queued"
@@ -111,6 +120,11 @@ export default function Loading({ job, project, baselineSrc, inert, goal }) {
               : "Reading your project"}
           </h1>
           <p aria-live="polite">{job.phase || "Starting…"}</p>
+          {preview && (
+            <p className="loading-preview">
+              Nothing is running. This is how Sift looks while it works.
+            </p>
+          )}
           {(job.mission || goal) && (
             <blockquote>
               <span>Your goal</span>

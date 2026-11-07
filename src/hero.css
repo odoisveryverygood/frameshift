@@ -7,16 +7,11 @@
   padding: clamp(16px, 2.4vw, 32px) clamp(16px, 3.2vw, 44px);
   overflow: hidden;
   isolation: isolate;
-  /* The gradient is the hero's background, static so tiles cloned from it match. */
+  /* A static wash, so tiles cloned from it match. */
   background:
-    radial-gradient(62% 56% at 10% 8%, rgb(255 79 122 / 58%), transparent 70%),
-    radial-gradient(58% 62% at 94% 6%, rgb(58 27 208 / 88%), transparent 70%),
-    radial-gradient(
-      64% 62% at 72% 108%,
-      rgb(33 142 255 / 50%),
-      transparent 70%
-    ),
-    #050608;
+    radial-gradient(56% 50% at 92% 4%, rgb(31 75 255 / 11%), transparent 70%),
+    radial-gradient(50% 50% at 4% 104%, rgb(31 75 255 / 7%), transparent 70%),
+    #ffffff;
 }
 .hero-top,
 .hero-bottom {
@@ -24,7 +19,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  color: rgb(241 242 245 / 66%);
+  color: var(--muted);
   font-family: var(--mono);
   font-size: 12px;
   letter-spacing: 0.1em;
@@ -46,7 +41,7 @@
 }
 .hero-top button:hover,
 .hero-picker select:hover {
-  background: rgb(255 255 255 / 10%);
+  background: rgb(10 12 20 / 6%);
   color: var(--ink);
 }
 .hero-picker select {
@@ -57,7 +52,7 @@
   cursor: pointer;
 }
 .hero-picker option {
-  background: #0b0d12;
+  background: #ffffff;
   color: var(--ink);
   text-transform: none;
 }
@@ -72,7 +67,7 @@
   align-content: center;
 }
 .hero-eyebrow {
-  color: rgb(241 242 245 / 66%);
+  color: var(--accent);
   font-family: var(--mono);
   font-size: 12.5px;
   letter-spacing: 0.14em;
@@ -95,19 +90,20 @@
 
 /* Intake card */
 .intake {
+  box-shadow: 0 24px 60px rgb(10 12 20 / 10%);
   display: grid;
   gap: 14px;
   padding: 22px;
-  border: 1px solid rgb(255 255 255 / 14%);
+  border: 1px solid var(--line-strong);
   border-radius: 18px;
-  background: rgb(7 8 12 / 84%);
+  background: #ffffff;
   transition:
     border-color 0.2s,
     background 0.2s;
 }
 .intake.is-dragging {
-  border-color: var(--ink);
-  background: rgb(20 22 30 / 92%);
+  border-color: var(--accent);
+  background: #f2f5ff;
 }
 .intake-drop,
 .intake-project {
@@ -140,7 +136,7 @@
   overflow-wrap: anywhere;
 }
 .intake-project .link-button {
-  color: var(--ink);
+  color: var(--accent);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -155,7 +151,7 @@
   padding: 0 14px;
   border: 1px solid var(--line-strong);
   border-radius: 10px;
-  background: rgb(0 0 0 / 45%);
+  background: #f6f8fc;
   font-family: var(--mono);
   font-size: 14.5px;
 }
@@ -168,7 +164,7 @@
   gap: 3px;
   padding: 10px 12px;
   border-radius: 10px;
-  background: rgb(255 255 255 / 7%);
+  background: rgb(10 12 20 / 5%);
   color: var(--ink-2);
   font-size: 13.5px;
   overflow-wrap: anywhere;
@@ -199,15 +195,15 @@
   resize: none;
   border: 1px solid var(--line-strong);
   border-radius: 12px;
-  background: rgb(0 0 0 / 45%);
+  background: #f6f8fc;
   font-weight: 400;
   line-height: 1.5;
 }
 .path-row input:focus-visible,
 .intake-goal textarea:focus-visible {
   outline: none;
-  border-color: var(--ink);
-  box-shadow: 0 0 0 3px rgb(255 255 255 / 12%);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 .intake-goal textarea:disabled {
   opacity: 0.6;
@@ -221,14 +217,14 @@
 }
 .intake-trust input {
   margin-top: 3px;
-  accent-color: #fff;
+  accent-color: var(--accent);
 }
 .intake-model {
   color: var(--ink-2);
   font-size: 13.5px;
 }
 .intake-model button {
-  color: var(--ink);
+  color: var(--accent);
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -241,7 +237,7 @@
   min-height: 54px;
   border-radius: 14px;
   background: var(--ink);
-  color: #07080c;
+  color: #fff;
   font-size: 17px;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -250,7 +246,7 @@
     transform 0.15s;
 }
 .optimize:not(:disabled):hover {
-  background: #fff;
+  background: var(--accent);
   transform: translateY(-1px);
 }
 .intake-examples {
@@ -262,7 +258,7 @@
   font-size: 13px;
 }
 .intake-examples button {
-  color: var(--ink);
+  color: var(--accent);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -282,4 +278,8 @@
   .path-row {
     flex-wrap: wrap;
   }
+}
+.intake-preview {
+  color: var(--muted);
+  font-size: 12.5px;
 }

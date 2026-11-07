@@ -60,7 +60,7 @@
 .rip-tile {
   position: absolute;
   overflow: hidden;
-  background: #05060a;
+  background: #ffffff;
   backface-visibility: visible;
   will-change: transform, opacity;
 }
