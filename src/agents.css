@@ -1,23 +1,20 @@
 .factory {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
-  gap: 18px;
-  align-items: stretch;
+  display: block;
 }
 
 /* The solar system */
 .solar-scene {
-  position: relative;
-  height: clamp(460px, calc(100dvh - 250px), 820px);
+  position: fixed;
+  inset: 58px 0 0 0;
+  z-index: 0;
   overflow: hidden;
-  border-radius: 18px;
+  pointer-events: auto;
   background: radial-gradient(
-    60% 55% at 50% 50%,
+    60% 65% at 42% 55%,
     #ffffff 0%,
-    #fbfbfd 55%,
-    #f3f5f9 100%
+    #fbfbfd 60%,
+    #f2f4f8 100%
   );
-  box-shadow: inset 0 0 0 1px rgb(10 12 20 / 5%);
 }
 .solar-canvas {
   display: block;
@@ -84,8 +81,8 @@
 }
 .solar-back {
   position: absolute;
-  left: 16px;
-  top: 14px;
+  left: 24px;
+  top: 150px;
   padding: 6px 14px;
   border-radius: 999px;
   border: 1px solid var(--line-strong);
@@ -98,8 +95,8 @@
 }
 .solar-help {
   position: absolute;
-  left: 16px;
-  bottom: 12px;
+  left: 24px;
+  bottom: 18px;
   color: var(--muted);
   font-size: 12.5px;
   letter-spacing: 0.08em;
@@ -109,17 +106,28 @@
 
 /* Activity panel */
 .activity-panel {
+  position: fixed;
+  top: 78px;
+  right: 24px;
+  bottom: 24px;
+  z-index: 3;
+  width: 360px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   min-width: 0;
+  overflow-y: auto;
+  pointer-events: auto;
+  scrollbar-width: none;
 }
 .activity-panel > * {
+  flex-shrink: 0;
   padding: 16px 18px;
   border: 1px solid var(--line);
   border-radius: 16px;
-  background: #fff;
-  box-shadow: 0 6px 22px rgb(10 12 20 / 5%);
+  background: rgb(255 255 255 / 84%);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 30px rgb(10 12 20 / 7%);
 }
 .activity-progress {
   display: grid;
@@ -289,15 +297,61 @@
   font-size: 13px;
 }
 @media (max-width: 1100px) {
-  .factory {
-    grid-template-columns: minmax(0, 1fr);
-  }
   .solar-scene {
+    position: relative;
+    inset: auto;
     height: 62vh;
+    margin-top: 12px;
+    border-radius: 16px;
+  }
+  .activity-panel {
+    position: static;
+    width: auto;
+    margin-top: 14px;
+    overflow: visible;
+  }
+  .solar-back {
+    top: 14px;
   }
 }
 @media (max-width: 640px) {
   .solar-help {
     display: none;
   }
+}
+
+/* Speech bubbles over the tiny people */
+.speech {
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  padding: 5px 12px;
+  border: 2px solid #0a0c14;
+  border-radius: 12px;
+  background: #fff;
+  color: #0a0c14;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  font-size: 13.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+.speech::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -8px;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  border-right: 2px solid #0a0c14;
+  border-bottom: 2px solid #0a0c14;
+  background: #fff;
+  transform: rotate(45deg);
 }

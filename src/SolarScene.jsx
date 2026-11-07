@@ -9,14 +9,21 @@ import createGlobe from "cobe";
 // thousands of tiny workers build that agent's part of the project. The workers are
 // an illustration; which planet is busy, and what it works on, comes from the run.
 
-const ORBIT = { scout: 3.1, gauge: 4.5, smith: 5.9, warden: 7.3 };
-const SPEED = { scout: 0.2, gauge: 0.14, smith: 0.1, warden: 0.075 };
-const START = { scout: 0.4, gauge: 2.3, smith: 4.1, warden: 5.6 };
+// Evenly spaced orbits, planets a quarter turn apart, all moving together so
+// they stay evenly spread.
+const ORBIT = { scout: 2.9, gauge: 4.3, smith: 5.7, warden: 7.1 };
+const SPEED = { scout: 0.09, gauge: 0.09, smith: 0.09, warden: 0.09 };
+const START = {
+  scout: 0,
+  gauge: Math.PI / 2,
+  smith: Math.PI,
+  warden: (Math.PI * 3) / 2,
+};
 const PLANET = 2.5; // sprite size; the globe itself is GLOBE_FILL of it
 const GLOBE_FILL = 0.41; // measured: COBE's globe radius / canvas width at scale 1
 const ROCKET = [0.255, 0.095, 0.745, 0.618]; // engine region of the hero drawing
 const LAND = 1.9;
-const WORKERS = 3200;
+const WORKERS = 2400;
 
 const rgb = (hex) => {
   const n = parseInt(hex.slice(1), 16);
@@ -69,20 +76,120 @@ function makeGlobe(host, size, color, phi) {
   return { globe, texture, canvas, phi };
 }
 
-// A tiny worker: a coloured droplet body with a white eye, as a point sprite.
-const workerTexture = (color) =>
-  canvasTexture(32, (g, s) => {
-    g.fillStyle = color;
-    g.beginPath();
-    g.moveTo(s / 2, 3);
-    g.bezierCurveTo(s * 0.9, s * 0.45, s * 0.86, s - 3, s / 2, s - 3);
-    g.bezierCurveTo(s * 0.14, s - 3, s * 0.1, s * 0.45, s / 2, 3);
-    g.fill();
-    g.fillStyle = "#fff";
-    g.beginPath();
-    g.arc(s * 0.56, s * 0.6, s * 0.12, 0, Math.PI * 2);
-    g.fill();
-  });
+// Tiny people: a sheet of 32 pixel-art characters (16x16 each, 8 across).
+const PEOPLE_COLS = 8,
+  PEOPLE_ROWS = 4;
+const HAIR = [
+  "#e8502a",
+  "#8a5a3c",
+  "#5fb8f2",
+  "#e86aa8",
+  "#f4f4f4",
+  "#5aa83c",
+  "#d8a830",
+  "#6a4a9a",
+  "#34407a",
+  "#2a2a2a",
+];
+const SKIN = ["#f6dcb0", "#eec59a", "#d9a877", "#f9e4c4"];
+const SHIRT = [
+  "#e8502a",
+  "#5fb8f2",
+  "#5aa83c",
+  "#d8a830",
+  "#6a4a9a",
+  "#e86aa8",
+  "#34407a",
+  "#f4f4f4",
+];
+const SHAPES = [
+  [
+    "................",
+    ".....OOOOOO.....",
+    "....OHHHHHHO....",
+    "...OHHHHHHHHO...",
+    "...OHHHHHHHHO...",
+    "...OHSSSSSSHO...",
+    "...OSSESSESSO...",
+    "...OSSSSSSSSO...",
+    "....OSSSSSSO....",
+    "...OOCCCCCCOO...",
+    "..OCCCCCCCCCCO..",
+    "..OCCCCCCCCCCO..",
+    "..OSOCCCCCCOSO..",
+    "...O.OPPPPO.O...",
+    ".....OPOOPO.....",
+    ".....OO..OO.....",
+  ],
+  [
+    "................",
+    "....OOOOOOOO....",
+    "...OHHHHHHHHO...",
+    "..OHHHHHHHHHHO..",
+    "..OHHHHHHHHHHO..",
+    "..OHHSSSSSSHHO..",
+    "..OHSSESSESSHO..",
+    "..OHSSSSSSSSHO..",
+    "..OHHSSSSSSHHO..",
+    "...OOCCCCCCOO...",
+    "..OCCCCCCCCCCO..",
+    "..OCCCCCCCCCCO..",
+    "..OSOCCCCCCOSO..",
+    "...O.OPPPPO.O...",
+    ".....OPOOPO.....",
+    ".....OO..OO.....",
+  ],
+  [
+    "......OOOO......",
+    ".....OHHHHO.....",
+    "....OHHHHHHO....",
+    "...OHHHHHHHHO...",
+    "...OOOOOOOOOO...",
+    "...OSSSSSSSSO...",
+    "...OSSESSESSO...",
+    "...OSSSSSSSSO...",
+    "....OSSOOSSO....",
+    "...OOCCCCCCOO...",
+    "..OCCCCCCCCCCO..",
+    "..OCCCCCCCCCCO..",
+    "..OSOCCCCCCOSO..",
+    "...O.OPPPPO.O...",
+    ".....OPOOPO.....",
+    ".....OO..OO.....",
+  ],
+];
+function peopleAtlas() {
+  const c = document.createElement("canvas");
+  c.width = PEOPLE_COLS * 16;
+  c.height = PEOPLE_ROWS * 16;
+  const g = c.getContext("2d");
+  for (let k = 0; k < PEOPLE_COLS * PEOPLE_ROWS; k++) {
+    const shape = SHAPES[k % SHAPES.length];
+    const pal = {
+      O: "#0a0c14",
+      E: "#0a0c14",
+      H: HAIR[(k * 7) % HAIR.length],
+      S: SKIN[(k * 3) % SKIN.length],
+      C: SHIRT[(k * 5 + 2) % SHIRT.length],
+      P: "#2b2f45",
+    };
+    const ox = (k % PEOPLE_COLS) * 16,
+      oy = Math.floor(k / PEOPLE_COLS) * 16;
+    shape.forEach((row, y) =>
+      [...row].forEach((ch, x) => {
+        if (ch === ".") return;
+        g.fillStyle = pal[ch];
+        g.fillRect(ox + x, oy + y, 1, 1);
+      }),
+    );
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.magFilter = THREE.NearestFilter;
+  t.minFilter = THREE.NearestFilter;
+  t.generateMipmaps = false;
+  return t;
+}
 
 export default function SolarScene({
   agents,
@@ -95,6 +202,7 @@ export default function SolarScene({
     canvas = useRef(null),
     labels = useRef({}),
     siteLabels = useRef([]),
+    bubbleEls = useRef([]),
     latest = useRef({});
   latest.current = { agents, revealed, focus, onFocus };
   useEffect(() => {
@@ -371,7 +479,7 @@ export default function SolarScene({
     close.add(key);
     const closeCam = new THREE.PerspectiveCamera(34, 1, 0.1, 100);
     const R = PLANET * GLOBE_FILL; // globe radius in world units
-    const closeDist = R / Math.tan(THREE.MathUtils.degToRad(17)) / 0.78;
+    const closeDist = R / Math.tan(THREE.MathUtils.degToRad(17)) / 0.6;
     closeCam.position.set(0, 0, closeDist);
     closeCam.lookAt(0, 0, 0);
     let big = null; // high-resolution globe of the focused planet
@@ -385,12 +493,46 @@ export default function SolarScene({
     const wPos = new Float32Array(WORKERS * 3);
     const wGeo = new THREE.BufferGeometry();
     wGeo.setAttribute("position", new THREE.BufferAttribute(wPos, 3));
-    const wMat = new THREE.PointsMaterial({
-      size: 6,
-      sizeAttenuation: false,
+    const wSprite = new Float32Array(WORKERS),
+      wPhase = new Float32Array(WORKERS);
+    for (let i = 0; i < WORKERS; i++) {
+      wSprite[i] = Math.floor(Math.random() * PEOPLE_COLS * PEOPLE_ROWS);
+      wPhase[i] = Math.random() * 6.283;
+    }
+    wGeo.setAttribute("aSprite", new THREE.BufferAttribute(wSprite, 1));
+    wGeo.setAttribute("aPhase", new THREE.BufferAttribute(wPhase, 1));
+    const wMat = new THREE.ShaderMaterial({
       transparent: true,
       depthWrite: false,
-      alphaTest: 0.2,
+      uniforms: {
+        uMap: { value: peopleAtlas() },
+        uSize: { value: 15 * renderer.getPixelRatio() },
+        uOpacity: { value: 0 },
+        uTime: { value: 0 },
+      },
+      vertexShader: `
+        attribute float aSprite; attribute float aPhase;
+        uniform float uSize; uniform float uTime;
+        varying float vSprite;
+        void main() {
+          vSprite = aSprite;
+          vec4 mv = modelViewMatrix * vec4(position, 1.0);
+          gl_Position = projectionMatrix * mv;
+          // A little hop as they walk.
+          gl_Position.y += abs(sin(uTime * 9.0 + aPhase)) * 0.004 * gl_Position.w;
+          gl_PointSize = uSize;
+        }`,
+      fragmentShader: `
+        uniform sampler2D uMap; uniform float uOpacity;
+        varying float vSprite;
+        void main() {
+          vec2 cell = vec2(mod(vSprite, ${PEOPLE_COLS}.0), floor(vSprite / ${PEOPLE_COLS}.0));
+          vec2 pc = vec2(gl_PointCoord.x, gl_PointCoord.y);
+          vec2 uv = vec2((cell.x + pc.x) / ${PEOPLE_COLS}.0, 1.0 - (cell.y + pc.y) / ${PEOPLE_ROWS}.0);
+          vec4 c = texture2D(uMap, uv);
+          if (c.a < 0.5) discard;
+          gl_FragColor = vec4(c.rgb, uOpacity);
+        }`,
     });
     const workers = new THREE.Points(wGeo, wMat);
     workers.frustumCulled = false;
@@ -412,6 +554,7 @@ export default function SolarScene({
     blocks.frustumCulled = false;
     close.add(blocks);
     let sites = [];
+    let bubbles = [];
     const frontPoint = (minZ) => {
       const v = new THREE.Vector3();
       do v.set(rand(-1, 1), rand(-1, 1), rand(0, 1));
@@ -458,9 +601,8 @@ export default function SolarScene({
           full: 0,
         };
       });
-      wMat.map = workerTexture(a.color);
-      wMat.needsUpdate = true;
       blocks.material.color.set(a.color).lerp(new THREE.Color("#ffffff"), 0.25);
+      bubbles = [];
       crew.forEach((c) => {
         c.p.copy(frontPoint(0.12));
         c.site = Math.floor(Math.random() * sites.length);
@@ -507,12 +649,28 @@ export default function SolarScene({
       const w = box.current.clientWidth,
         h = box.current.clientHeight;
       renderer.setSize(w, h, false);
-      camera.aspect = closeCam.aspect = w / h;
+      // The page's panels sit over the left top and the right side; centre the
+      // system in the space that is left.
+      const side = w > 1100 ? 400 : 0,
+        top = w > 1100 ? 120 : 0;
+      const vw = w - side,
+        vh = h - top;
+      for (const cam of [camera, closeCam]) {
+        cam.aspect = (w + side) / (h + top);
+        if (side || top) cam.setViewOffset(w + side, h + top, side, 0, w, h);
+        else cam.clearViewOffset();
+      }
       // Fit the outermost orbit (and its planet) on screen.
       const half = Math.tan(THREE.MathUtils.degToRad(17));
       const need = ORBIT.warden + PLANET * 0.6;
-      const d = Math.max(need / (half * (w / h)), (need * 0.62) / half) * 1.02;
+      const d =
+        Math.max(
+          (need * (h + top)) / (half * vw),
+          (need * 0.62 * (h + top)) / (half * vh),
+        ) * (vw / vh < 1 ? 1.22 : 1.02);
       home.set(0, 0.55, 0.835).normalize().multiplyScalar(d);
+      controls.minDistance = d * 0.55;
+      controls.maxDistance = d * 1.6;
       if (mode === "system") camera.position.copy(home);
       camera.updateProjectionMatrix();
       closeCam.updateProjectionMatrix();
@@ -722,7 +880,8 @@ export default function SolarScene({
         big.globe.update({ phi: big.phi });
         big.texture.needsUpdate = true;
         const fadeIn = smooth(modeT / 0.8);
-        wMat.opacity = fadeIn;
+        wMat.uniforms.uOpacity.value = fadeIn;
+        wMat.uniforms.uTime.value = clock;
         const rr = R * 1.01;
         for (let i = 0; i < WORKERS; i++) {
           const c = crew[i],
@@ -796,6 +955,29 @@ export default function SolarScene({
           blocks.setMatrixAt(idx, m4.makeScale(0, 0, 0));
         blocks.instanceMatrix.needsUpdate = true;
         renderer.render(close, closeCam);
+        // Speech bubbles over a few of the people at work.
+        const focusAgent = list.find((x) => x.id === focusId);
+        const lines = focusAgent?.chatter || [];
+        if (lines.length && modeT > 0.5) {
+          bubbles = bubbles.filter((b) => clock < b.until);
+          if (
+            bubbles.length < 3 &&
+            Math.random() < dt * (bubbles.length ? 1.6 : 6)
+          ) {
+            for (let tries = 0; tries < 30; tries++) {
+              const w = Math.floor(Math.random() * WORKERS);
+              if (crew[w].p.z > 0.55 && !bubbles.some((b) => b.w === w)) {
+                bubbles.push({
+                  w,
+                  text: lines[Math.floor(Math.random() * lines.length)],
+                  until: clock + rand(2.2, 3.4),
+                  born: clock,
+                });
+                break;
+              }
+            }
+          }
+        }
       }
 
       // ---- Labels.
@@ -818,6 +1000,25 @@ export default function SolarScene({
           showSystem && mode === "system" ? "auto" : "none";
         void y;
       }
+      bubbleEls.current.forEach((el, i) => {
+        if (!el) return;
+        const b = bubbles[i];
+        if (mode !== "close" || !b) {
+          el.style.opacity = 0;
+          return;
+        }
+        const k = b.w * 3;
+        const [x, y] = toScreen(
+          tmp.set(wPos[k], wPos[k + 1], wPos[k + 2]),
+          closeCam,
+        );
+        el.style.transform = `translate(${x}px, ${y - 12}px) translate(-50%, -100%)`;
+        el.style.opacity = Math.min(
+          smooth((clock - b.born) / 0.2),
+          smooth((b.until - clock) / 0.25),
+        );
+        if (el.textContent !== b.text) el.textContent = b.text;
+      });
       siteLabels.current.forEach((el, i) => {
         if (!el) return;
         const s = sites[i];
@@ -884,6 +1085,14 @@ export default function SolarScene({
           ref={(el) => (siteLabels.current[i] = el)}
           className="site-label"
           style={{ "--c": focused?.color }}
+          aria-hidden="true"
+        />
+      ))}
+      {[0, 1, 2].map((i) => (
+        <span
+          key={"b" + i}
+          ref={(el) => (bubbleEls.current[i] = el)}
+          className="speech"
           aria-hidden="true"
         />
       ))}
