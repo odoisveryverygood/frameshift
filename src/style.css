@@ -1487,7 +1487,7 @@ body::before {
   right: 0;
   bottom: 0;
   width: 100vw;
-  height: 22vh;
+  height: 30vh;
   z-index: 0;
   pointer-events: none;
 }
