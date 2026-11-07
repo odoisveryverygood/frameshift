@@ -1,4 +1,5 @@
 import test from "node:test";
+import crypto from "node:crypto";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -33,7 +34,7 @@ test("verifier re-evaluates evidence and records reproducible policy and artifac
   assert.equal(receipt.policyHash, seal.hash);
   assert.match(receipt.artifacts["guards.json"].sha256, /^[a-f0-9]{64}$/);
   assert.equal(receipt.coverage.checkpoints, 1);
-  assert.equal(Object.keys(receipt.implementations).length, 6);
+  assert.match(receipt.implementations["server/subq.mjs"], /^[a-f0-9]{64}$/);
   assert.notEqual(receipt.sources.reference["scene.js"], receipt.sources.candidate["scene.js"]);
 });
 test("a faster candidate with failed behavior cannot be accepted", async (t) => {
@@ -55,4 +56,24 @@ test("missing benchmark evidence fails closed", async (t) => {
   const seal = await sealVerificationPolicy(config, config.metric);
   await fs.unlink(path.join(evidenceDir, "measurement-order.json"));
   await assert.rejects(() => writeVerificationVerdict({ seal, config, metric: config.metric, evidenceDir }), /ENOENT/);
+});
+
+test('sponsor receipt requires risk plan and handoff evidence and seals their bytes', async (t) => {
+  const evidenceDir = await evidence(t);
+  const config = { metric: 'submitP95', editableFiles: ['scene.js'], checkpoints: [{time:0,view:0}], subqVerification: { selectedRisks: ['identity'], inputSha256: 'risk-input' } };
+  const seal = await sealVerificationPolicy(config, config.metric);
+  const args = { seal, config, evidenceDir, referenceSourceDir: path.join(evidenceDir,'reference'), candidateSourceDir: path.join(evidenceDir,'candidate') };
+  await assert.rejects(() => writeVerificationVerdict(args), /ENOENT/);
+  await fs.writeFile(path.join(evidenceDir, 'guards.json'), JSON.stringify({pass:true,coverage:{checkpoints:1},checks:[{time:0}]}));
+  const hash = value => crypto.createHash('sha256').update(value).digest('hex');
+  const fingerprint = async folder => hash(JSON.stringify({ 'scene.js': hash(await fs.readFile(path.join(evidenceDir,folder,'scene.js'))) }));
+  await fs.writeFile(path.join(evidenceDir,'risk-assessment.json'), JSON.stringify({provider:'Subquadratic',inputSha256:'risk-input'}));
+  await fs.writeFile(path.join(evidenceDir,'verification-plan.json'), JSON.stringify({config:seal.policy,seal}));
+  await fs.writeFile(path.join(evidenceDir,'verification-request.json'), JSON.stringify({stage:'PatchReady',sourceHash:await fingerprint('reference'),candidateHash:await fingerprint('candidate'),artifactHash:hash(await fs.readFile(path.join(evidenceDir,'change.patch')))}));
+  await writeVerificationVerdict(args);
+  const receipt = JSON.parse(await fs.readFile(path.join(evidenceDir,'verdict.json')));
+  assert.match(receipt.artifacts['verification-request.json'].sha256,/^[a-f0-9]{64}$/);
+  assert.match(receipt.artifacts['risk-assessment.json'].sha256,/^[a-f0-9]{64}$/);
+  await fs.writeFile(path.join(evidenceDir,'candidate/scene.js'), 'unverified mutation');
+  await assert.rejects(() => writeVerificationVerdict(args), /does not match/);
 });

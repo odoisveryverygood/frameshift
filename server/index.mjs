@@ -19,10 +19,15 @@ import {
   events,
   resume,
 } from "./runner.mjs";
-import { provider } from "./model.mjs";
+import { investigateSpatial, listFindings, spatialRevision, findingScreenshot, spatialProviderStatus } from "./spatial.mjs";
+import { receiveStlImport, getStlImport, stlImportDirectory, markStlConnected } from "./stl/imports.mjs";
+import {getRepairData,createRepairPlan,createGapRepairPlan,createRepairCandidate,getRepairCandidate,getRepairPlan,candidateFile,repairDirectory} from './stl/repairs.mjs';
+import {runRepairAgent} from './stl/repair-agent.mjs';
+import { provider, redactProviderError } from "./model.mjs";
 import { captureFrame } from "./capture.mjs";
 import { discoverProject } from "./discovery.mjs";
 import { workerStatus, projectUpdate } from "./jobs.mjs";
+import { labState, startLabRun, getLabRun, stopLabRun, getSkill, labRunDir } from "./skills/service.mjs";
 dotenv.config({ path: path.join(ROOT, ".env.local"), quiet: true });
 await initialize();
 const app = express();
@@ -40,7 +45,7 @@ app.use((req, res, next) => {
     ) &&
     !(
       req.method === "GET" &&
-      /^\/(preview|baseline)\//.test(req.path) &&
+      /^\/(preview|baseline|candidate|stl-preview)\//.test(req.path) &&
       req.headers.origin === "null"
     )
   )
@@ -48,7 +53,8 @@ app.use((req, res, next) => {
   if (
     req.path.startsWith("/api/") &&
     !["GET", "HEAD"].includes(req.method) &&
-    !req.is("application/json")
+    !req.is("application/json") &&
+    !(req.path === "/api/stl/import" && req.is("application/octet-stream"))
   )
     return res.status(415).json({ error: "JSON requests required" });
   res.setHeader("X-Content-Type-Options", "nosniff");
@@ -63,21 +69,95 @@ app.use("/api", async (req, res, next) => {
     next(e);
   }
 });
-app.get("/api/state", async (req, res) =>
-  res.json({
+app.post("/api/stl/import",async(req,res)=>{
+  if(!req.is('application/octet-stream'))return res.status(415).json({error:'STL upload requires application/octet-stream'});
+  if(captureBusy||activeRun()||(await labState()).runs.some(r=>['queued','running'].includes(r.status)))throw Error('Wait for the active job before importing a robot.');
+  captureBusy=true;const controller=new AbortController();const abort=()=>{if(!res.writableEnded)controller.abort();};res.on('close',abort);
+  try {res.json({import:await receiveStlImport(req,{filename:req.query.filename,units:req.query.units,signal:AbortSignal.any([controller.signal,AbortSignal.timeout(360000)])})});}
+  finally {captureBusy=false;res.off('close',abort);}
+});
+app.get('/api/stl/imports/:id',async(req,res)=>res.json({import:await getStlImport(req.params.id)}));
+app.get('/api/stl/imports/:id/repair-data',async(req,res)=>res.json(await getRepairData(req.params.id)));
+app.get('/api/stl/imports/:id/repair-assets/positions.bin',async(req,res)=>{
+ await getRepairData(req.params.id);res.sendFile(path.join(repairDirectory(req.params.id),'overview','overview-positions.bin'),{dotfiles:'allow'});
+});
+app.post('/api/stl/imports/:id/repair-plan',async(req,res)=>res.json({plan:await createRepairPlan(req.params.id,req.body)}));
+app.post('/api/stl/imports/:id/repair-gap-plan',async(req,res)=>res.json({plan:await createGapRepairPlan(req.params.id,req.body)}));
+app.post('/api/stl/imports/:id/repair-agent',async(req,res)=>res.json(await runRepairAgent(req.params.id,req.body)));
+app.post('/api/stl/imports/:id/repair-candidates',async(req,res)=>{
+ if(captureBusy||activeRun())throw Error('Wait for the active job before exporting the full mesh.');captureBusy=true;
+ try{res.json({candidate:await createRepairCandidate(req.params.id,req.body)});}finally{captureBusy=false;}
+});
+app.get('/api/stl/imports/:id/repair-candidates/:candidateId',async(req,res)=>{const candidate=await getRepairCandidate(req.params.id,req.params.candidateId);res.json({candidate,plan:await getRepairPlan(req.params.id,candidate.planId)});});
+app.get('/api/stl/imports/:id/repair-candidates/:candidateId/download',async(req,res)=>res.download(await candidateFile(req.params.id,req.params.candidateId),'earl-aligned-candidate.stl',{dotfiles:'allow'}));
+app.get('/api/stl/imports/:id/repair-candidates/:candidateId/preview.bin',async(req,res)=>res.sendFile(path.join(path.dirname(await candidateFile(req.params.id,req.params.candidateId)),'preview','overview-positions.bin'),{dotfiles:'allow'}));
+app.get('/api/stl/imports/:id/:file',async(req,res)=>{
+  if(!['original.stl','repaired.stl'].includes(req.params.file))return res.sendStatus(404);
+  const record=await getStlImport(req.params.id);
+  if(req.params.file==='repaired.stl'&&record.status!=='review')throw Error('A repaired file is not available for this import.');
+  res.download(path.join(stlImportDirectory(record.id),req.params.file),req.params.file,{dotfiles:'allow'});
+});
+app.post('/api/stl/imports/:id/connect',async(req,res)=>{
+  if(req.body.useRepaired!==true)throw Error('Review the repair report and explicitly choose Open repaired model.');
+  if(captureBusy||activeRun())throw Error('Wait for the active job before opening this robot.');
+  captureBusy=true;
+  try {
+  const record=await getStlImport(req.params.id);if(record.status!=='review')throw Error('This STL did not produce a repairable viewer.');
+  let project=record.projectId?projects.find(p=>p.id===record.projectId&&!p.archived):null;
+  if(!project){project=await connect(path.join(stlImportDirectory(record.id),'viewer'),{name:'STL · '+record.filename});project.stlImport={id:record.id,filename:record.filename,units:record.units,report:record.report,originalDownloadUrl:record.originalDownloadUrl,repairedDownloadUrl:record.repairedDownloadUrl,reportUrl:record.reportUrl};await projectUpdate(project);await markStlConnected(record.id,project.id);}
+  const run=project.built||req.body.mode==='repair'?null:await start(project.id,'profile',1,'Establish the approved STL mesh baseline');res.json({project,run});
+  } finally {captureBusy=false;}
+});
+app.use('/stl-preview/:id',async(req,res,next)=>{
+  const record=await getStlImport(req.params.id);if(record.status!=='review')return res.status(404).send('STL preview is not ready');
+  res.setHeader('Access-Control-Allow-Origin','*');res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'");express.static(path.join(stlImportDirectory(record.id),'viewer','dist'))(req,res,next);
+});
+app.get("/api/state", async (req, res) => {
+  const lab = await labState();
+  const liveLab = lab.runs.find((r) => r.id === lab.activeRun);
+  const labProxy = liveLab ? { ...liveLab, kind: "skill-lab", projectId: null, projectName: "Skill Lab", experiments: [] } : null;
+  return res.json({
     projects: projects
       .filter((p) => !p.archived)
       .map(({ originalHashes, ...p }) => p),
-    runs,
-    activeRun: activeRun(),
+    runs: labProxy ? [labProxy, ...runs] : runs,
+    activeRun: activeRun() || lab.activeRun,
     provider: provider(),
+    spatialProvider: spatialProviderStatus(),
+    specialists: { enabled: process.env.EARL_SPONSOR_MODE === "1", meta: Boolean(process.env.MODEL_API_KEY), subquadratic: Boolean(process.env.SUBQ_API_KEY), fetch: "local-uagents", agentverse: "not-registered" },
     root: ROOT,
     worker: {
       ...(await workerStatus()),
       queue: runs.filter((r) => r.status === "queued").length,
     },
-  }),
-);
+  });
+});
+app.get("/api/lab", async (req, res) => res.json(await labState()));
+app.post("/api/lab/runs", async (req, res) => {
+  if (captureBusy) throw Error("Wait for the frame capture to finish before starting the lab.");
+  res.json(await startLabRun(req.body));
+});
+app.get("/api/lab/runs/:id", async (req, res) => {
+  const run = await getLabRun(req.params.id);
+  if (!run) return res.status(404).json({ error: "Skill-lab run not found" });
+  res.json(run);
+});
+app.post("/api/lab/runs/:id/stop", async (req, res) => res.json(await stopLabRun(req.params.id)));
+app.get("/api/lab/skills/:id", async (req, res) => {
+  const skill = await getSkill(req.params.id);
+  if (!skill) return res.status(404).json({ error: "Skill version not found" });
+  res.json(skill);
+});
+app.get("/api/lab/runs/:id/artifact", async (req, res) => {
+  const run = await getLabRun(req.params.id);
+  if (!run) return res.sendStatus(404);
+  const name = String(req.query.path || "");
+  if (!/^[\w/.-]+\.png$/.test(name) || name.split("/").some((p) => p === ".." || p.startsWith(".")))
+    return res.sendStatus(404);
+  const file = await safeFile(labRunDir(run.id), name);
+  res.sendFile(file, { dotfiles: "allow" });
+});
+app.use("/lab", express.static(path.join(ROOT, "lab", "ui"), { index: "index.html", etag: false, maxAge: 0 }));
 app.get("/api/events", (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -106,7 +186,7 @@ app.post("/api/examples/:name", async (req, res) => {
     throw Error("Unknown example");
   const existing = projects.find(
     (p) =>
-      p.example && p.original === path.join(ROOT, "examples", req.params.name),
+      p.example && p.spatialVersion === "spatial-v1" && p.original === path.join(ROOT, "examples", req.params.name),
   );
   res.json(
     existing ||
@@ -125,7 +205,54 @@ app.post("/api/projects/:id/archive", async (req, res) => {
 });
 app.post("/api/projects/:id/runs", async (req, res) => {
   if (captureBusy) throw Error("Wait for frame capture to finish");
-  res.json(await start(req.params.id, req.body.kind, req.body.count, req.body.mission));
+  if (req.body.kind === "challenge") throw Error("Use the selection challenge endpoint.");
+  res.json(await start(req.params.id, req.body.kind, req.body.count, req.body.mission, {findingId:req.body.findingId,sceneContext:req.body.sceneContext}));
+});
+// Spatial APIs accept selected scene context; they never accept filesystem paths.
+app.get("/api/projects/:id/findings", async (req,res) => {
+  const p=projects.find(p=>p.id===req.params.id);if(!p)return res.sendStatus(404);
+  res.json(await listFindings(p));
+});
+app.get("/api/projects/:id/findings/:finding/screenshot",async(req,res)=>{
+  const p=projects.find(p=>p.id===req.params.id);if(!p)return res.sendStatus(404);
+  res.sendFile(findingScreenshot(p,req.params.finding),{dotfiles:'allow'});
+});
+app.post("/api/projects/:id/findings", async (req,res) => {
+  const p=projects.find(p=>p.id===req.params.id);if(!p)return res.sendStatus(404);
+  if(!p.built)throw Error("Profile this project before investigating a scene selection.");
+  if(captureBusy || activeRun() || (await labState()).activeRun)throw Error("Wait for the current measurement or investigation to finish.");
+  captureBusy=true;const controller=new AbortController();const abort=()=>{if(!res.writableEnded)controller.abort();};res.on('close',abort);
+  const activity=async(event)=>{p.spatialActivity={...event,updatedAt:new Date().toISOString()};await projectUpdate(p);};
+  try {
+    await activity({status:'investigating',message:'Capturing selected scene and validating its identity'});
+    const finding=await investigateSpatial(p,{goal:req.body.goal,context:req.body.context,provider:req.body.provider},AbortSignal.any([controller.signal,AbortSignal.timeout(180000)]),{onEvent:event=>activity({status:'investigating',provider:event.provider,tool:event.tool,message:event.message})});
+    await activity({status:'ready',provider:finding.provider,message:'Source-backed finding ready'});res.json({finding});
+  } catch(error){await activity({status:'failed',message:redactProviderError(error.message)});throw error;}
+  finally {captureBusy=false;res.off('close',abort);}
+});
+app.get("/api/projects/:id/challenges", async (req,res) => {
+  const p=projects.find(p=>p.id===req.params.id);if(!p)return res.sendStatus(404);
+  const revision=await spatialRevision(p);
+  res.json({challenges:runs.filter(r=>r.projectId===p.id&&r.kind==='challenge').map(r=>({id:r.id,runId:r.id,status:r.challengeResult?.status||r.status,error:r.error,expectedSelection:r.challenge?.expectedSelection,result:r.challengeResult,stale:r.sourceRevision!==revision,sourceRevision:r.sourceRevision,createdAt:r.createdAt,images:r.challengeResult?{reference:`/api/runs/${r.id}/challenge-image/challenge-reference.png`,candidate:`/api/runs/${r.id}/challenge-image/challenge-candidate.png`}:null}))});
+});
+app.post("/api/projects/:id/challenges", async (req,res) => {
+  if(captureBusy)throw Error("Wait for the current investigation to finish.");
+  const p=projects.find(p=>p.id===req.params.id);if(!p)return res.sendStatus(404);
+  if(!p.built)throw Error("Build this project before recording a challenge.");
+  const run=await start(p.id,'challenge',1,'Verify recorded object selection',{challenge:req.body});
+  res.json({challenge:{id:run.id,runId:run.id,status:run.status,expectedSelection:run.challenge.expectedSelection}});
+});
+app.get("/api/runs/:id/challenge-image/:file", async(req,res)=>{
+  const r=runs.find(r=>r.id===req.params.id&&r.kind==='challenge');if(!r||!['challenge-reference.png','challenge-candidate.png'].includes(req.params.file))return res.sendStatus(404);
+  res.sendFile(await safeFile(runDir(r),req.params.file),{dotfiles:'allow'});
+});
+app.use("/candidate/:run/:exp", async(req,res,next)=>{
+  const run=runs.find(r=>r.id===req.params.run);const exp=run?.experiments.find(e=>e.id===req.params.exp);const p=projects.find(p=>p.id===run?.projectId);
+  if(!p||!exp?.previewReady)return res.status(404).send("Candidate has not built yet");
+  const root=exp.status==='accepted'&&p.lastAcceptedExperiment===exp.id?path.join(projectDir(p),'best',p.config.outputDir||'dist'):path.join(runDir(run),exp.id,'workspace',p.config.outputDir||'dist');
+  res.setHeader('Access-Control-Allow-Origin','*');
+  res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'");
+  express.static(root)(req,res,next);
 });
 app.post("/api/stop", async (req, res) =>
   res.json({ id: await stop(req.body.runId) }),
@@ -234,6 +361,7 @@ app.get("/api/projects/:id/patch", async (req, res) => {
   res.type("text/plain").send(await exportPatch(p));
 });
 app.post("/api/projects/:id/apply", async (req, res) => {
+  if(activeRun()||captureBusy)throw Error("Wait for verification to finish before Apply.");
   const p = projects.find((p) => p.id === req.params.id);
   if (!p) return res.sendStatus(404);
   res.json(await apply(p));
@@ -317,6 +445,7 @@ app.use("/baseline/:id", async (req, res, next) => {
   express.static(root)(req, res, next);
 });
 app.post("/api/settings", async (req, res) => {
+  if (provider().name === "meta") throw Error("Sponsor mode is configured in .env.local. Update MODEL_API_KEY or META_MODEL there, or disable EARL_SPONSOR_MODE to use custom model settings.");
   if (activeRun())
     throw Error("Stop the current run before changing provider settings");
   const { model, baseUrl, apiKey, protocol = "responses" } = req.body;
@@ -345,7 +474,10 @@ app.post("/api/settings", async (req, res) => {
     "LLM_API_PROTOCOL=" + protocol,
     "PORT=" + port,
   ];
-  await fs.writeFile(path.join(ROOT, ".env.local"), lines.join("\n") + "\n", {
+  const existingEnv = dotenv.parse(await fs.readFile(path.join(ROOT, ".env.local"), "utf8").catch(() => ""));
+  const replaced = new Set(lines.map((line) => line.split("=")[0]));
+  const retained = Object.entries(existingEnv).filter(([key]) => !replaced.has(key)).map(([key, value]) => key + "=" + JSON.stringify(value));
+  await fs.writeFile(path.join(ROOT, ".env.local"), [...retained, ...lines].join("\n") + "\n", {
     mode: 0o600,
   });
   await fs.chmod(path.join(ROOT, ".env.local"), 0o600);
@@ -357,7 +489,7 @@ app.get("/api/help", async (req, res) =>
     .send(await fs.readFile(path.join(ROOT, "ADAPTER.md"), "utf8")),
 );
 app.post("/api/projects/:id/capture", async (req, res) => {
-  if (activeRun())
+  if (activeRun() || (await labState()).runs.some((r) => ["queued", "running"].includes(r.status)))
     throw Error(
       "Wait for the benchmark to finish before instrumenting a frame",
     );
@@ -402,6 +534,7 @@ app.get("/api/compatibility", async (req, res) =>
 app.use("/api", (req, res) =>
   res.status(404).json({ error: "API endpoint not found" }),
 );
+app.get('/repair',(req,res,next)=>process.env.NODE_ENV==='production'?res.sendFile(path.join(ROOT,'dist','index.html')):next());
 if (process.env.NODE_ENV === "production")
   app.use(express.static(path.join(ROOT, "dist")));
 else {
@@ -417,10 +550,10 @@ else {
   app.use(vite.middlewares);
 }
 app.use((err, req, res, next) => {
-  console.error(String(err.message).replace(/sk-[\w-]+/g, "[redacted]"));
+  console.error(redactProviderError(err.message));
   res
     .status(400)
-    .json({ error: String(err.message).replace(/sk-[\w-]+/g, "[redacted]") });
+    .json({ error: redactProviderError(err.message) });
 });
 app.listen(port, "127.0.0.1", () =>
   console.log(`Earl ready at http://127.0.0.1:${port}`),

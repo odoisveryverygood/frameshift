@@ -1,0 +1,32 @@
+{
+  "hash": "fc05dde3d9c75028fd5cdee4ce9a2ac6631dd9ac5f8e5edf0fce84f1678fface",
+  "files": {
+    "training-cells/index.html": "bebefe3903a3092b34a7acace6641653711b26fbe2b1730be7e77e05206625f9",
+    "training-cells/package.json": "8d74cbb332c4c96e5e2db71daaf795cf3bbce94ef11b59772bd2a3f240b11e48",
+    "training-cells/src/main.js": "8fb8d98adb49bf2b7861a17a274ad3b2754a48f41b0955d1374456adaf98841d",
+    "training-cells/src/world.js": "781f45b3666d69bb550bddd3c385541ae624243a6af5fe69c8c8b751908261c0",
+    "training-cells/evaluation-policy": "835591f4d677891b09997bd3e9be133a79568992a9af8500a8d059aae5ff0cf0",
+    "heldout-assembly/index.html": "1ce32d9830b5732f04d0f5e062c020c19d669e46f3499a42b30b017a949e56b9",
+    "heldout-assembly/package.json": "dbda03a9cfd8c358a9627b00e14486d8873f60677f63d9ec0d33deefe8e40cdc",
+    "heldout-assembly/src/main.js": "8fb8d98adb49bf2b7861a17a274ad3b2754a48f41b0955d1374456adaf98841d",
+    "heldout-assembly/src/world.js": "0641472d78e81e7d7d33d766cc77fbf5abc5a2a3f8599c7a10728bc13d3bd4e6",
+    "heldout-assembly/evaluation-policy": "835591f4d677891b09997bd3e9be133a79568992a9af8500a8d059aae5ff0cf0",
+    "heldout-carts/index.html": "8b0b974afde41f15c430550d01777a7a6b97a55f2091be79b63894aa0f039e88",
+    "heldout-carts/package.json": "1ef699b947d7ba074a367c2d5828d0116c5311d433898c79414261c02a69f9e2",
+    "heldout-carts/src/main.js": "8fb8d98adb49bf2b7861a17a274ad3b2754a48f41b0955d1374456adaf98841d",
+    "heldout-carts/src/world.js": "0365474e2afb26e1ff4cfb2320cd0c02daf193b86ba53a28652c340e21b6c691",
+    "heldout-carts/evaluation-policy": "835591f4d677891b09997bd3e9be133a79568992a9af8500a8d059aae5ff0cf0",
+    "server/skills/service.mjs": "ca4f2a333261a7e490901c5edb60db203192bcc4da4e912cde022895fa7c5fec",
+    "server/skills/generator.mjs": "a1fba3651f09edd46964b8792992cb297eb6e61c854b5eeab8af3063b43ea672",
+    "server/skills/evaluate.mjs": "a58e0fe6b8df1a6813c6420e6940cdadbbe99ccf6b1cb538251acb5b9df709f7",
+    "server/skills/runtime.mjs": "f1d09d18cc3388e127ce872f9d58e97ff0570def1d29c8e161b9a7cc6d02f2f9",
+    "server/skills/execute.mjs": "121ed06258c10aaab17e9624b025ccffbc0170779bc968a136b9317ca3cb4094",
+    "server/benchmark.mjs": "8aabf1c41d2a68cfeb3c9fdba624b5735d25ee8beb4fd48a2c658bb49e217492",
+    "server/core.mjs": "83a5ff46871c95c18cf4860cd111b606dd7480c6f39a55f75ce33d8c2b2fe74b",
+    "server/isolation.mjs": "23a96a86922db83a263299770def51f39969e8b701bc50b1bdf3c95cbceaae76",
+    "server/integration.mjs": "e61258c3fcb728cc04efad15a398f81d7ab1a75d36e573afaccc314e32250599",
+    "sdk/vite.mjs": "63178b01ed52b3419948a3c426cd69da5a5fe4dd24cc08d1f2e585e0b4e8aa7b",
+    "sdk/runtime.mjs": "6fdb6c0866f87a42723a814566e00b3215f4f5d893419ed231bb70b2c1d5600d",
+    "server/instrument-build.mjs": "bac993b6b4d4af906506117731a686cb6af61eeb6f07658c5c4f236358bcf5cb"
+  }
+}

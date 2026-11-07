@@ -1,0 +1,50 @@
+{
+  "bounds": {
+    "min": [
+      35,
+      -3,
+      -2
+    ],
+    "max": [
+      45,
+      3,
+      2
+    ]
+  },
+  "sourcePoints": [
+    [
+      36,
+      -2,
+      -1.5
+    ],
+    [
+      44,
+      -2,
+      -1.5
+    ],
+    [
+      36,
+      2,
+      -1.5
+    ]
+  ],
+  "targetPoints": [
+    [
+      8,
+      -2,
+      7.5
+    ],
+    [
+      16,
+      -2,
+      7.5
+    ],
+    [
+      8,
+      2,
+      7.5
+    ]
+  ],
+  "label": "Authored two-part alignment fixture; not a robot mechanical result",
+  "filename": "authored-two-part-alignment.stl"
+}

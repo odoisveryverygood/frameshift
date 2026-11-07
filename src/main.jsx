@@ -33,6 +33,15 @@ import {
   X,
 } from "lucide-react";
 import "./style.css";
+import StlImport from "./StlImport.jsx";
+const RobotRepair=React.lazy(()=>import('./RobotRepair.jsx'));
+import {
+  SelectionPin,
+  InvestigationRibbon,
+  ExperimentTimeline,
+  SpatialEvidence,
+  ChallengeMarkers,
+} from "./SpatialWorkspace.jsx";
 const fmt = (v, d = 1) => (Number.isFinite(v) ? v.toFixed(d) : "—");
 const liveStatuses = ["queued", "running", "recovering"];
 const terminalStatuses = [
@@ -93,14 +102,29 @@ function App() {
     [recorded, setRecorded] = useState([]),
     [source, setSource] = useState(null),
     [frameCapture, setFrameCapture] = useState(null),
-    [failedBaseline, setFailedBaseline] = useState(null);
+    [failedBaseline, setFailedBaseline] = useState(null),
+    [sceneContext, setSceneContext] = useState(null),
+    [findings, setFindings] = useState([]),
+    [challenges, setChallenges] = useState([]),
+    [investigating, setInvestigating] = useState(false),
+    [intent, setIntent] = useState("investigate"),
+    [detailsOpen, setDetailsOpen] = useState(false),
+    [sceneVersion, setSceneVersion] = useState("current"),
+    [challengeRecording, setChallengeRecording] = useState(false),
+    [sceneLoading, setSceneLoading] = useState(true),
+    [sceneLoadError, setSceneLoadError] = useState("");
   const preview = useRef(null),
     reference = useRef(null),
     viewport = useRef(null),
     recordingRef = useRef(false),
     recordedRef = useRef([]),
     recordStart = useRef(0),
-    lastStageRun = useRef(null);
+    lastStageRun = useRef(null),
+    sceneContextRef = useRef(null),
+    challengeContextRef = useRef(null),
+    challengeRecordingRef = useRef(false),
+    pendingSceneSyncRef = useRef(null),
+    awaitingSceneContextRef = useRef(false);
   const refresh = async () => {
     try {
       setData(await api("/state"));
@@ -160,6 +184,97 @@ function App() {
   const isThisRunActive = Boolean(
     active && project && active.projectId === project.id,
   );
+  const candidateExperiment = projectRuns
+    .flatMap((r) => (r.experiments || []).map((e) => ({ ...e, runId: r.id })))
+    .find((e) => e.previewUrl);
+  const candidateUrl = candidateExperiment?.previewUrl;
+  const liveExperiment = projectJob?.experiments?.at(-1);
+  const measurementBusy = Boolean(
+    running &&
+    (!isThisRunActive ||
+      projectJob?.kind !== "optimize" ||
+      !candidateUrl ||
+      ["benchmarking"].includes(liveExperiment?.status) ||
+      !liveExperiment),
+  );
+  const sceneSuspended =
+    running && (measurementBusy || sceneVersion !== "candidate");
+  const sceneUrl =
+    sceneVersion === "original"
+      ? `/baseline/${project?.id}/index.html`
+      : sceneVersion === "candidate" && candidateUrl
+        ? candidateUrl
+        : `/preview/${project?.id}/index.html`;
+  useEffect(() => {
+    if (sceneSuspended || !project?.built) return;
+    const captured = sceneContextRef.current;
+    pendingSceneSyncRef.current = {
+      cameraState: captured?.cameraState || captured?.camera || null,
+      time: Number.isFinite(captured?.time) ? captured.time : 0,
+      selectedId: captured?.selectedId || null,
+    };
+    awaitingSceneContextRef.current = true;
+    setTelemetry(null);
+    setSceneLoading(true);
+    setSceneLoadError("");
+    let attempts = 0;
+    const poll = setInterval(() => {
+      if (!awaitingSceneContextRef.current) return clearInterval(poll);
+      // Retry one uncommitted iframe navigation before offering manual recovery.
+      if (++attempts === 6 && preview.current) preview.current.src = sceneUrl;
+      if (attempts > 20) {
+        clearInterval(poll);
+        setSceneLoading(false);
+        setSceneLoadError(
+          "The scene has not confirmed it is ready. Reload the preview to reconnect.",
+        );
+        return;
+      }
+      preview.current?.contentWindow?.postMessage(
+        { type: "frameshift:context" },
+        "*",
+      );
+    }, 500);
+    return () => clearInterval(poll);
+  }, [
+    sceneUrl,
+    project?.built,
+    project?.lastAcceptedExperiment,
+    sceneSuspended,
+    sceneVersion === "candidate" ? candidateExperiment?.id : null,
+  ]);
+  const activeFinding = sceneContext?.selectedId
+    ? findings.find(
+        (f) =>
+          f.selectedId === sceneContext.selectedId ||
+          f.context?.selectedId === sceneContext.selectedId ||
+          f.selection?.id === sceneContext.selectedId,
+      )
+    : findings[0];
+  useEffect(() => {
+    if (!project?.id) return;
+    let alive = true;
+    const load = async () => {
+      const [f, c] = await Promise.allSettled([
+        api(`/projects/${project.id}/findings`),
+        api(`/projects/${project.id}/challenges`),
+      ]);
+      if (!alive) return;
+      if (f.status === "fulfilled")
+        setFindings(
+          [...(f.value.findings || [])].sort((a, b) =>
+            String(b.createdAt).localeCompare(String(a.createdAt)),
+          ),
+        );
+      if (c.status === "fulfilled") setChallenges(c.value.challenges || []);
+    };
+    load();
+    const timer = setInterval(load, 3500);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+  }, [project?.id]);
   const scenarioCount =
     project?.config?.scenario?.events?.length ||
     project?.scenario?.events?.length ||
@@ -175,6 +290,13 @@ function App() {
     setTelemetry(null);
     setObjects([]);
     setSelectedObject(null);
+    setSceneContext(null);
+    sceneContextRef.current = null;
+    setFindings([]);
+    setChallenges([]);
+    setSceneVersion("current");
+    challengeRecordingRef.current = false;
+    setChallengeRecording(false);
     setCompare(false);
     setTime(0);
     setRecording(false);
@@ -225,6 +347,36 @@ function App() {
       const value = e.data;
       if (!value || typeof value !== "object") return;
       if (
+        e.source === preview.current?.contentWindow &&
+        ["frameshift:context", "frameshift:telemetry"].includes(value.type) &&
+        pendingSceneSyncRef.current
+      ) {
+        const desired = pendingSceneSyncRef.current;
+        // Clear before posting: the sync response must not restart the handshake.
+        pendingSceneSyncRef.current = null;
+        if (desired.cameraState) {
+          preview.current.contentWindow.postMessage(
+            {
+              type: "frameshift:sync",
+              cameraState: desired.cameraState,
+              time: desired.time,
+            },
+            "*",
+          );
+          if (desired.selectedId)
+            preview.current.contentWindow.postMessage(
+              { type: "frameshift:select", id: desired.selectedId },
+              "*",
+            );
+          preview.current.contentWindow.postMessage(
+            { type: "frameshift:context" },
+            "*",
+          );
+          return;
+        }
+      }
+
+      if (
         value.type === "frameshift:telemetry" &&
         e.source === preview.current?.contentWindow
       ) {
@@ -256,10 +408,44 @@ function App() {
             .filter((o) => o && o.id != null),
         );
       }
+      if (
+        value.type === "frameshift:context" &&
+        e.source === preview.current?.contentWindow
+      ) {
+        const context = value.context;
+        if (
+          context?.version === 1 &&
+          (!context.selectedId || typeof context.selectedId === "string")
+        ) {
+          awaitingSceneContextRef.current = false;
+          setSceneLoading(false);
+          setSceneLoadError("");
+          setSceneContext(context);
+          sceneContextRef.current = context;
+          setSelectedObject(context.selected || context.selectedId || null);
+          if (context.cameraState && Number.isFinite(context.time))
+            reference.current?.contentWindow?.postMessage(
+              {
+                type: "frameshift:sync",
+                cameraState: context.cameraState,
+                time: context.time,
+              },
+              "*",
+            );
+        }
+      }
       if (value.type === "frameshift:error")
         setNotice(String(value.message || "Scene replay failed").slice(0, 300));
-      if (value.type === "frameshift:selection")
+      if (
+        value.type === "frameshift:selection" &&
+        e.source === preview.current?.contentWindow
+      ) {
         setSelectedObject(value.object || value.id || null);
+        preview.current?.contentWindow?.postMessage(
+          { type: "frameshift:context" },
+          "*",
+        );
+      }
       if (
         value.type === "frameshift:interaction" &&
         recordingRef.current &&
@@ -267,9 +453,25 @@ function App() {
       ) {
         const event = value.event || value.interaction;
         if (event && recordedRef.current.length < 80) {
-          const at = Number.isFinite(event.at)
-            ? event.at
-            : (performance.now() - recordStart.current) / 1000;
+          // The recorder ribbon can resize the canvas. Bind the contract to the
+          // camera actually used for the demonstrated click, keeping its target.
+          if (
+            challengeRecordingRef.current &&
+            event.type === "click" &&
+            sceneContextRef.current?.camera
+          ) {
+            challengeContextRef.current = {
+              ...challengeContextRef.current,
+              camera: sceneContextRef.current.camera,
+              cameraState: sceneContextRef.current.camera,
+              time: sceneContextRef.current.time,
+            };
+          }
+          const at = challengeRecordingRef.current
+            ? 0
+            : Number.isFinite(event.at)
+              ? event.at
+              : (performance.now() - recordStart.current) / 1000;
           if (at > 60) return;
           const last = recordedRef.current.at(-1);
           if (
@@ -361,6 +563,8 @@ function App() {
         kind,
         count,
         mission: mission.trim(),
+        sceneContext: sceneContextRef.current || undefined,
+        findingId: activeFinding?.stale ? undefined : activeFinding?.id,
       });
       setRunId(r.id);
       setStage(kind === "optimize" ? "optimize" : "diagnose");
@@ -426,7 +630,7 @@ function App() {
         }
       : stage === "optimize"
         ? {
-            label: "Run experiment",
+            label: "Improve performance",
             icon: Sparkles,
             click: () => launch("optimize"),
           }
@@ -435,12 +639,118 @@ function App() {
             icon: CheckCheck,
             click: () => setModal("apply"),
           };
+  async function investigateSelection() {
+    if (!project) return setModal("connect");
+    const context = sceneContextRef.current;
+    if (!context) {
+      send({ type: "frameshift:context" });
+      return setNotice(
+        "Let the scene load, then click an object to investigate.",
+      );
+    }
+    setInvestigating(true);
+    setBusy(true);
+    try {
+      const result = await api(`/projects/${project.id}/findings`, {
+        goal:
+          mission.trim() ||
+          "Explain the selected object's rendering cost and identify a source-backed optimization experiment.",
+        context,
+      });
+      const finding = result.finding || result;
+      setFindings((old) => [
+        finding,
+        ...old.filter((f) => f.id !== finding.id),
+      ]);
+      setNotice(
+        "Investigation ready. Open the pinned finding to inspect its evidence.",
+      );
+    } catch (error) {
+      setNotice(error.message);
+    } finally {
+      setInvestigating(false);
+      setBusy(false);
+    }
+  }
+  async function toggleChallenge() {
+    if (!project || running || busy) return;
+    if (challengeRecording) {
+      recordingRef.current = false;
+      challengeRecordingRef.current = false;
+      setRecording(false);
+      setChallengeRecording(false);
+      send({ type: "frameshift:record-stop" });
+      if (!recordedRef.current.length)
+        return setNotice(
+          "No interaction was recorded. Record again and click the object to test.",
+        );
+      await act(async () => {
+        const result = await api(`/projects/${project.id}/challenges`, {
+          context: challengeContextRef.current,
+          scenario: { events: recordedRef.current },
+          expectedSelection: challengeContextRef.current?.selectedId,
+        });
+        if (result.challenge)
+          setChallenges((old) => [result.challenge, ...old]);
+        setNotice(
+          "Challenge queued. Earl will replay the actual interaction against both versions.",
+        );
+      });
+      return;
+    }
+    if (!sceneContextRef.current?.selectedId)
+      return setNotice(
+        "Click the object you want to protect, then record its selection challenge.",
+      );
+    challengeContextRef.current = structuredClone(sceneContextRef.current);
+    challengeContextRef.current.camera =
+      challengeContextRef.current.camera ||
+      challengeContextRef.current.cameraState;
+    challengeRecordingRef.current = true;
+    recordedRef.current = [];
+    setRecorded([]);
+    recordStart.current = performance.now();
+    recordingRef.current = true;
+    setRecording(true);
+    setChallengeRecording(true);
+    setPaused(true);
+    send({
+      type: "frameshift:sync",
+      cameraState: sceneContextRef.current.cameraState,
+      time: sceneContextRef.current.time,
+    });
+    send({ type: "frameshift:record-start" });
+  }
+  function restoreSceneContext() {
+    // onLoad is not scene readiness. Request a handshake and restore only after
+    // the child confirms that its actual renderer/context exists.
+    const context = sceneContextRef.current;
+    if (!pendingSceneSyncRef.current)
+      pendingSceneSyncRef.current = {
+        cameraState: context?.cameraState || context?.camera || null,
+        time: Number.isFinite(context?.time) ? context.time : 0,
+        selectedId: context?.selectedId || null,
+      };
+    awaitingSceneContextRef.current = true;
+    setSceneLoading(true);
+    setTelemetry(null);
+    preview.current?.contentWindow?.postMessage(
+      { type: "frameshift:objects" },
+      "*",
+    );
+    preview.current?.contentWindow?.postMessage(
+      { type: "frameshift:context" },
+      "*",
+    );
+  }
   const selectedObjectInfo =
     typeof selectedObject === "object"
       ? selectedObject
       : objects.find((o) => String(o.id) === String(selectedObject));
   return (
-    <div className="studio">
+    <div
+      className={"studio spatial-studio " + (detailsOpen ? "details-open" : "")}
+    >
       <header
         className="studio-header"
         inert={modal || drawer ? true : undefined}
@@ -505,6 +815,14 @@ function App() {
           ))}
         </nav>
         <div className="header-actions">
+          <button
+            className="small-button spatial-evidence-toggle"
+            aria-expanded={detailsOpen}
+            onClick={() => setDetailsOpen((v) => !v)}
+          >
+            <Layers3 size={14} />
+            <span>{detailsOpen ? "Close evidence" : "Evidence"}</span>
+          </button>
           <span className={"connection " + (connectionError ? "offline" : "")}>
             <i />
             {connectionError
@@ -521,7 +839,11 @@ function App() {
           >
             <Settings2 size={17} />
           </button>
-          <button className="small-button" onClick={() => setModal("connect")}>
+          <button
+            className="small-button"
+            aria-label="Connect project"
+            onClick={() => setModal("connect")}
+          >
             <Plus size={14} />
             <span>Connect project</span>
           </button>
@@ -539,6 +861,13 @@ function App() {
                     : "MEASURED. THEN REVIEWED."}
               </span>
               <h1>{project?.name || "Make room for a better frame."}</h1>
+              {project?.stlImport && <details className="stl-workspace-report">
+                <summary>{project.config?.previewOnly ? 'Sampled model overview · full-file cleanup report' : 'Imported STL · repair report'}</summary>
+                <p>{project.stlImport.report?.outputTriangles?.toLocaleString()} retained triangles in the download. {project.config?.previewOnly ? 'The viewport shows a reduced navigation overview. Full-model optimization and verification are disabled; topology and missing parts are not certified.' : 'Review remaining issues before using this mesh.'}</p>
+                <p>{project.stlImport.report?.issues?.join(' ')}</p>
+                <a href={project.stlImport.originalDownloadUrl} download>Original STL</a>{' · '}<a href={project.stlImport.repairedDownloadUrl} download>Cleaned STL</a>
+                {' · '}<a href={'/repair?import='+encodeURIComponent(project.stlImport.id)}>Align a detached part</a>
+              </details>}
             </div>
             <div className="canvas-heading-right">
               {project && (
@@ -563,12 +892,18 @@ function App() {
             className="mission-composer"
             onSubmit={(e) => {
               e.preventDefault();
-              launch("optimize");
+              intent === "investigate"
+                ? investigateSelection()
+                : launch("optimize");
             }}
           >
             <div className="mission-heading">
               <span className="mission-avatar">e.</span>
-              <label htmlFor="earl-mission">What should Earl improve?</label>
+              <label htmlFor="earl-mission">
+                {sceneContext?.selectedId
+                  ? `Ask about ${sceneContext.selected?.name || sceneContext.selectedId}`
+                  : "What should Earl investigate?"}
+              </label>
               <span className="mission-local">
                 <span className="tiny-dot" />{" "}
                 {project ? "Local project" : "On your machine"}
@@ -577,44 +912,83 @@ function App() {
             <textarea
               id="earl-mission"
               aria-label="Performance goal"
-              placeholder="This scene stutters when I add more robots. Make it smoother without changing how it works."
+              placeholder={
+                sceneContext?.selectedId
+                  ? "Why is this expensive? Make it faster while preserving selection."
+                  : "Click a part of your scene, or describe what feels slow."
+              }
               value={mission}
               maxLength={4000}
               onChange={(e) => updateMission(e.target.value)}
-              disabled={running || busy}
+              disabled={running || busy || investigating}
               onKeyDown={(e) => {
                 if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
                   e.preventDefault();
-                  if (!running && !busy) launch("optimize");
+                  if (!running && !busy && !investigating)
+                    intent === "investigate"
+                      ? investigateSelection()
+                      : launch("optimize");
                 }
               }}
             />
             <div className="mission-actions">
+              <div
+                className="intent-switch"
+                role="group"
+                aria-label="Conversation action"
+              >
+                <button
+                  type="button"
+                  aria-pressed={intent === "investigate"}
+                  onClick={() => setIntent("investigate")}
+                >
+                  Ask Earl
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={intent === "optimize"}
+                  disabled={Boolean(project?.config?.previewOnly)}
+                  title={project?.config?.previewOnly ? 'A sampled overview cannot be optimized as the complete robot.' : undefined}
+                  onClick={() => setIntent("optimize")}
+                >
+                  Improve
+                </button>
+              </div>
               <span>
                 {running
                   ? isThisRunActive
                     ? "Experiment in progress · your goal is saved with this run"
                     : "Another project is using the local worker"
                   : project
-                    ? "Inspects source · edits a copy · verifies the result"
+                    ? project.config?.previewOnly ? "Sampled overview · full mesh cleanup is available in the report" : "Inspects source · edits a copy · verifies the result"
                     : "Connect your project or try a real example below"}
               </span>
               <button
                 className="mission-submit"
                 type="submit"
-                disabled={running || busy}
+                disabled={running || busy || investigating || (project?.config?.previewOnly && intent === 'optimize')}
                 aria-label={
                   project
-                    ? "Run experiment"
-                    : "Connect project to run experiment"
+                    ? intent === "investigate"
+                      ? "Investigate selection"
+                      : "Improve performance"
+                    : "Connect project to improve performance"
                 }
               >
-                {busy ? (
+                {busy || investigating ? (
                   <Loader2 className="spin" size={15} />
                 ) : (
                   <ArrowUpRight size={18} />
                 )}
-                <span>{project ? "Run experiment" : "Connect project"}</span>
+                <span>
+                  {project
+                    ? investigating
+                      ? "Investigating…"
+                      : intent === "investigate"
+                        ? "Investigate"
+                        : "Improve performance"
+                    : "Connect project"}
+                </span>
               </button>
             </div>
           </form>
@@ -623,7 +997,7 @@ function App() {
             ref={viewport}
             aria-label="Project scene"
           >
-            {running ? (
+            {sceneSuspended ? (
               <div
                 className={
                   "run-cover " +
@@ -640,7 +1014,9 @@ function App() {
                     <img
                       className="running-baseline"
                       src={
-                        "/api/runs/" + displayJob.id + "/baseline/baseline-0.png"
+                        "/api/runs/" +
+                        displayJob.id +
+                        "/baseline/baseline-0.png"
                       }
                       alt="Captured baseline of this project before optimization"
                       onError={() => setFailedBaseline(displayJob.id)}
@@ -654,19 +1030,35 @@ function App() {
                     {displayJob?.status === "queued"
                       ? "QUEUED FOR THE LOCAL WORKER"
                       : projectJob
-                        ? "INDEPENDENT WORKER / " + displayJob?.kind?.toUpperCase()
+                        ? "INDEPENDENT WORKER / " +
+                          displayJob?.kind?.toUpperCase()
                         : "LOCAL WORKER BUSY"}
                   </span>
-                  <h2>{projectJob ? displayJob?.phase : "Finishing another project"}</h2>
+                  <h2>
+                    {projectJob
+                      ? displayJob?.phase
+                      : "Finishing another project"}
+                  </h2>
                   <p>
                     {displayJob?.status === "queued"
                       ? "Your first preview is queued and will build when the worker is available."
                       : !projectJob
                         ? "Live previews pause while another project is being measured. Your selected project has not changed."
-                      : displayJob?.baseline
-                        ? "Baseline capture · live rendering is paused for uncontended measurements."
-                        : "The scene is paused while the worker builds, measures, and checks the project."}
+                        : displayJob?.baseline
+                          ? "Baseline capture · live rendering is paused for uncontended measurements."
+                          : "The scene is paused while the worker builds, measures, and checks the project."}
                   </p>
+                  {candidateUrl && !measurementBusy && (
+                    <button
+                      className="small-button"
+                      onClick={() => {
+                        setSceneVersion("candidate");
+                        setPaused(true);
+                      }}
+                    >
+                      Explore testing candidate <ArrowUpRight size={13} />
+                    </button>
+                  )}
                   <button
                     className="subtle-button"
                     onClick={() => setDrawer("logs")}
@@ -684,17 +1076,17 @@ function App() {
                   key={
                     project.id +
                     ":" +
-                    (project.lastAcceptedExperiment || "initial")
+                    (project.lastAcceptedExperiment || "initial") +
+                    ":" +
+                    sceneVersion +
+                    ":" +
+                    (sceneVersion === "candidate"
+                      ? candidateExperiment?.id
+                      : "")
                   }
-                  src={"/preview/" + project.id + "/index.html"}
+                  src={sceneUrl}
                   title="Current project scene"
-                  onLoad={() => {
-                    if (paused) replay();
-                    preview.current?.contentWindow?.postMessage(
-                      { type: "frameshift:objects" },
-                      "*",
-                    );
-                  }}
+                  onLoad={restoreSceneContext}
                 />
                 {compare && (
                   <iframe
@@ -702,7 +1094,19 @@ function App() {
                     ref={reference}
                     src={"/baseline/" + project.id + "/index.html"}
                     title="Reference project scene"
-                    onLoad={() => replay()}
+                    onLoad={() => {
+                      const context = sceneContextRef.current;
+                      if (context?.cameraState)
+                        reference.current?.contentWindow?.postMessage(
+                          {
+                            type: "frameshift:sync",
+                            cameraState: context.cameraState,
+                            time: context.time || 0,
+                          },
+                          "*",
+                        );
+                      else replay();
+                    }}
                   />
                 )}
                 <div className="scene-labels">
@@ -717,21 +1121,55 @@ function App() {
                       : discovery.framework || "THREE.JS / WEBGL"}
                   </span>
                 </div>
-                {selectedObject && (
-                  <div className="selection-chip">
-                    <Box size={12} />
-                    {typeof selectedObject === "object"
-                      ? selectedObject.name || selectedObject.id
-                      : selectedObject}
-                    <button
-                      aria-label="Clear object selection"
-                      onClick={() => {
-                        setSelectedObject(null);
-                        send({ type: "frameshift:select", id: null });
-                      }}
-                    >
-                      <X size={11} />
-                    </button>
+                {!sceneLoading && (
+                  <SelectionPin
+                    context={sceneContext}
+                    finding={activeFinding}
+                    busy={investigating || busy || running}
+                    onInvestigate={investigateSelection}
+                    onImprove={() => {
+                      setIntent("optimize");
+                      document.querySelector("#earl-mission")?.focus();
+                    }}
+                    onChallenge={toggleChallenge}
+                    onSource={inspectFile}
+                    onClear={() => {
+                      setSceneContext((context) =>
+                        context
+                          ? { ...context, selectedId: null, selected: null }
+                          : null,
+                      );
+                      setSelectedObject(null);
+                      send({ type: "frameshift:select", id: null });
+                    }}
+                  />
+                )}
+                <ChallengeMarkers
+                  challenge={challenges[0]}
+                  context={sceneContext}
+                  capturedContext={challengeContextRef.current}
+                />
+                {(sceneLoading || sceneLoadError) && (
+                  <div className="scene-readiness" role="status">
+                    {sceneLoading ? (
+                      <>
+                        <Loader2 size={16} className="spin" />
+                        <span>Connecting to the scene…</span>
+                      </>
+                    ) : (
+                      <>
+                        <TriangleAlert size={16} />
+                        <span>{sceneLoadError}</span>
+                        <button
+                          onClick={() => {
+                            const node = preview.current;
+                            if (node) node.src = sceneUrl;
+                          }}
+                        >
+                          Reload preview
+                        </button>
+                      </>
+                    )}
                   </div>
                 )}
                 <div className="axis-gizmo" aria-hidden="true">
@@ -801,7 +1239,52 @@ function App() {
                 </div>
               </div>
             )}
-            {project?.built && !running && (
+            {project?.built && !sceneSuspended && (
+              <div
+                className="scene-version-switch"
+                role="group"
+                aria-label="Scene version"
+              >
+                <button
+                  aria-pressed={sceneVersion === "original"}
+                  onClick={() => {
+                    setSceneVersion("original");
+                    setCompare(false);
+                    setPaused(true);
+                  }}
+                >
+                  Original
+                </button>
+                <button
+                  aria-pressed={sceneVersion === "current"}
+                  onClick={() => {
+                    setSceneVersion("current");
+                    setCompare(false);
+                    setPaused(true);
+                  }}
+                >
+                  {project.lastAcceptedExperiment ? "Accepted" : "Current"}
+                </button>
+                {candidateUrl && (
+                  <button
+                    aria-pressed={sceneVersion === "candidate"}
+                    onClick={() => {
+                      setSceneVersion("candidate");
+                      setCompare(false);
+                      setPaused(true);
+                    }}
+                  >
+                    Candidate{" "}
+                    <small>
+                      {candidateExperiment.status === "accepted"
+                        ? "Verified"
+                        : "Testing"}
+                    </small>
+                  </button>
+                )}
+              </div>
+            )}
+            {project?.built && !sceneSuspended && (
               <>
                 <div className="canvas-tools">
                   <button
@@ -873,12 +1356,15 @@ function App() {
                   running ||
                   !project?.built ||
                   busy ||
-                  !project?.config?.autoInstrument
+                  (!project?.config?.autoInstrument &&
+                    !sceneContext?.capabilities?.recording) ||
+                  challengeRecording
                 }
                 onClick={record}
                 title={
-                  !project?.config?.autoInstrument
-                    ? "Interaction recording requires the automatic integration"
+                  !project?.config?.autoInstrument &&
+                  !sceneContext?.capabilities?.recording
+                    ? "This scene does not expose an interaction recorder"
                     : "Record actions for replay verification"
                 }
               >
@@ -902,6 +1388,25 @@ function App() {
               </button>
             </div>
           </div>
+          <InvestigationRibbon
+            finding={activeFinding}
+            challenges={challenges}
+            recording={challengeRecording}
+            onStop={toggleChallenge}
+            onOpen={() => setDrawer("spatial")}
+            onChallenge={() => setDrawer("spatial")}
+          />
+          <ExperimentTimeline
+            runs={projectRuns}
+            onSelect={(r, e) => {
+              setRunId(r.id);
+              setExperimentId(e.id);
+              setDetailsOpen(true);
+              setStage("review");
+              setDrawer("experiment");
+            }}
+            onDetails={() => setDrawer("history")}
+          />
           <div className="scene-summary">
             {recording ? (
               <>
@@ -1198,12 +1703,51 @@ function App() {
                     <Status value={active.status} />
                   </div>
                   <h3>{active.phase || "Waiting for the worker"}</h3>
+                  {active.sponsorMode && (
+                    <div className="specialist-tools" aria-live="polite">
+                      <span className="overline">ACTUAL AGENT ACTIONS</span>
+                      {[
+                        ...(active.experiments?.at(-1)?.investigatorTrace ||
+                          []),
+                        ...(active.experiments?.at(-1)?.trace || []),
+                      ]
+                        .filter((event) => event.tool)
+                        .slice(-4)
+                        .map((event, i) => (
+                          <p key={i}>
+                            <b>{event.role || "Optimizer"}</b> ·{" "}
+                            {event.tool.replaceAll("_", " ")}
+                            {event.path ? ` · ${event.path}` : ""}
+                          </p>
+                        ))}
+                      {active.experiments?.at(-1)?.riskAssessment && (
+                        <p>
+                          <b>Verifier</b> ·{" "}
+                          {active.experiments
+                            .at(-1)
+                            .riskAssessment.selectedRisks.join(", ")}{" "}
+                          risks selected added checkpoints
+                        </p>
+                      )}
+                      <small>
+                        Meta specialists · SubQ risk checks · Fetch local
+                        handoffs
+                      </small>
+                    </div>
+                  )}
                   <div className="job-stages">
                     {[
-                      ["Read project", ["reasoning"]],
+                      [
+                        active.sponsorMode
+                          ? "Investigator → Optimizer"
+                          : "Read project",
+                        ["reasoning"],
+                      ],
                       ["Build candidate", ["building"]],
                       [
-                        "Verify & measure",
+                        active.sponsorMode
+                          ? "Verifier · SubQ + tests"
+                          : "Verify & measure",
                         ["verifying", "checking", "benchmarking"],
                       ],
                     ].map(([label, statuses], i) => (
@@ -1449,9 +1993,14 @@ function App() {
               <button
                 className="stop-button"
                 disabled={!projectJob}
-                onClick={() => act(() => api("/stop", { runId: projectJob?.id }))}
+                onClick={() =>
+                  act(() => api("/stop", { runId: projectJob?.id }))
+                }
               >
-                <Square size={12} /> {projectJob ? "Stop this project’s job" : "Worker busy with another project"}
+                <Square size={12} />{" "}
+                {projectJob
+                  ? "Stop this project’s job"
+                  : "Worker busy with another project"}
               </button>
             ) : (
               <button
@@ -1546,6 +2095,14 @@ function App() {
               <Connect
                 busy={busy}
                 onExample={example}
+                onStlConnected={async ({ project: imported, run: firstRun }) => {
+                  if(imported.stlImport?.id){location.assign('/repair?import='+encodeURIComponent(imported.stlImport.id));return;}
+                  chooseProject(imported.id);
+                  if (firstRun?.id) setRunId(firstRun.id);
+                  setModal(null);
+                  await refresh();
+                  setNotice("Robot STL connected. Building its interactive preview.");
+                }}
                 onConnect={(body) =>
                   act(async () => {
                     const p = await api("/projects", body);
@@ -1558,11 +2115,19 @@ function App() {
                     setModal(null);
                     await refresh();
                     try {
-                      const firstRun = await api("/projects/" + p.id + "/runs", { kind: "profile" });
+                      const firstRun = await api(
+                        "/projects/" + p.id + "/runs",
+                        { kind: "profile" },
+                      );
                       setRunId(firstRun.id);
-                      setNotice("Project connected. Building your first preview automatically.");
+                      setNotice(
+                        "Project connected. Building your first preview automatically.",
+                      );
                     } catch (error) {
-                      setNotice("Project connected, but its preview could not start: " + error.message);
+                      setNotice(
+                        "Project connected, but its preview could not start: " +
+                          error.message,
+                      );
                     }
                   })
                 }
@@ -1570,6 +2135,7 @@ function App() {
             ) : modal === "settings" ? (
               <Settings
                 provider={data.provider}
+                spatialProvider={data.spatialProvider}
                 busy={busy}
                 onSave={(body) =>
                   act(async () => {
@@ -1668,6 +2234,7 @@ function App() {
                       source: source?.path || "Source",
                       experiment: "The proposed change",
                       evidence: "Verification evidence",
+                      spatial: "Scene investigation",
                     }[drawer]
                   }
                 </h2>
@@ -1682,7 +2249,13 @@ function App() {
               </button>
             </header>
             <div className="drawer-body">
-              {drawer === "measurements" ? (
+              {drawer === "spatial" ? (
+                <SpatialEvidence
+                  findings={findings}
+                  challenges={challenges}
+                  onSource={inspectFile}
+                />
+              ) : drawer === "measurements" ? (
                 <Measurements baseline={baseline} best={best} run={run} />
               ) : drawer === "logs" ? (
                 <>
@@ -2223,7 +2796,8 @@ function WorkerStatus({ worker }) {
     </div>
   );
 }
-function Connect({ onConnect, onExample, busy }) {
+function Connect({ onConnect, onExample, onStlConnected, busy }) {
+  const [method, setMethod] = useState("stl");
   const [path, setPath] = useState(""),
     [trusted, setTrusted] = useState(false),
     [discovery, setDiscovery] = useState(null),
@@ -2246,13 +2820,14 @@ function Connect({ onConnect, onExample, busy }) {
       <span className="dialog-symbol">
         <Box size={25} strokeWidth={1.4} />
       </span>
-      <span className="overline">CONNECT YOUR PROJECT</span>
-      <h2>Open your project.</h2>
-      <p>
-        Point Earl at a local project. It will inspect the framework, entry
-        points, dependencies, and build setup before connecting. Vite + Three.js
-        projects are the supported starting point. No ZIP or adapter required.
-      </p>
+      <span className="overline">OPEN IN EARL</span>
+      <h2>{method === "stl" ? "Bring your robot." : "Open your project."}</h2>
+      <div className="connect-methods" role="group" aria-label="Project input">
+        <button type="button" aria-pressed={method === "stl"} onClick={() => setMethod("stl")} disabled={busy}>Robot STL</button>
+        <button type="button" aria-pressed={method === "project"} onClick={() => setMethod("project")} disabled={busy}>Web project</button>
+      </div>
+      {method === "stl" ? <StlImport busy={busy} onConnected={onStlConnected} /> : <>
+      <p>Point Earl at a trusted local Vite + Three.js project. It inspects the source and build setup before connecting.</p>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -2353,16 +2928,53 @@ function Connect({ onConnect, onExample, busy }) {
           <ArrowUpRight size={14} />
         </button>
       ))}
+      </>}
     </>
   );
 }
-function Settings({ provider, onSave, busy }) {
+function Settings({ provider, spatialProvider, onSave, busy }) {
   const [model, setModel] = useState(provider.model || "gpt-5.4-mini"),
     [baseUrl, setBase] = useState(
       provider.baseUrl || "https://api.openai.com/v1",
     ),
     [apiKey, setKey] = useState(""),
     [protocol, setProtocol] = useState(provider.protocol || "responses");
+  if (provider.name === "meta")
+    return (
+      <div>
+        <span className="overline">SPONSOR CONNECTIONS</span>
+        <h2>
+          Three specialists.
+          <br />
+          One tested change.
+        </h2>
+        <p>
+          The visual Investigator inspects your selection and source. Meta
+          writes focused patches. Subquadratic selects extra verification
+          checks. Fetch carries local agent handoffs.
+        </p>
+        <div className="quiet-note">
+          <p>
+            Visual Investigator:{" "}
+            {spatialProvider?.selected === "gemini"
+              ? spatialProvider.gemini?.model || "Gemini"
+              : provider.model}
+            <br />
+            Optimizer: {provider.model}
+            <br />
+            Meta access:{" "}
+            {provider.configured ? "Configured" : "Missing MODEL_API_KEY"}
+            <br />
+            Public Agentverse discovery is not enabled.
+          </p>
+        </div>
+        <p>
+          Credentials stay in the backend’s .env.local file. Update
+          MODEL_API_KEY, SUBQ_API_KEY or META_MODEL there and restart Earl. No
+          key is sent to this screen.
+        </p>
+      </div>
+    );
   return (
     <form
       onSubmit={(e) => {
@@ -2447,4 +3059,4 @@ function Help() {
     </>
   );
 }
-createRoot(document.getElementById("root")).render(<App />);
+createRoot(document.getElementById("root")).render(location.pathname==='/repair'?<React.Suspense fallback={<p>Opening repair workspace…</p>}><RobotRepair/></React.Suspense>:<App />);

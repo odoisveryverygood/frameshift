@@ -1,5 +1,6 @@
 /* FrameShift's observer is injected by its Vite plugin, outside editable project source. */
 import * as THREE from "three";
+import { installSpatialBridge } from "virtual:frameshift-spatial";
 const nativeNow = performance.now.bind(performance);
 const nativeRaf = window.requestAnimationFrame.bind(window);
 const nativeCancel = window.cancelAnimationFrame.bind(window);
@@ -508,6 +509,13 @@ export function observeRenderer(renderer) {
         });
     });
   installApi();
+  if (window.__frameshift?.sdk === "auto-v2") installSpatialBridge(THREE, {
+    api: window.__frameshift, renderer,
+    getScene: () => observed.scene, getCamera: () => observed.camera,
+    getTime: () => controlled ? virtualTime / 1000 : nativeNow() / 1000,
+    getSelected: () => selected, setSelected: id => { selected = id; },
+    identify: objectId, now: nativeNow,
+  });
 }
 function installApi() {
   if (window.__frameshift && window.__frameshift.sdk !== "auto-v2") return;
@@ -585,7 +593,7 @@ window.addEventListener("message", (event) => {
   if (data?.type === "frameshift:resume") resume();
   if (data?.type === "frameshift:step") {
     try {
-      step(data.time, data.view);
+      step(data.time, data.view, data.cameraState || data.camera || null);
     } catch (error) {
       emit({ type: "frameshift:error", message: error.message });
     }

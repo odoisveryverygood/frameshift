@@ -1,1 +1,1 @@
-{"name":"@frameshift/vite","version":"0.2.0","type":"module","private":true,"exports":{".":"./vite.mjs","./runtime":"./runtime.mjs"},"peerDependencies":{"three":">=0.150.0","vite":">=5.0.0"},"files":["vite.mjs","runtime.mjs","README.md"]}
+{"name":"@frameshift/vite","version":"0.2.0","type":"module","private":true,"exports":{".":"./vite.mjs","./runtime":"./runtime.mjs"},"peerDependencies":{"three":">=0.150.0","vite":">=5.0.0"},"files":["vite.mjs","runtime.mjs","spatial.mjs","README.md"]}

@@ -12,8 +12,10 @@ export function frameShiftPlugin({ onInstrument = () => {} } = {}) {
     enforce: "pre",
     resolveId(id) {
       if (id === "virtual:frameshift-runtime") return "\0frameshift-runtime";
+      if (id === "virtual:frameshift-spatial") return "\0frameshift-spatial";
     },
     async load(id) {
+      if (id === "\0frameshift-spatial") return await fs.readFile(path.join(path.dirname(sdkPath), "spatial.mjs"), "utf8");
       if (id === "\0frameshift-runtime")
         return await fs.readFile(sdkPath, "utf8");
     },

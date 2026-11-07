@@ -1,0 +1,32 @@
+{
+  "uagents": "0.26.1",
+  "addresses": {
+    "investigator": "agent1qta42zv3j4p0gpkamngpy9l3m7g4mz2epqdync48gtgmznr7ppywgxw3mjr",
+    "optimizer": "agent1qthy0p8k94c8fqnh60jdrrtqmhnn7yntpygx48epsts0yf25npdljv4rs2z",
+    "verifier": "agent1qwr3z5age8lw78f3m9xf75rstazllg727vcyez4zspua5033qd0hwqexns2"
+  },
+  "status": "passed",
+  "mode": "local-in-process-uagents-dispatch",
+  "utc": "2026-11-07T20:20:52.145940+00:00",
+  "run_id": "3cd4cb9aa431b800",
+  "network_connections_allowed": false,
+  "model_calls": 0,
+  "optimization_performed": false,
+  "events": [
+    {
+      "from": "investigator",
+      "to": "optimizer",
+      "type": "Investigation"
+    },
+    {
+      "from": "optimizer",
+      "to": "verifier",
+      "type": "Candidate"
+    },
+    {
+      "from": "verifier",
+      "to": "investigator",
+      "type": "Verification"
+    }
+  ]
+}

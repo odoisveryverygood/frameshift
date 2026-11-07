@@ -1,0 +1,597 @@
+{
+  "asOf": "2026-11-07T20:39:15.562Z",
+  "runId": "ca98df11-ab6",
+  "experimentId": "2159ea46-5e3",
+  "projectId": "22992359-23e",
+  "mode": "live Meta + live SubQ + local in-process Fetch",
+  "status": "accepted",
+  "scope": "Authored warehouse fixture; one local machine, no customer or universal optimizer claim",
+  "investigator": {
+    "model": "muse-spark-1.3",
+    "provider": "meta",
+    "tools": [
+      {
+        "at": "2026-11-07T20:37:44.038Z",
+        "tool": "list_source",
+        "ok": true
+      },
+      {
+        "at": "2026-11-07T20:37:45.792Z",
+        "tool": "read_profile",
+        "ok": true
+      },
+      {
+        "at": "2026-11-07T20:37:47.017Z",
+        "tool": "read_source",
+        "path": "src/main.js",
+        "ok": true
+      },
+      {
+        "at": "2026-11-07T20:37:54.458Z",
+        "tool": "read_source",
+        "path": "src/scene.js",
+        "ok": true
+      },
+      {
+        "at": "2026-11-07T20:38:01.018Z",
+        "tool": "submit_investigation",
+        "ok": true
+      }
+    ],
+    "brief": {
+      "hypothesis": "Per-robot Mesh + unique BoxGeometry/MeshStandardMaterial forces ~1611 draw calls and 1611 geometries; replacing with 1-2 InstancedMesh (shared BoxGeometry, per-instance matrix + instanceColor for 2 colors, semanticIds array) will collapse draw calls while preserving geometry, colors, transforms and picking.",
+      "objective": "Reduce renderer.info.render.calls from 1611 to <=10 (target 2-4: robots instanced + floor/grid/lines) while keeping 1600 semantic identities, box dimensions .72x.48x.94, 2-color pattern, and animated transforms within tolerance of items()/pick() checks.",
+      "evidence": [
+        {
+          "path": "src/scene.js",
+          "observation": "scene.js creates 1600 THREE.Mesh each with new BoxGeometry(.72,.48,.94) and new MeshStandardMaterial in loop -> 1600 geometries/materials, no sharing or instancing",
+          "sha256": "17a0e7ab65150df3eabcbe69a9571cbfe3611df73f064c233a8f1e68ff863b69"
+        },
+        {
+          "path": "src/scene.js",
+          "observation": "scene.js update(t) writes robots[i].position/rotation per frame for 1600 meshes, requiring 1600 scene-graph matrix updates and 1600 draw submissions",
+          "sha256": "17a0e7ab65150df3eabcbe69a9571cbfe3611df73f064c233a8f1e68ff863b69"
+        },
+        {
+          "path": "src/main.js",
+          "observation": "main.js items() and pick() explicitly support isInstancedMesh with userData.semanticIds[i] + instanceId, so instancing preserves picking/validation identities",
+          "sha256": "2337012d2d78ccc8727da5bbd2a7a60c6e6cd19d3af5b072cfffd8d39e8cccad"
+        },
+        {
+          "path": "src/main.js",
+          "observation": "measured baseline: calls=1611, geometries=1611, triangles=19310 (~1600*12 box tris + floor/grid), confirming 1 draw call + 1 geometry per robot",
+          "sha256": "2337012d2d78ccc8727da5bbd2a7a60c6e6cd19d3af5b072cfffd8d39e8cccad"
+        }
+      ]
+    }
+  },
+  "optimizer": {
+    "model": "muse-spark-1.3",
+    "tools": [
+      {
+        "at": "2026-11-07T20:38:02.759Z",
+        "tool": "read_source",
+        "path": "src/scene.js",
+        "ok": true
+      },
+      {
+        "at": "2026-11-07T20:38:03.905Z",
+        "tool": "read_source",
+        "path": "src/main.js",
+        "ok": true
+      },
+      {
+        "at": "2026-11-07T20:38:09.920Z",
+        "tool": "submit_patch",
+        "ok": true
+      }
+    ]
+  },
+  "riskAssessment": {
+    "provider": "Subquadratic",
+    "model": "subq-snap-1.1",
+    "mode": "live",
+    "assessedAt": "2026-11-07T20:38:10.348Z",
+    "inputSha256": "3b15a5e10b501e731bdfb4db98c3e8047c4c3875b9baf01df7e49c6bd46fc03b",
+    "probabilities": {
+      "identity": 0.9819976687431335,
+      "animation": 0.8656879663467407,
+      "geometry": 0.997837245464325,
+      "timing": 0.6744277477264404
+    },
+    "threshold": 0.35,
+    "selectedRisks": [
+      "identity",
+      "animation",
+      "geometry",
+      "timing"
+    ],
+    "acceptanceAuthority": "Deterministic verifier only; these decisions add coverage and cannot remove fixed checks."
+  },
+  "guards": {
+    "interactions": null,
+    "coverage": {
+      "checkpoints": 16,
+      "semanticObjects": 1600,
+      "pickingProbes": 80,
+      "replayedEvents": 0
+    },
+    "pass": true,
+    "checks": [
+      {
+        "firstTransformMismatch": null,
+        "view": 0,
+        "time": 0,
+        "cameraPass": true,
+        "visualDifference": 0,
+        "visualPass": true,
+        "statePass": true,
+        "objectCount": 1600,
+        "pickingPass": true
+      },
+      {
+        "firstTransformMismatch": null,
+        "view": 1,
+        "time": 0.6,
+        "cameraPass": true,
+        "visualDifference": 0,
+        "visualPass": true,
+        "statePass": true,
+        "objectCount": 1600,
+        "pickingPass": true
+      },
+      {
+        "firstTransformMismatch": null,
+        "view": 2,
+        "time": 1.2,
+        "cameraPass": true,
+        "visualDifference": 0,
+        "visualPass": true,
+        "statePass": true,
+        "objectCount": 1600,
+        "pickingPass": true
+      },
+      {
+        "firstTransformMismatch": null,
+        "view": 3,
+        "time": 2,
+        "cameraPass": true,
+        "visualDifference": 0,
+        "visualPass": true,
+        "statePass": true,
+        "objectCount": 1600,
+        "pickingPass": true
+      },
+      {
+        "firstTransformMismatch": null,
+        "view": 4,
+        "time": 3,
+        "cameraPass": true,
+        "visualDifference": 0,
+        "visualPass": true,
+        "statePass": true,
+        "objectCount": 1600,
+        "pickingPass": true
+      },
+      {
+        "firstTransformMismatch": null,
+        "view": 5,
+        "time": 4.2,
+        "cameraPass": true,
+        "visualDifference": 0,
+        "visualPass": true,
+        "statePass": true,
+        "objectCount": 1600,
+        "pickingPass": true
+      },
+      {
+        "firstTransformMismatch": null,
+        "view": 6,
+        "time": 5,
+        "cameraPass": true,
+        "visualDifference": 0,
+        "visualPass": true,
+        "statePass": true,
+        "objectCount": 1600,
+        "pickingPass": true
+      },
+      {
+        "firstTransformMismatch": null,
+        "view": 7,
+        "time": 6,
+        "cameraPass": true,
+        "visualDifference": 0,
+        "visualPass": true,
+        "statePass": true,
+        "objectCount": 1600,
+        "pickingPass": true
+      },
+      {
+        "firstTransformMismatch": null,
+        "view": 8,
+        "time": 0.25,
+        "cameraPass": true,
+        "visualDifference": 0,
+        "visualPass": true,
+        "statePass": true,
+        "objectCount": 1600,
+        "pickingPass": true
+      },
+      {
+        "firstTransformMismatch": null,
+        "view": 9,
+        "time": 1.75,
+        "cameraPass": true,
+        "visualDifference": 0.0000016276041666666668,
+        "visualPass": true,
+        "statePass": true,
+        "objectCount": 1600,
+        "pickingPass": true
+      },
+      {
+        "firstTransformMismatch": null,
+        "view": 10,
+        "time": 6.75,
+        "cameraPass": true,
+        "visualDifference": 0,
+        "visualPass": true,
+        "statePass": true,
+        "objectCount": 1600,
+        "pickingPass": true
+      },
+      {
+        "firstTransformMismatch": null,
+        "view": 11,
+        "time": 8.5,
+        "cameraPass": true,
+        "visualDifference": 0,
+        "visualPass": true,
+        "statePass": true,
+        "objectCount": 1600,
+        "pickingPass": true
+      },
+      {
+        "firstTransformMismatch": null,
+        "view": 12,
+        "time": 0.35,
+        "cameraPass": true,
+        "visualDifference": 0,
+        "visualPass": true,
+        "statePass": true,
+        "objectCount": 1600,
+        "pickingPass": true
+      },
+      {
+        "firstTransformMismatch": null,
+        "view": 13,
+        "time": 2.35,
+        "cameraPass": true,
+        "visualDifference": 0,
+        "visualPass": true,
+        "statePass": true,
+        "objectCount": 1600,
+        "pickingPass": true
+      },
+      {
+        "firstTransformMismatch": null,
+        "view": 14,
+        "time": 0.016666666666666666,
+        "cameraPass": true,
+        "visualDifference": 0,
+        "visualPass": true,
+        "statePass": true,
+        "objectCount": 1600,
+        "pickingPass": true
+      },
+      {
+        "firstTransformMismatch": null,
+        "view": 15,
+        "time": 9.25,
+        "cameraPass": true,
+        "visualDifference": 0,
+        "visualPass": true,
+        "statePass": true,
+        "objectCount": 1600,
+        "pickingPass": true
+      }
+    ],
+    "errors": []
+  },
+  "reference": {
+    "frameMedian": 16.700000000000045,
+    "frameP95": 16.799999999999955,
+    "submitMedian": 6.299999952316284,
+    "submitP95": 8.699999988079071,
+    "fps": 59.88023952095792,
+    "calls": 1611,
+    "triangles": 19310,
+    "geometries": 1611,
+    "repeatMetrics": [
+      7.099999964237213,
+      12.199999988079071,
+      8.399999976158142
+    ],
+    "samples": 3,
+    "frameCount": 240,
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+    "hardware": {
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+      "cores": 10,
+      "viewport": [
+        960,
+        640
+      ],
+      "dpr": 1
+    },
+    "uncertainty": {
+      "repeats": 3,
+      "min": 7.099999964237213,
+      "max": 12.199999988079071,
+      "relativeSpread": 0.6071428617044371,
+      "note": "Limited repeat count; differences inside observed variability are inconclusive."
+    },
+    "gpuSupported": true,
+    "gpuP95": 1.298874
+  },
+  "candidate": {
+    "frameMedian": 16.700000000000045,
+    "frameP95": 16.700000000000273,
+    "submitMedian": 0.699999988079071,
+    "submitP95": 1.199999988079071,
+    "fps": 59.88023952095792,
+    "calls": 13,
+    "triangles": 19310,
+    "geometries": 12,
+    "repeatMetrics": [
+      1.199999988079071,
+      1.2000000476837158,
+      1.199999988079071
+    ],
+    "samples": 3,
+    "frameCount": 240,
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+    "hardware": {
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+      "cores": 10,
+      "viewport": [
+        960,
+        640
+      ],
+      "dpr": 1
+    },
+    "uncertainty": {
+      "repeats": 3,
+      "min": 1.199999988079071,
+      "max": 1.2000000476837158,
+      "relativeSpread": 4.967053780625798e-8,
+      "note": "Limited repeat count; differences inside observed variability are inconclusive."
+    },
+    "gpuSupported": true,
+    "gpuP95": 0.924458
+  },
+  "handoffs": [
+    {
+      "type": "receipt",
+      "requestId": "45857081-b4af-409a-8608-0c85df689d32",
+      "stage": "InvestigationReady",
+      "jobId": "ca98df11-ab6:2159ea46-5e3",
+      "attempt": 0,
+      "sourceHash": "b98e8e5b08b805979427ac7b01d272340b11e5b43acc88ffa7a8c82552aae54c",
+      "candidateHash": "",
+      "artifactHash": "",
+      "sender": "agent1qta42zv3j4p0gpkamngpy9l3m7g4mz2epqdync48gtgmznr7ppywgxw3mjr",
+      "recipient": "agent1qthy0p8k94c8fqnh60jdrrtqmhnn7yntpygx48epsts0yf25npdljv4rs2z",
+      "mode": "local-in-process-uagents-dispatch",
+      "utc": "2026-11-07T20:38:01.027139+00:00"
+    },
+    {
+      "type": "receipt",
+      "requestId": "ec99fd08-f4a8-4460-ac35-f37c77f8db34",
+      "stage": "PatchReady",
+      "jobId": "ca98df11-ab6:2159ea46-5e3",
+      "attempt": 0,
+      "sourceHash": "b98e8e5b08b805979427ac7b01d272340b11e5b43acc88ffa7a8c82552aae54c",
+      "candidateHash": "b6853a39282a2e1bc5b397dafee09f08f6e56c27487be2828d66c7b33db771a4",
+      "artifactHash": "fc72dff2dfd8fb1dabaac0597d9dcf10f48d1716918faad685ac048aa9ae7ac8",
+      "sender": "agent1qthy0p8k94c8fqnh60jdrrtqmhnn7yntpygx48epsts0yf25npdljv4rs2z",
+      "recipient": "agent1qwr3z5age8lw78f3m9xf75rstazllg727vcyez4zspua5033qd0hwqexns2",
+      "mode": "local-in-process-uagents-dispatch",
+      "utc": "2026-11-07T20:38:09.972448+00:00"
+    },
+    {
+      "type": "receipt",
+      "requestId": "4b739b77-f8d0-4797-9d57-a745f38afaac",
+      "stage": "VerificationResult",
+      "jobId": "ca98df11-ab6:2159ea46-5e3",
+      "attempt": 0,
+      "sourceHash": "b98e8e5b08b805979427ac7b01d272340b11e5b43acc88ffa7a8c82552aae54c",
+      "candidateHash": "b6853a39282a2e1bc5b397dafee09f08f6e56c27487be2828d66c7b33db771a4",
+      "artifactHash": "37d4b9eca1dc9a7033ba49c68eb313934915c8b58c69b0022e925d6a7cdbba23",
+      "sender": "agent1qwr3z5age8lw78f3m9xf75rstazllg727vcyez4zspua5033qd0hwqexns2",
+      "recipient": "agent1qta42zv3j4p0gpkamngpy9l3m7g4mz2epqdync48gtgmznr7ppywgxw3mjr",
+      "mode": "local-in-process-uagents-dispatch",
+      "utc": "2026-11-07T20:38:41.471446+00:00"
+    }
+  ],
+  "receipt": {
+    "version": 1,
+    "evaluatedAt": "2026-11-07T20:38:41.468Z",
+    "authority": "Earl deterministic verifier; optimizer cannot set the verdict",
+    "policyHash": "2f1e07aeb0963e2abbeea862b86253052fca48997e4973f74d0a4b5f90b42f00",
+    "policy": {
+      "name": "Warehouse robotics scene",
+      "buildCommand": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "outputDir": "dist",
+      "editableFiles": [
+        "src/scene.js"
+      ],
+      "autoInstrument": false,
+      "metric": "drawCalls",
+      "minImprovement": 0.08,
+      "maxVisualDifference": 0.01,
+      "samples": 80,
+      "repeats": 3,
+      "adapter": "__frameshift",
+      "checkpoints": [
+        {
+          "time": 0,
+          "view": 0
+        },
+        {
+          "time": 0.6,
+          "view": 1
+        },
+        {
+          "time": 1.2,
+          "view": 2
+        },
+        {
+          "time": 2,
+          "view": 0
+        },
+        {
+          "time": 3,
+          "view": 1
+        },
+        {
+          "time": 4.2,
+          "view": 2
+        },
+        {
+          "time": 5,
+          "view": 0
+        },
+        {
+          "time": 6,
+          "view": 1
+        },
+        {
+          "time": 0.25,
+          "view": 2
+        },
+        {
+          "time": 1.75,
+          "view": 1
+        },
+        {
+          "time": 6.75,
+          "view": 0
+        },
+        {
+          "time": 8.5,
+          "view": 2
+        },
+        {
+          "time": 0.35,
+          "view": 1
+        },
+        {
+          "time": 2.35,
+          "view": 2
+        },
+        {
+          "time": 0.016666666666666666,
+          "view": 0
+        },
+        {
+          "time": 9.25,
+          "view": 1
+        }
+      ],
+      "subqVerification": {
+        "model": "subq-snap-1.1",
+        "threshold": 0.35,
+        "selectedRisks": [
+          "identity",
+          "animation",
+          "geometry",
+          "timing"
+        ],
+        "inputSha256": "3b15a5e10b501e731bdfb4db98c3e8047c4c3875b9baf01df7e49c6bd46fc03b",
+        "baselineCheckpoints": 8,
+        "addedCheckpoints": 8,
+        "note": "Added time/camera checkpoints execute existing screenshot, semantic transform and picking guards. They do not prove all interactions."
+      }
+    },
+    "implementations": {
+      "server/verifier.mjs": "3791b1ac9b3654d153e124545ff886a9a56d7c6c3602c698a458e35da0ece144",
+      "server/core.mjs": "83a5ff46871c95c18cf4860cd111b606dd7480c6f39a55f75ce33d8c2b2fe74b",
+      "server/benchmark.mjs": "8aabf1c41d2a68cfeb3c9fdba624b5735d25ee8beb4fd48a2c658bb49e217492",
+      "server/integration.mjs": "e61258c3fcb728cc04efad15a398f81d7ab1a75d36e573afaccc314e32250599",
+      "sdk/runtime.mjs": "6fdb6c0866f87a42723a814566e00b3215f4f5d893419ed231bb70b2c1d5600d",
+      "server/instrument-build.mjs": "bac993b6b4d4af906506117731a686cb6af61eeb6f07658c5c4f236358bcf5cb",
+      "server/subq.mjs": "e739d46c021e89a99e7063db8373ecf99f3dda3b444650008d3141d88e746e30"
+    },
+    "artifacts": {
+      "reference-metrics.json": {
+        "sha256": "61583bae29c41d89df522ec411b139be5dc904a43728e07f455ceae01feda5fc",
+        "bytes": 16411
+      },
+      "candidate-metrics.json": {
+        "sha256": "c3ba99ddfb2c0bfb6a76bee990beb643131fff6244f7043bd37ac9ef02547e1e",
+        "bytes": 16907
+      },
+      "guards.json": {
+        "sha256": "5e33b33280d4e0eab1823eb11b91fc26dd4d181fa2a68ecd3c00d06d3a485f04",
+        "bytes": 4176
+      },
+      "measurement-order.json": {
+        "sha256": "06a20cb7cf8e98d82c04ac255410e033374b43517b31acb4fe5e2e590a6547e4",
+        "bytes": 548
+      },
+      "change.patch": {
+        "sha256": "fc72dff2dfd8fb1dabaac0597d9dcf10f48d1716918faad685ac048aa9ae7ac8",
+        "bytes": 2857
+      },
+      "risk-assessment.json": {
+        "sha256": "83eb63aa2cad7e4361a0a5c42082fda4d4f2c06b992d5c7b48aba5bc20e33744",
+        "bytes": 601
+      },
+      "verification-plan.json": {
+        "sha256": "aba2a0ee7f649e75b4359cab584573f3b2cdf89a3899ea4fd7531ab56f65df45",
+        "bytes": 4676
+      },
+      "verification-request.json": {
+        "sha256": "d97cd5385149a800da765bdb9d44bf726b516a3569d24cb05bbafb76e2fe7cbe",
+        "bytes": 673
+      }
+    },
+    "sources": {
+      "reference": {
+        "src/scene.js": "17a0e7ab65150df3eabcbe69a9571cbfe3611df73f064c233a8f1e68ff863b69"
+      },
+      "candidate": {
+        "src/scene.js": "ce312dfebc16a6def6add3faa485f3035d208602de83fe630ca166a0077b7255"
+      }
+    },
+    "referenceRoles": {
+      "performance": "Current best source fingerprinted above",
+      "correctness": "Protected original-build appearance and behavior; may precede accepted best-source optimizations"
+    },
+    "verdict": {
+      "status": "accepted",
+      "metric": "drawCalls",
+      "improvement": 0.9919304779639975,
+      "threshold": 0.08,
+      "reason": "Draw calls decreased, correctness checks passed, and CPU submission/frame pacing stayed within their guards."
+    },
+    "coverage": {
+      "checkpoints": 16,
+      "recordedEvents": 0,
+      "limitations": [
+        "Passing checks establishes only the sampled scenes and interactions.",
+        "Browser application state is observed through instrumentation; this is not a hostile-code security proof.",
+        "CPU submission timing and frame pacing are not GPU utilization."
+      ]
+    }
+  },
+  "limitations": [
+    "Agentverse registration, remote delivery and public discovery not verified",
+    "ASI inference is separate connectivity check; not used in this run",
+    "Frame pacing may remain display-limited; CPU submission is not GPU utilization"
+  ]
+}
