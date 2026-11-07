@@ -1647,3 +1647,442 @@
     font-size: 26px;
   }
 }
+
+/* ---------- One-screen dashboard (overrides the earlier scroll layout) ---------- */
+.run-results {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.rr-top {
+  flex: none;
+}
+.rr-view {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 28px max(28px, calc((100vw - 1180px) / 2)) 60px;
+  animation: view-in 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.rr-view.back {
+  animation-name: view-back;
+}
+.rr-view > h2 {
+  font-weight: 500;
+  font-size: 30px;
+  letter-spacing: -0.01em;
+  margin: 0 0 8px;
+}
+.rr-view > .lede {
+  color: var(--muted);
+  margin: 0 0 22px;
+}
+.rr-view.rr-summary {
+  overflow: hidden;
+  padding: 14px 22px 10px;
+}
+@keyframes view-in {
+  from {
+    opacity: 0;
+    transform: translateX(46px) scale(0.985);
+    filter: blur(10px);
+  }
+}
+@keyframes view-back {
+  from {
+    opacity: 0;
+    transform: translateX(-46px) scale(0.985);
+    filter: blur(10px);
+  }
+}
+.reduced .rr-view {
+  animation: rr-fade 0.25s both;
+}
+
+.sg {
+  height: 100%;
+  min-height: 0 !important;
+  grid-template-columns: 290px minmax(0, 1fr) 330px;
+  gap: 18px;
+}
+.sg-left,
+.sg-right {
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding: 2px;
+}
+.sg-left::-webkit-scrollbar,
+.sg-right::-webkit-scrollbar {
+  display: none;
+}
+.sg-left {
+  animation: from-left 0.8s 0.1s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.sg-right {
+  animation: from-right 0.8s 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes from-left {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+    filter: blur(8px);
+  }
+}
+@keyframes from-right {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+    filter: blur(8px);
+  }
+}
+.reduced .sg-left,
+.reduced .sg-right {
+  animation: rr-fade 0.3s both;
+}
+
+/* Glass with inner shadow, light and thin: no heavy boxes. */
+.sg .rr-hero,
+.sg-card {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.78),
+    rgba(255, 255, 255, 0.5)
+  );
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  border-radius: 20px;
+  padding: 16px 18px;
+  box-shadow:
+    inset 0 1px 0 #fff,
+    inset 0 -10px 24px rgba(15, 23, 42, 0.03),
+    0 12px 32px rgba(15, 23, 42, 0.05);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.sg .rr-hero h1 {
+  font-size: 44px;
+}
+.sg .rr-hero .scope {
+  font-size: 12px;
+  margin: 12px 0 0;
+}
+.sg .metric-card {
+  background: none;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  padding: 10px 0 6px;
+  backdrop-filter: none;
+  animation: rise 0.6s calc(0.5s + var(--i) * 0.12s) both;
+}
+.sg .metric-card .delta {
+  top: 10px;
+  right: 0;
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+.sg-right {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.sg-right .sg-card:first-child {
+  max-height: none;
+  border-top: 1px solid rgba(15, 23, 42, 0.07);
+}
+.sg-agent {
+  position: relative;
+  animation: agent-in 0.55s cubic-bezier(0.2, 0.9, 0.2, 1) both;
+}
+.sg-agent::before {
+  content: "";
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  top: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--c);
+  box-shadow: 0 0 14px var(--c);
+}
+@keyframes agent-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+    filter: blur(6px);
+  }
+}
+.sg-bars li {
+  animation: rise 0.5s calc(0.6s + var(--i) * 0.07s) both;
+}
+.reduced .sg-agent,
+.reduced .sg-bars li,
+.reduced .sg .metric-card {
+  animation: none;
+}
+
+.sg-center {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+.sg-center::before {
+  content: "";
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  top: 8%;
+  bottom: 22%;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--c) 22%, transparent),
+    transparent
+  );
+  filter: blur(20px);
+  transition: background 0.8s;
+}
+.sg-speaking {
+  position: relative;
+  z-index: 2;
+  margin: 2px 0 0;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  animation: rise 0.5s both;
+}
+.sg-speaking span {
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 16px;
+  letter-spacing: 0;
+}
+.sg-speaking i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--c);
+  margin-right: 10px;
+  vertical-align: middle;
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--c) 18%, transparent);
+  animation: pulse 1.8s infinite;
+}
+@keyframes pulse {
+  50% {
+    box-shadow: 0 0 0 10px color-mix(in srgb, var(--c) 0%, transparent);
+  }
+}
+
+.model3d {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  cursor: grab;
+  touch-action: pan-y;
+  animation: model-in 1s 0.2s both;
+}
+.model3d:active {
+  cursor: grabbing;
+}
+.model3d canvas {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+}
+@keyframes model-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+.m-lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 1;
+}
+.m-lines polyline {
+  fill: none;
+  stroke: var(--c);
+  stroke-width: 1;
+  stroke-dasharray: 900;
+  stroke-dashoffset: 900;
+  animation: draw 0.9s var(--d) ease-out forwards;
+}
+.m-lines circle {
+  fill: #fff;
+  stroke: var(--c);
+  stroke-width: 1.5;
+  opacity: 0;
+  animation: dot-in 0.4s calc(var(--d) + 0.6s) forwards;
+}
+.m-lines .warn polyline {
+  stroke: #e0602c;
+}
+.m-lines .warn circle {
+  stroke: #e0602c;
+}
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes dot-in {
+  from {
+    opacity: 0;
+    r: 12;
+  }
+  to {
+    opacity: 1;
+    r: 4;
+  }
+}
+.m-label {
+  position: absolute;
+  z-index: 2;
+  max-width: 210px;
+  font-size: 13.5px;
+  line-height: 1.35;
+  pointer-events: none;
+  animation: label-in 0.6s var(--d) cubic-bezier(0.2, 0.9, 0.2, 1) both;
+}
+.m-label b {
+  display: block;
+  font:
+    500 10.5px "JetBrains Mono",
+    monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c);
+  margin-bottom: 3px;
+}
+.m-label span {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--ink);
+  text-shadow:
+    0 0 12px #f7f8fb,
+    0 0 4px #f7f8fb;
+}
+.m-label.warn b {
+  color: #c4471a;
+}
+.m-left {
+  left: 0;
+  text-align: left;
+}
+.m-right {
+  right: 0;
+  text-align: right;
+}
+.m-0 {
+  top: 8%;
+}
+.m-1 {
+  top: 22%;
+}
+.m-2 {
+  top: 58%;
+}
+.m-3 {
+  top: 66%;
+}
+@keyframes label-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+    filter: blur(6px);
+  }
+}
+.reduced .m-label,
+.reduced .m-lines polyline,
+.reduced .m-lines circle,
+.reduced .model3d {
+  animation: none;
+  opacity: 1;
+  stroke-dashoffset: 0;
+}
+
+/* Planets become a dock under the model: no panel behind them. */
+.sg-center .planet-row {
+  flex: none;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.sg-center .planet-row svg {
+  max-height: 150px;
+}
+.sg-center .pr-slot {
+  animation: pop 0.6s both;
+}
+.sg-center .pr-slot:nth-of-type(1) {
+  animation-delay: 0.5s;
+}
+.sg-center .pr-slot:nth-of-type(2) {
+  animation-delay: 0.6s;
+}
+.sg-center .pr-slot:nth-of-type(3) {
+  animation-delay: 0.7s;
+}
+.sg-center .pr-slot:nth-of-type(4) {
+  animation-delay: 0.8s;
+}
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+@media (max-width: 1100px) {
+  .run-results {
+    overflow-y: auto;
+    display: block;
+  }
+  .rr-view,
+  .rr-view.rr-summary {
+    overflow: visible;
+    height: auto;
+    padding: 12px 16px 60px;
+  }
+  .sg {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+  .sg-center {
+    order: -1;
+    height: 72vh;
+  }
+  .sg-left,
+  .sg-right {
+    overflow: visible;
+  }
+  .m-label {
+    max-width: 150px;
+    font-size: 12px;
+  }
+  .m-label span {
+    -webkit-line-clamp: 2;
+  }
+}

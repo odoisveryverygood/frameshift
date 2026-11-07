@@ -73,9 +73,8 @@ export default function RunResults({ run, project, onClose, fixture }) {
   const [receipt, setReceipt] = useState(fixture ? fixture.receipt : undefined);
   const [receiptError, setReceiptError] = useState("");
   const [active, setActive] = useState("summary");
-  const hero = useRef(null);
-  const heroSeen = useInView(hero, 0.2);
-  const sections = useRef({});
+  // Tabs switch views in place; `dir` sets which way the new view slides in.
+  const [dir, setDir] = useState(1);
 
   useEffect(() => {
     if (fixture) return;
@@ -94,26 +93,6 @@ export default function RunResults({ run, project, onClose, fixture }) {
       .catch((e) => live && (setReceipt(null), setReceiptError(String(e))));
     return () => (live = false);
   }, [run?.id, exp?.id, fixture]);
-
-  useEffect(() => {
-    const io = new IntersectionObserver(
-      (entries) => {
-        const top = entries
-          .filter((e) => e.isIntersecting)
-          .sort(
-            (a, b) => a.boundingClientRect.top - b.boundingClientRect.top,
-          )[0];
-        const el = document.querySelector(".run-results");
-        // At the very bottom the last section is the one being read.
-        if (el && el.scrollTop + el.clientHeight >= el.scrollHeight - 4)
-          setActive(SECTIONS.at(-1)[0]);
-        else if (top) setActive(top.target.dataset.section);
-      },
-      { rootMargin: "-30% 0px -60% 0px" },
-    );
-    Object.values(sections.current).forEach((el) => el && io.observe(el));
-    return () => io.disconnect();
-  }, []);
 
   useEffect(() => {
     const key = (e) => e.key === "Escape" && onClose?.();
@@ -136,34 +115,145 @@ export default function RunResults({ run, project, onClose, fixture }) {
         receiptError ||
         "No verifier receipt was recorded for this run."
       : null);
-  // The middle of the dashboard is whatever the project built: the candidate when
-  // the backend serves one, otherwise the project's current build.
-  const stageSrc =
-    exp?.previewReady && exp?.previewUrl
-      ? exp.previewUrl
-      : project?.built
-        ? `/preview/${project.id}/index.html`
-        : null;
   const ref = exp?.reference,
     cand = exp?.candidate;
-  const go = (id) =>
-    sections.current[id]?.scrollIntoView({
-      behavior: reduced ? "auto" : "smooth",
-    });
-  const section = (id) => ({
-    ref: (el) => (sections.current[id] = el),
-    "data-section": id,
-    id: "results-" + id,
-  });
+  const go = (id) => {
+    const order = SECTIONS.map(([k]) => k);
+    setDir(order.indexOf(id) >= order.indexOf(active) ? 1 : -1);
+    setActive(id);
+  };
+  const metrics = (
+    <div className="metric-cards">
+      {METRICS.map(([label, key, digits, unit], i) => {
+        const before = formatNumber(ref?.[key], digits),
+          after = formatNumber(cand?.[key], digits);
+        const delta =
+          Number.isFinite(ref?.[key]) &&
+          Number.isFinite(cand?.[key]) &&
+          ref[key] > 0
+            ? (cand[key] - ref[key]) / ref[key]
+            : null;
+        return (
+          <article key={key} className="metric-card" style={{ "--i": i }}>
+            <span className="label">{label}</span>
+            <div className="ba">
+              <span className="before">
+                <Reel
+                  text={before}
+                  go={loaded}
+                  reduced={reduced}
+                  delay={600 + i * 150}
+                />
+                {before != null && unit}
+              </span>
+              <span className="arrow" aria-hidden="true">
+                →
+              </span>
+              <span className="after">
+                <Reel
+                  text={after}
+                  go={loaded}
+                  reduced={reduced}
+                  delay={850 + i * 150}
+                />
+                {after != null && unit}
+              </span>
+            </div>
+            {delta != null && (
+              <span className={"delta" + (delta < 0 ? " down" : "")}>
+                {delta < 0 ? "−" : "+"}
+                {Math.abs(delta * 100).toFixed(1)}%
+              </span>
+            )}
+          </article>
+        );
+      })}
+    </div>
+  );
+  const views = {
+    summary: (
+      <Stage
+        exp={exp}
+        colors={COLORS}
+        reduced={reduced}
+        head={
+          <div className={"rr-hero " + tone}>
+            <span className="eyebrow">Verdict · sealed verifier receipt</span>
+            <h1>{headline}</h1>
+            {reason && <p className="reason">{reason}</p>}
+            {metrics}
+            <p className="scope">
+              Configured workload on this machine. CPU submission time is not
+              GPU usage; fewer draw calls do not automatically mean a higher
+              frame rate.
+            </p>
+          </div>
+        }
+      />
+    ),
+    pipeline: (
+      <>
+        <h2>What the agents did</h2>
+        <p className="lede">
+          Replayed from what this run recorded, in recorded order. Hover or
+          press the button to take it apart.
+        </p>
+        {exp ? (
+          <Pipeline experiment={exp} colors={COLORS} reduced={reduced} />
+        ) : (
+          <p className="not-recorded">No experiment ran.</p>
+        )}
+      </>
+    ),
+    patch: (
+      <>
+        <h2>The change</h2>
+        <PatchReveal
+          diff={exp?.diff || fixture?.diff}
+          patchHref={
+            !fixture && project ? `/api/projects/${project.id}/patch` : null
+          }
+          reportHref={!fixture && run ? `/api/runs/${run.id}/report` : null}
+          reduced={reduced}
+        />
+      </>
+    ),
+    scene: (
+      <>
+        <h2>Before and after</h2>
+        <DotCollapse
+          before={ref?.calls}
+          after={cand?.calls}
+          color={COLORS.optimizer}
+          reduced={reduced}
+        />
+        <BeforeAfter
+          runId={run?.id}
+          experiment={exp}
+          fixture={Boolean(fixture)}
+        />
+      </>
+    ),
+    receipt: (
+      <>
+        <h2>Proof</h2>
+        {loaded ? (
+          <Receipt
+            receipt={receipt}
+            error={receiptError}
+            experiment={exp}
+            reduced={reduced}
+          />
+        ) : (
+          <p className="not-recorded">Loading…</p>
+        )}
+      </>
+    ),
+  };
 
   return (
     <div
       className={"run-results" + (reduced ? " reduced" : "")}
-      onScroll={(e) => {
-        const el = e.currentTarget;
-        if (el.scrollTop + el.clientHeight >= el.scrollHeight - 4)
-          setActive(SECTIONS.at(-1)[0]);
-      }}
       role="dialog"
       aria-modal="true"
       aria-label="Run results"
@@ -182,136 +272,12 @@ export default function RunResults({ run, project, onClose, fixture }) {
           Back to workspace
         </button>
       </header>
-      <main className="rr-body">
-        <section
-          {...section("summary")}
-          className="rr-dash"
-          ref={(el) => ((sections.current.summary = el), (hero.current = el))}
-        >
-          <Stage
-            exp={exp}
-            colors={COLORS}
-            reduced={reduced}
-            stageSrc={stageSrc}
-            head={
-              <div className={"rr-hero " + tone}>
-                <span className="eyebrow">
-                  Verdict from the sealed verifier receipt
-                </span>
-                <h1>{headline}</h1>
-                {reason && <p className="reason">{reason}</p>}
-                <div className="metric-cards">
-                  {METRICS.map(([label, key, digits, unit], i) => {
-                    const before = formatNumber(ref?.[key], digits),
-                      after = formatNumber(cand?.[key], digits);
-                    const delta =
-                      Number.isFinite(ref?.[key]) &&
-                      Number.isFinite(cand?.[key]) &&
-                      ref[key] > 0
-                        ? (cand[key] - ref[key]) / ref[key]
-                        : null;
-                    return (
-                      <article key={key} className="metric-card">
-                        <span className="label">{label}</span>
-                        <div className="ba">
-                          <span className="before">
-                            <Reel
-                              text={before}
-                              go={loaded && heroSeen}
-                              reduced={reduced}
-                              delay={i * 150}
-                            />
-                            {before != null && unit}
-                          </span>
-                          <span className="arrow" aria-hidden="true">
-                            →
-                          </span>
-                          <span className="after">
-                            <Reel
-                              text={after}
-                              go={loaded && heroSeen}
-                              reduced={reduced}
-                              delay={i * 150 + 250}
-                            />
-                            {after != null && unit}
-                          </span>
-                        </div>
-                        {delta != null && (
-                          <span
-                            className={"delta" + (delta < 0 ? " down" : "")}
-                          >
-                            {delta < 0 ? "−" : "+"}
-                            {Math.abs(delta * 100).toFixed(1)}%
-                          </span>
-                        )}
-                      </article>
-                    );
-                  })}
-                </div>
-              </div>
-            }
-          />
-          <p className="scope">
-            Measured on the configured workload on this machine. CPU submission
-            time is not GPU usage, and fewer draw calls do not automatically
-            mean a higher frame rate.
-            {ref?.uncertainty?.note ? " " + ref.uncertainty.note : ""}
-          </p>
-          <DotCollapse
-            before={ref?.calls}
-            after={cand?.calls}
-            color={COLORS.optimizer}
-            reduced={reduced}
-          />
-        </section>
-
-        <section {...section("pipeline")} className="rr-section">
-          <h2>What the agents did</h2>
-          <p className="lede">
-            Replayed from what this run recorded, in recorded order. Hover,
-            scroll or press the button to take it apart.
-          </p>
-          {exp ? (
-            <Pipeline experiment={exp} colors={COLORS} reduced={reduced} />
-          ) : (
-            <p className="not-recorded">No experiment ran.</p>
-          )}
-        </section>
-
-        <section {...section("patch")} className="rr-section">
-          <h2>The change</h2>
-          <PatchReveal
-            diff={exp?.diff || fixture?.diff}
-            patchHref={
-              !fixture && project ? `/api/projects/${project.id}/patch` : null
-            }
-            reportHref={!fixture && run ? `/api/runs/${run.id}/report` : null}
-            reduced={reduced}
-          />
-        </section>
-
-        <section {...section("scene")} className="rr-section">
-          <h2>Before and after</h2>
-          <BeforeAfter
-            runId={run?.id}
-            experiment={exp}
-            fixture={Boolean(fixture)}
-          />
-        </section>
-
-        <section {...section("receipt")} className="rr-section">
-          <h2>Proof</h2>
-          {loaded ? (
-            <Receipt
-              receipt={receipt}
-              error={receiptError}
-              experiment={exp}
-              reduced={reduced}
-            />
-          ) : (
-            <p className="not-recorded">Loading…</p>
-          )}
-        </section>
+      <main
+        className={"rr-view rr-" + active + (dir < 0 ? " back" : "")}
+        key={active}
+        id={"results-" + active}
+      >
+        {views[active]}
       </main>
     </div>
   );
