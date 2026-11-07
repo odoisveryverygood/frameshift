@@ -127,6 +127,8 @@ function App() {
     data.runs.find((r) => r.id === data.activeRun) ||
     data.runs.find((r) => liveStatuses.includes(r.status));
   const running = Boolean(active);
+  const projectJob = projectRuns.find((r) => liveStatuses.includes(r.status));
+  const displayJob = projectJob || active;
   const experiment =
     run?.experiments?.find((e) => e.id === experimentId) ||
     run?.experiments?.findLast((e) => e.guards) ||
@@ -316,6 +318,9 @@ function App() {
     });
   }
   function chooseProject(id) {
+    const url = new URL(location.href);
+    url.searchParams.set("project", id);
+    history.replaceState(null, "", url);
     setProjectId(id);
     setRunId(null);
     setExperimentId(null);
@@ -622,23 +627,23 @@ function App() {
               <div
                 className={
                   "run-cover " +
-                  (active?.baseline &&
-                  active.projectId === project?.id &&
-                  failedBaseline !== active.id
+                  (displayJob?.baseline &&
+                  displayJob.projectId === project?.id &&
+                  failedBaseline !== displayJob.id
                     ? "has-baseline"
                     : "")
                 }
               >
-                {active?.baseline &&
-                  active.projectId === project?.id &&
-                  failedBaseline !== active.id && (
+                {displayJob?.baseline &&
+                  displayJob.projectId === project?.id &&
+                  failedBaseline !== displayJob.id && (
                     <img
                       className="running-baseline"
                       src={
-                        "/api/runs/" + active.id + "/baseline/baseline-0.png"
+                        "/api/runs/" + displayJob.id + "/baseline/baseline-0.png"
                       }
                       alt="Captured baseline of this project before optimization"
-                      onError={() => setFailedBaseline(active.id)}
+                      onError={() => setFailedBaseline(displayJob.id)}
                     />
                   )}
                 <div className="run-status">
@@ -646,15 +651,19 @@ function App() {
                     <ScanLine size={27} />
                   </div>
                   <span className="overline">
-                    {active?.status === "queued"
+                    {displayJob?.status === "queued"
                       ? "QUEUED FOR THE LOCAL WORKER"
-                      : "INDEPENDENT WORKER / " + active?.kind?.toUpperCase()}
+                      : projectJob
+                        ? "INDEPENDENT WORKER / " + displayJob?.kind?.toUpperCase()
+                        : "LOCAL WORKER BUSY"}
                   </span>
-                  <h2>{active?.phase || "Preparing your project"}</h2>
+                  <h2>{projectJob ? displayJob?.phase : "Finishing another project"}</h2>
                   <p>
-                    {active?.status === "queued"
-                      ? "The job is saved and will start when the worker is available."
-                      : active?.baseline
+                    {displayJob?.status === "queued"
+                      ? "Your first preview is queued and will build when the worker is available."
+                      : !projectJob
+                        ? "Live previews pause while another project is being measured. Your selected project has not changed."
+                      : displayJob?.baseline
                         ? "Baseline capture · live rendering is paused for uncontended measurements."
                         : "The scene is paused while the worker builds, measures, and checks the project."}
                   </p>
@@ -1439,9 +1448,10 @@ function App() {
             {running ? (
               <button
                 className="stop-button"
-                onClick={() => act(() => api("/stop", {}))}
+                disabled={!projectJob}
+                onClick={() => act(() => api("/stop", { runId: projectJob?.id }))}
               >
-                <Square size={12} /> Stop current job
+                <Square size={12} /> {projectJob ? "Stop this project’s job" : "Worker busy with another project"}
               </button>
             ) : (
               <button
@@ -1546,9 +1556,14 @@ function App() {
                     }
                     chooseProject(p.id);
                     setModal(null);
-                    setNotice(
-                      "Project connected. Describe your goal and run an experiment, or profile the scene first.",
-                    );
+                    await refresh();
+                    try {
+                      const firstRun = await api("/projects/" + p.id + "/runs", { kind: "profile" });
+                      setRunId(firstRun.id);
+                      setNotice("Project connected. Building your first preview automatically.");
+                    } catch (error) {
+                      setNotice("Project connected, but its preview could not start: " + error.message);
+                    }
                   })
                 }
               />
