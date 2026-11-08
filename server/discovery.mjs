@@ -271,7 +271,7 @@ export async function discoverProject(input) {
       severity: "warning",
       code: "DEPENDENCIES_NOT_INSTALLED",
       message:
-        "Install this project’s dependencies before profiling. Earl does not install arbitrary project packages automatically.",
+        "Dependencies are not installed. After you trust and connect this project, Sift will install its declared registry packages with lifecycle scripts disabled; local workspaces may need a manual install.",
     });
   if (!entryPoints.length)
     issues.push({

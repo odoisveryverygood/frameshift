@@ -1,8 +1,10 @@
 # Sift
 
+**Current integration:** [workspace flow, project compatibility and verification](docs/WORKSPACE-READINESS.md) · [operator deployment preparation](docs/HOSTED-DEPLOYMENT.md). Hosted deployment remains unverified.
+
 **All teammates: [read the complete project, sponsor and hackathon guide](TEAM-README.md).** It explains what Sift does, every agent/integration, verified evidence, track fit, demo framing, original-work boundaries and current limitations. No code knowledge is needed to start there.
 
-Formerly Earl / FrameShift. **UI teammate: start with [the Sift UI and animation handoff](docs/SIFT-UI-HANDOFF.md).** It maps the four product roles to actual workflows, API responses, scene messages, verification states, and a reproducible demo. The runtime still displays Earl; the UI teammate owns the visual rename, color scheme, layout and animation pass.
+Formerly Earl / FrameShift. **UI teammate: start with [the Sift UI and animation handoff](docs/SIFT-UI-HANDOFF.md).** It maps the four product roles to actual workflows, API responses, scene messages, verification states, and a reproducible demo. The integrated default workspace uses Sift; legacy engineering routes retain some Earl naming.
 
 ### Better frames, with proof.
 
@@ -38,7 +40,7 @@ a protected browser profiler, repeatable checks, and an independent job worker.
 
 ## Quick start
 
-Requirements: **Node.js 22 or newer, npm, and Google Chrome**. A model provider
+Requirements: **Node.js 22.15 or newer, npm, and Google Chrome**. A model provider
 with function/tool calling is required for AI optimization; profiling runs locally
 without a model request.
 

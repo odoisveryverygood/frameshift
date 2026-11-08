@@ -1,4 +1,6 @@
 import express from "express";
+import {createHostedAccess} from "./hosted-access.mjs";
+import {receiveProjectZip,assertManagedUploadPath} from "./project-upload.mjs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import dotenv from "dotenv";
@@ -35,33 +37,21 @@ const app = express();
 app.disable("x-powered-by");
 const port = Number(process.env.PORT) || 4310;
 let captureBusy = false;
-app.use((req, res, next) => {
-  const host = req.headers.host?.split(":")[0];
-  if (!["127.0.0.1", "localhost", "[::1]"].includes(host))
-    return res.status(403).json({ error: "Local access only" });
-  if (
-    req.headers.origin &&
-    !["http://127.0.0.1:" + port, "http://localhost:" + port].includes(
-      req.headers.origin,
-    ) &&
-    !(
-      req.method === "GET" &&
-      /^\/(preview|baseline|candidate|stl-preview)\//.test(req.path) &&
-      req.headers.origin === "null"
-    )
-  )
-    return res.status(403).json({ error: "Cross-origin requests denied" });
-  if (
-    req.path.startsWith("/api/") &&
-    !["GET", "HEAD"].includes(req.method) &&
-    !req.is("application/json") &&
-    !(req.path === "/api/stl/import" && req.is("application/octet-stream"))
-  )
-    return res.status(415).json({ error: "JSON requests required" });
-  res.setHeader("X-Content-Type-Options", "nosniff");
+const access = createHostedAccess({port});
+app.use(access.middleware);
+app.use(express.json({ limit: "1mb" }));
+access.installSession(app);
+app.post("/api/uploads/project",async(req,res)=>{
+  if(!req.is("application/zip"))return res.status(415).json({error:"Project upload requires application/zip"});
+  if(activeRun()||captureBusy)throw Error("Wait for the active job before importing another project.");
+  const controller=new AbortController();const abort=()=>{if(!res.writableEnded)controller.abort();};res.on("close",abort);
+  let filename=String(req.get("X-Upload-Name")||"project.zip");try{filename=decodeURIComponent(filename);}catch{}
+  try{res.json(await receiveProjectZip(req,{dataDirectory:DATA,filename,contentLength:req.get("content-length")==null?undefined:Number(req.get("content-length")),signal:AbortSignal.any([controller.signal,AbortSignal.timeout(120000)])}));}finally{res.off("close",abort);}
+});
+app.post(["/api/inspect","/api/projects"],async(req,res,next)=>{
+  if(access.hosted){try{await assertManagedUploadPath(req.body.path,DATA);}catch(error){return next(error);}}
   next();
 });
-app.use(express.json({ limit: "1mb" }));
 app.use("/api", async (req, res, next) => {
   try {
     await initialize();
@@ -179,12 +169,12 @@ app.post("/api/runs/:id/resume", async (req, res) =>
   res.json(await resume(req.params.id)),
 );
 app.post("/api/projects", async (req, res) => {
-  if (!req.body.trusted)
+  if (req.body.trusted !== true)
     throw Error("Confirm that you trust this project and its build command");
   res.json(await connect(req.body.path, { name: req.body.name }));
 });
 app.post("/api/examples/:name", async (req, res) => {
-  if (!["warehouse", "fleet", "assembly"].includes(req.params.name))
+  if (!["warehouse", "fleet", "assembly", "relay", "orbit-lab"].includes(req.params.name))
     throw Error("Unknown example");
   const existing = projects.find(
     (p) =>
@@ -554,9 +544,10 @@ else {
 app.use((err, req, res, next) => {
   console.error(redactProviderError(err.message));
   res
-    .status(400)
+    .status(Number.isInteger(err.status) && err.status >= 400 && err.status < 600 ? err.status : 400)
     .json({ error: redactProviderError(err.message) });
 });
-app.listen(port, "127.0.0.1", () =>
-  console.log(`Earl ready at http://127.0.0.1:${port}`),
+const bindHost = access.hosted ? "0.0.0.0" : "127.0.0.1";
+app.listen(port, bindHost, () =>
+  console.log(`Sift ready at ${access.publicOrigin || `http://127.0.0.1:${port}`}`),
 );

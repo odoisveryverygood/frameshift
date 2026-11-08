@@ -8,6 +8,7 @@ import {
   createSourceTools,
   applyExact,
   proposeExperiment,
+  buildRepairContext,
 } from "../server/agent.mjs";
 
 async function project() {
@@ -248,9 +249,15 @@ test("Responses agent inspects graph and source, then returns a multi-file patch
           assert.ok(!JSON.stringify(body.input).includes("export const count"));
           assert.ok(JSON.stringify(body.input).includes("src/world.js"));
           const context = JSON.parse(body.input[0].content);
-          assert.equal(context.mission, "Make rotation smoother while preserving selection.");
+          assert.equal(
+            context.mission,
+            "Make rotation smoother while preserving selection.",
+          );
           assert.match(body.instructions, /mission is user intent/);
-          assert.match(body.instructions, /independent verifier alone decides acceptance/);
+          assert.match(
+            body.instructions,
+            /independent verifier alone decides acceptance/,
+          );
         }
         if (step === 3)
           assert.ok(
@@ -483,50 +490,131 @@ test("patches cannot introduce SDK or benchmark-control overrides", async () => 
   }
 });
 
-
 test("repair keeps the original mission without changing the fixed optimization goal", async () => {
   const p = await project();
   try {
-    await withProvider(async (req, body, res) => {
-      const context = JSON.parse(body.input[0].content);
-      assert.equal(context.mission, "Reduce stutter and preserve picking.");
-      assert.equal(context.goal, "drawCalls");
-      assert.equal(context.repair.error, "Picking mismatch");
-      assert.match(body.instructions, /never a promise/);
-      respond(res, 0, "submit_patch", submission([]));
-    }, async () => {
-      const result = await proposeExperiment({
-        ...p,
-        config: { ...p.config, metric: "drawCalls" },
-        mission: "Reduce stutter and preserve picking.",
-        repair: { attempt: 1, error: "Picking mismatch" },
-      });
-      assert.deepEqual(result.files, []);
-    });
+    await withProvider(
+      async (req, body, res) => {
+        const context = JSON.parse(body.input[0].content);
+        assert.equal(context.mission, "Reduce stutter and preserve picking.");
+        assert.equal(context.goal, "drawCalls");
+        assert.equal(context.repair.error, "Picking mismatch");
+        assert.match(body.instructions, /never a promise/);
+        respond(res, 0, "submit_patch", submission([]));
+      },
+      async () => {
+        const result = await proposeExperiment({
+          ...p,
+          config: { ...p.config, metric: "drawCalls" },
+          mission: "Reduce stutter and preserve picking.",
+          repair: { attempt: 1, error: "Picking mismatch" },
+        });
+        assert.deepEqual(result.files, []);
+      },
+    );
   } finally {
     await fs.rm(p.workspace, { recursive: true, force: true });
   }
 });
 
-test('investigator can correct an invalid brief after inspecting multiple modules', async () => {
-  const {investigateProject} = await import('../server/investigator.mjs');
+test("investigator can correct an invalid brief after inspecting multiple modules", async () => {
+  const { investigateProject } = await import("../server/investigator.mjs");
   const p = await project();
   let step = 0;
-  const events=[];
+  const events = [];
   try {
-    await withProvider(async (_req, body, res) => {
-      step++;
-      if(step===1)return respond(res,step,'list_source',{prefix:''});
-      if(step===2)return respond(res,step,'read_profile',{});
-      if(step>=3&&step<=5)return respond(res,step,'read_source',{path:['src/main.js','src/world.js','src/geometry.js'][step-3],startLine:1,endLine:50});
-      if(step===6)return respond(res,step,'search_source',{query:'count'});
-      const evidence=[{path:'src/world.js',observation:'The source declares the repeated workload count.'}];
-      return respond(res,step,'submit_investigation',{hypothesis:'Inspect repeated resource construction.',objective:'Measure a reduction in real CPU submission overhead.',evidence,relevantFiles:step===7?['src/main.js']:['src/world.js']});
-    }, async()=>{
-      const result=await investigateProject({...p,onEvent:async e=>events.push(e)});
-      assert.equal(result.budget.rounds,8);
-      assert.equal(result.evidence[0].sha256.length,64);
-      assert.ok(events.some(e=>e.type==='agent-tool-result'&&e.status==='rejected'));
-    });
-  } finally { await fs.rm(p.workspace,{recursive:true,force:true}); }
+    await withProvider(
+      async (_req, body, res) => {
+        step++;
+        if (step === 1)
+          return respond(res, step, "list_source", { prefix: "" });
+        if (step === 2) return respond(res, step, "read_profile", {});
+        if (step >= 3 && step <= 5)
+          return respond(res, step, "read_source", {
+            path: ["src/main.js", "src/world.js", "src/geometry.js"][step - 3],
+            startLine: 1,
+            endLine: 50,
+          });
+        if (step === 6)
+          return respond(res, step, "search_source", { query: "count" });
+        const evidence = [
+          {
+            path: "src/world.js",
+            observation: "The source declares the repeated workload count.",
+          },
+        ];
+        return respond(res, step, "submit_investigation", {
+          hypothesis: "Inspect repeated resource construction.",
+          objective: "Measure a reduction in real CPU submission overhead.",
+          evidence,
+          relevantFiles: step === 7 ? ["src/main.js"] : ["src/world.js"],
+        });
+      },
+      async () => {
+        const result = await investigateProject({
+          ...p,
+          onEvent: async (e) => events.push(e),
+        });
+        assert.equal(result.budget.rounds, 8);
+        assert.equal(result.evidence[0].sha256.length, 64);
+        assert.ok(
+          events.some(
+            (e) => e.type === "agent-tool-result" && e.status === "rejected",
+          ),
+        );
+      },
+    );
+  } finally {
+    await fs.rm(p.workspace, { recursive: true, force: true });
+  }
+});
+
+test("repair context distinguishes object-local offsets from geometry bakes even when image and picking pass", () => {
+  const original = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 7, 0.625, -3, 1];
+  const candidate = original.slice();
+  candidate[13] = 0;
+  const feedback = buildRepairContext({
+    attempt: 2,
+    error: "Transform verification failed",
+    guards: {
+      checks: [
+        {
+          view: 0,
+          time: 0,
+          statePass: false,
+          visualPass: true,
+          pickingPass: true,
+          cameraPass: true,
+          firstTransformMismatch: {
+            expected: ["part-a", ...original],
+            actual: ["part-a", ...candidate],
+          },
+        },
+      ],
+    },
+    patch:
+      "--- a/src/assembly.js\n+++ b/src/assembly.js\n@@ -1 +1 @@\n-    part.position.y = .625;\n+    geometry.translate(0,.625,0);\n",
+  });
+  assert.equal(feedback.failedChecks.transforms, 1);
+  assert.equal(feedback.failedChecks.visual, 0);
+  assert.equal(
+    feedback.matrixDifferences[0].components[0].component,
+    "translation.y",
+  );
+  assert.equal(feedback.matrixDifferences[0].components[0].index, 13);
+  assert.equal(feedback.matrixDifferences[0].components[0].expected, 0.625);
+  assert.equal(feedback.matrixDifferences[0].components[0].actual, 0);
+  assert.equal(feedback.sourceEvidence[0].path, "src/assembly.js");
+  assert.match(feedback.sourceEvidence[0].referenceSource, /position.y/);
+  assert.match(
+    feedback.contract.composition,
+    /inverse\(batchParentWorld\).*originalObjectWorld/,
+  );
+  assert.match(
+    feedback.contract.geometryRule,
+    /already present in reference source/,
+  );
+  assert.match(feedback.contract.repairPlan, /same patch/);
+  assert.equal(feedback.matrixDifferences[0].visualPassed, true);
+  assert.equal(buildRepairContext(null), null);
 });

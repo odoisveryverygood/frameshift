@@ -181,6 +181,7 @@ export default function RunResults({
     summary: (
       <Stage
         project={project}
+        run={run}
         measuring={measuring}
         exp={exp}
         colors={COLORS}
@@ -267,7 +268,7 @@ export default function RunResults({
       aria-modal="true"
       aria-label="Run results"
     >
-      <Galaxy x={0.5} y={0.4} scale={0.95} />
+      <Galaxy x={0.5} y={0.4} scale={0.95} paused={measuring} />
       <div className="grain" aria-hidden="true" />
       <header className="rr-top">
         <div>

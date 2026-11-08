@@ -2243,3 +2243,116 @@ body::before {
 .stl-mesh-preview iframe { display:block; width:100%; height:220px; border:1px solid #e3dbcf; border-radius:10px; background:#f3f0e9; }
 .stl-mesh-preview figcaption { margin-top:7px; font-size:10px; color:#9c8b74; }
 .stl-facts .stl-dimensions { grid-column:1/-1; }
+
+/* Integration: real runnable scene remains beside the agent stages. */
+.live-engineering-layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(320px,.8fr);gap:18px;align-items:start;max-width:1600px;margin:auto}
+.live-engineering-scene{position:sticky;top:85px;min-height:520px;height:calc(100vh - 130px);border:1px solid #ffffff99;border-radius:22px;overflow:hidden;background:#edf0f8}
+.live-engineering-layout>.loading{min-height:0}.live-engineering-layout .loading-inner{padding:12px}.live-engineering-layout .factory{min-height:500px}.live-engineering-layout .loading h1{font-size:30px}
+@media(max-width:1050px){.live-engineering-layout{grid-template-columns:1fr}.live-engineering-scene{position:relative;top:0;height:65vh;min-height:360px}}
+
+/* One project workspace: the scene stays in place as work becomes a result. */
+.page.continuous-workspace {
+  width: min(1640px, 100%);
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 350px);
+  align-items: start;
+  gap: 24px;
+  padding-top: 24px;
+}
+.continuous-workspace > .note { grid-column: 1 / -1; }
+.continuous-scene {
+  position: sticky;
+  top: 92px;
+  grid-column: 1;
+  grid-row: auto;
+  height: calc(100dvh - 138px);
+  min-height: 510px;
+  max-height: 900px;
+  border: 1px solid rgb(20 25 50 / 10%);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 16px 48px rgb(26 35 70 / 6%);
+  background: #edf0f8;
+}
+.continuous-activity, .workspace-result { grid-column: 2; min-width: 0; }
+.continuous-activity .loading-inner { padding: 0; gap: 14px; }
+.continuous-activity .loading-copy h1 { font-size: 25px; }
+.continuous-activity .loading-copy > p { font-size: 13px; line-height: 1.5; }
+.continuous-activity .factory { grid-template-columns: 1fr; gap: 8px; }
+.continuous-activity .solar-scene { height: 245px; min-height: 245px; }
+.continuous-activity .solar-help { display: none; }
+.continuous-activity .activity-panel { gap: 8px; }
+.continuous-activity .activity-panel > * { padding: 12px; border-radius: 13px; }
+.continuous-activity .activity-log,
+.continuous-activity .activity-foot,
+.continuous-activity .activity-frame { display: none; }
+.continuous-activity .activity-agents li { padding: 8px 6px; gap: 7px; }
+.continuous-activity .activity-agents b { font-size: 14px; }
+.continuous-activity .activity-agents .agent-sub { font-size: 9px; }
+.continuous-activity .activity-agents button > span { display: none; }
+.continuous-activity .activity-agents small { font-size: 11px; line-height: 1.4; }
+.continuous-activity .activity-now p { font-size: 14px; }
+.workspace-result { display: grid; align-content: start; gap: 19px; padding: 9px 0 24px; }
+.workspace-result header { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
+.workspace-result header > svg { flex-shrink: 0; margin-top: 24px; color: var(--accent); }
+.workspace-result h1 { font-size: clamp(25px, 2.5vw, 34px); line-height: 1.15; font-weight: 500; letter-spacing: -.035em; margin-top: 8px; }
+.workspace-result-reason { color: var(--ink-2); font-size: 14px; line-height: 1.65; overflow-wrap: anywhere; }
+.workspace-metrics { display: grid; gap: 16px; padding: 18px 0; border-block: 1px solid var(--line); }
+.workspace-metrics > div { display: grid; gap: 6px; }
+.workspace-metrics span { color: var(--muted); font-size: 12px; }
+.workspace-metrics b { font-size: 23px; font-weight: 500; font-variant-numeric: tabular-nums; letter-spacing: -.025em; }
+.workspace-metrics i { color: var(--muted); font-size: 17px; font-style: normal; }
+.workspace-scope { font-size: 11.5px; line-height: 1.6; color: var(--muted); }
+.workspace-actions { display: flex; flex-wrap: wrap; gap: 9px; }
+.workspace-actions .primary-button { width: 100%; justify-content: space-between; }
+.detail-drawer { grid-template-rows: auto auto minmax(0, 1fr); }
+.workspace-detail-nav { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 20px; border-bottom: 1px solid var(--line); }
+.workspace-detail-nav button { padding: 6px 9px; border-radius: 7px; font-size: 12px; color: var(--muted); }
+.workspace-detail-nav button[aria-current="page"] { background: var(--surface-2, #eceaf1); color: var(--ink); }
+.detail-drawer:has(.dashboard) { width: min(1100px, 100%); }
+@media (max-width: 1000px) {
+  .page.continuous-workspace { grid-template-columns: minmax(0,1fr) 300px; gap: 18px; padding-inline: 18px; }
+  .continuous-activity .solar-scene { height: 210px; min-height: 210px; }
+}
+@media (max-width: 780px) {
+  .page.continuous-workspace { grid-template-columns: minmax(0,1fr); }
+  .continuous-scene { position: relative; top: 0; height: 58dvh; min-height: 360px; grid-column: 1; }
+  .continuous-activity, .workspace-result { grid-column: 1; }
+  .continuous-activity .factory { grid-template-columns: minmax(0,.8fr) minmax(250px,1fr); }
+  .continuous-activity .solar-scene { height: 290px; }
+  .workspace-metrics { grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; }
+  .workspace-metrics b { font-size: 19px; }
+  .workspace-actions .primary-button { width: auto; gap: 18px; }
+}
+@media (max-width: 540px) {
+  .continuous-activity .factory { grid-template-columns: 1fr; }
+  .continuous-activity .solar-scene { height: 220px; min-height: 220px; }
+  .workspace-metrics { grid-template-columns: 1fr; }
+  .workspace-metrics > div { grid-template-columns: 1fr auto; align-items: center; }
+}
+.continuous-scene > .live-scene { height: 100%; display: flex; flex-direction: column; border: 0; border-radius: 0; }
+.continuous-scene .ls-viewport { flex: 1; height: auto; min-height: 0; }
+.continuous-scene .ls-evidence { max-height: 170px; overflow: auto; }
+/* The decorative galaxy belongs only to the agent sidebar. */
+.continuous-activity .loading.is-compact { isolation: isolate; overflow: hidden; padding: 5px 2px 2px; }
+.continuous-activity .loading.is-compact > .galaxy { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; }
+.continuous-activity .loading-copy { padding-top: 3px; gap: 4px; }
+.continuous-activity .loading-copy h1 { line-height: 1.15; font-size: 24px; }
+.continuous-activity .loading-inner { gap: 7px; }
+.continuous-activity .solar-scene { height: 185px; min-height: 185px; }
+.continuous-activity .activity-panel { gap: 6px; }
+.continuous-activity .activity-panel > * { padding: 9px 10px; }
+.continuous-activity .activity-progress { gap: 2px 7px; }
+.continuous-activity .activity-progress b { font-size: 21px; }
+.continuous-activity .activity-progress span { font-size: 10px; }
+.continuous-activity .activity-progress small { font-size: 10px; }
+.continuous-activity .activity-agents li { padding: 6px 4px; }
+.continuous-activity .activity-agents small { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; overflow: hidden; }
+.continuous-activity .activity-now p { font-size: 13px; line-height: 1.4; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+.continuous-activity .activity-now small { font-size: 11px; }
+@media (max-width: 780px) {
+  .continuous-activity .solar-scene { height: 220px; min-height: 220px; }
+}
+@media (min-width: 781px) and (max-height: 800px) {
+  .continuous-activity .solar-scene { height: 135px; min-height: 135px; }
+  .continuous-activity .loading-copy h1 { font-size: 22px; }
+}

@@ -39,6 +39,10 @@ import {
 } from "./parts.jsx";
 import Dashboard from "./Dashboard.jsx";
 import LiveScene from "./LiveScene.jsx";
+import WorkspaceResult from "./WorkspaceResult.jsx";
+import { requestApi } from "./api-client.mjs";
+import { readPendingOptimization, savePendingOptimization, clearPendingOptimization, pendingProfile } from "./pending-optimization.mjs";
+import { deriveLiveActivity } from "./live-activity.mjs";
 import RunResults, { loadFixture } from "./RunResults.jsx";
 import Loading from "./Loading.jsx";
 import Hero from "./Hero.jsx";
@@ -67,21 +71,7 @@ const previewPhases = [
 const previewEvents = ["investigator", "optimizer", "verifier", "verify"];
 const previewStatus = [null, "building", "building", "verifying"];
 const steps = ["Ready", "Measure", "Patch", "Check", "Result"];
-async function api(url, body) {
-  const response = await fetch(
-    "/api" + url,
-    body === undefined
-      ? {}
-      : {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        },
-  );
-  const data = await response.json();
-  if (!response.ok) throw Error(data.error || "Request failed");
-  return data;
-}
+const api = requestApi;
 // Maps a live job onto the automatic workspace states. Only fields the runner
 // actually writes are used: the baseline checkpoint and experiment statuses.
 function jobPhase(job) {
@@ -99,6 +89,7 @@ export function App() {
       try {
         return (
           new URLSearchParams(location.search).get("project") ||
+          readPendingOptimization()?.projectId ||
           localStorage.getItem("frameshift:project") ||
           ""
         );
@@ -107,7 +98,7 @@ export function App() {
       }
     }),
     [mission, setMission] = useState(""),
-    [runId, setRunId] = useState(null),
+    [runId, setRunId] = useState(() => new URLSearchParams(location.search).get("run")),
     [experimentId, setExperimentId] = useState(null),
     [modal, setModal] = useState(null),
     [drawer, setDrawer] = useState(null),
@@ -128,7 +119,7 @@ export function App() {
     [source, setSource] = useState(null),
     [frameCapture, setFrameCapture] = useState(null),
     [failedBaseline, setFailedBaseline] = useState(null),
-    [phase, setPhase] = useState("hero"),
+    [phase, setPhase] = useState(() => new URLSearchParams(location.search).get("view") === "results" ? "results" : "hero"),
     [rip, setRip] = useState(null),
     [previewing, setPreviewing] = useState(false),
     [previewStep, setPreviewStep] = useState(0);
@@ -144,7 +135,8 @@ export function App() {
     phaseRef = useRef("hero"),
     afterRip = useRef(null),
     starting = useRef(false),
-    autoRun = useRef(null),
+    autoRun = useRef(readPendingOptimization()),
+    pendingModelNotice = useRef(false),
     prevJob = useRef(null);
   const refresh = async () => {
     try {
@@ -172,6 +164,8 @@ export function App() {
     data.runs.find((r) => r.id === data.activeRun) ||
     data.runs.find((r) => liveStatuses.includes(r.status));
   const running = Boolean(active);
+  const activeStage = active ? deriveLiveActivity(active).activeId : null;
+  const timingBusy = Boolean(active && (active.kind !== "optimize" || !active.baseline || activeStage === "warden"));
   const projectJob = projectRuns.find((r) => liveStatuses.includes(r.status));
   const experiment =
     run?.experiments?.find((e) => e.id === experimentId) ||
@@ -273,6 +267,9 @@ export function App() {
   }, [projectRuns.map((r) => r.id + r.status).join()]);
   function openResults(id) {
     setResultsRunId(id);
+    setRunId(id);
+    if (phaseRef.current === "rip") afterRip.current = "results";
+    else setPhase("results");
     const url = new URL(location.href);
     url.searchParams.set("run", id);
     url.searchParams.set("view", "results");
@@ -347,7 +344,7 @@ export function App() {
     if (
       finished.kind === "profile" &&
       finished.status === "completed" &&
-      autoRun.current
+      autoRun.current?.profileRunId === finished.id
     )
       return;
     setRunId(previous);
@@ -368,25 +365,43 @@ export function App() {
     }, 6000);
     return () => clearTimeout(timer);
   }, [phase, projectJob?.id, data.runs.length]);
-  // After the first build, the improvement starts on the goal from the hero.
+  // Persist the exact build that belongs to this Optimize request. Reloading
+  // cannot silently turn an optimization request into a baseline-only result.
   useEffect(() => {
-    const id = autoRun.current;
-    if (!id || !project || project.id !== id || running || busy) return;
-    const first = projectRuns.find((r) => r.kind === "profile");
-    if (!first) return;
-    if (first.status === "completed" && project.built) {
+    const intent = autoRun.current;
+    if (!intent || running || busy) return;
+    const first = pendingProfile(intent, data.runs);
+    const target = data.projects.find(p => p.id === intent.projectId);
+    if (!first || !target) return;
+    if (terminalStatuses.includes(first.status) && first.status !== "completed") {
       autoRun.current = null;
-      let goal = "";
-      try {
-        goal = localStorage.getItem("earl:mission:" + id) || "";
-      } catch {}
-      if (data.provider.configured) launch("optimize", goal);
-      else {
-        setNotice("Baseline ready. Connect a model to run the optimization.");
-        finishWork();
+      clearPendingOptimization();
+      setNotice("The baseline build failed or stopped. Optimization was not started; inspect Details and retry.");
+      finishWork();
+      return;
+    }
+    if (first.status !== "completed" || !target.built) return;
+    if (!data.provider.configured) {
+      if (!pendingModelNotice.current) {
+        pendingModelNotice.current = true;
+        setNotice("Baseline ready. Connect a model to continue your requested optimization.");
+        setModal("settings");
       }
-    } else if (terminalStatuses.includes(first.status)) autoRun.current = null;
-  }, [data, busy]);
+      return;
+    }
+    // Clear before enqueueing, so refreshes and polling cannot submit twice.
+    autoRun.current = null;
+    clearPendingOptimization();
+    pendingModelNotice.current = false;
+    setProjectId(target.id);
+    act(async () => {
+      const next = await api("/projects/" + target.id + "/runs", {
+        kind: "optimize", count, mission: intent.mission,
+      });
+      setRunId(next.id);
+      setPhase("work");
+    });
+  }, [data, busy, running]);
   useEffect(() => {
     if (!modal && !drawer && !details) return;
     const close = (e) => {
@@ -546,6 +561,7 @@ export function App() {
     };
   }
   async function beginOptimize(getProject, origin) {
+    if (!data.provider.configured) { setModal("settings"); setNotice("Configure a model before starting an AI optimization."); return; }
     starting.current = true;
     // The rocket lifts off while the request is made; the rip follows both.
     const cleared = engineCleared();
@@ -560,15 +576,19 @@ export function App() {
       chooseProject(p.id);
       await refresh();
       if (p.built) {
-        if (!data.provider.configured) return { p, preview: true };
         await api("/projects/" + p.id + "/runs", {
           kind: "optimize",
           count,
           mission: goal,
         });
       } else {
-        autoRun.current = p.id;
-        await api("/projects/" + p.id + "/runs", { kind: "profile" });
+        const profile = await api("/projects/" + p.id + "/runs", { kind: "profile" });
+        if (!profile.id) throw Error("The runner did not return a baseline job identifier.");
+        const intent = { projectId: p.id, profileRunId: profile.id, mission: goal };
+        autoRun.current = intent;
+        pendingModelNotice.current = false;
+        if (!savePendingOptimization(intent)) setNotice("Keep this tab open so the optimization can continue after the baseline build.");
+        setRunId(profile.id);
       }
       return { p };
     });
@@ -579,13 +599,6 @@ export function App() {
       return;
     }
     const pad = await cleared;
-    if (result.value.preview) {
-      setNotice(
-        "Previewing the transition. Connect a model to run it for real.",
-      );
-      setPreviewing(true);
-      setPreviewStep(0);
-    }
     setRip((r) => ({
       ...(r || heroSnapshot()),
       origin: pad || origin || { x: innerWidth / 2, y: innerHeight / 2 },
@@ -612,7 +625,7 @@ export function App() {
   }
   const optimizeFromHero = (body, origin) =>
     body === false
-      ? beginPreview(origin)
+      ? setNotice("Connect a trusted project and configure a model before optimizing.")
       : beginOptimize(() => (body ? api("/projects", body) : project), origin);
   const optimizeExample = (name, origin) =>
     beginOptimize(() => api("/examples/" + name, {}), origin);
@@ -771,244 +784,9 @@ export function App() {
       ? [{ status: previewStatus[previewStep] }]
       : [{ status: "reasoning" }],
   };
-  return (
-    <div className={"app " + (phase === "hero" ? "is-hero" : "")}>
-      {resultsFixture ? (
-        <RunResults
-          {...resultsFixture}
-          measuring={running}
-          onClose={closeResults}
-        />
-      ) : (
-        resultsRun &&
-        !liveStatuses.includes(resultsRun.status) && (
-          <RunResults
-            run={resultsRun}
-            measuring={running}
-            project={data.projects.find((p) => p.id === resultsRun.projectId)}
-            onClose={closeResults}
-          />
-        )
-      )}
-      {phase === "hero" && <Slices heroRef={heroRef} />}
-      {phase === "hero" && (
-        <div inert={modal || drawer ? true : undefined}>
-          <Hero
-            ref={heroRef}
-            projects={data.projects}
-            project={project}
-            onPickProject={chooseProject}
-            onResults={dashRun ? () => setPhase("results") : undefined}
-            onSettings={() => setModal("settings")}
-            onHelp={() => setModal("help")}
-            sourceCount={files.length}
-            busy={busy}
-            running={running}
-            mission={mission}
-            onMission={updateMission}
-            providerConfigured={Boolean(data.provider.configured)}
-            onInspect={(path) => api("/inspect", { path })}
-            onOptimize={optimizeFromHero}
-            onExample={optimizeExample}
-          />
-        </div>
-      )}
-      {rip && (
-        <Rip
-          go={rip.go}
-          html={rip.html}
-          rect={rip.rect}
-          origin={rip.origin}
-          onDone={ripDone}
-        />
-      )}
-      {phase !== "hero" && (
-        <>
-          <header className="topbar" inert={modal || drawer ? true : undefined}>
-            <a
-              href="./"
-              className="wordmark"
-              aria-label="Sift"
-              onClick={(e) => {
-                e.preventDefault();
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              }}
-            >
-              sift<span>.</span>
-            </a>
-            {data.projects.length > 0 && (
-              <label className="project-picker">
-                <span className="visually-hidden">Active project</span>
-                <select
-                  value={project?.id || ""}
-                  onChange={(e) => chooseProject(e.target.value)}
-                >
-                  {data.projects.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown size={13} aria-hidden="true" />
-              </label>
-            )}
-            {project && (
-              <span className="project-meta">
-                {discovery.framework || "Three.js"}
-                {discovery.threeVersion ? " · " + discovery.threeVersion : ""}
-              </span>
-            )}
-
-            <div className="topbar-end">
-              {phase === "results" && (
-                <button className="secondary-button" onClick={goHero}>
-                  New optimization
-                </button>
-              )}
-              {phase !== "results" && previewing && (
-                <button className="secondary-button" onClick={goHero}>
-                  Back to start
-                </button>
-              )}
-              {phase !== "results" && projectJob && (
-                <>
-                  <button
-                    className="link-button"
-                    onClick={() => setDrawer("logs")}
-                  >
-                    Full log
-                  </button>
-                  <button
-                    className="secondary-button"
-                    disabled={busy}
-                    onClick={() =>
-                      act(() => api("/stop", { runId: projectJob.id }))
-                    }
-                  >
-                    <Square size={11} /> Stop
-                  </button>
-                </>
-              )}
-              <span
-                className={
-                  "connection " +
-                  (connectionError || data.worker?.alive === false
-                    ? "offline"
-                    : "")
-                }
-                role="status"
-              >
-                <i aria-hidden="true" />
-                <span>
-                  {connectionError
-                    ? "Runner offline"
-                    : data.worker?.alive === false
-                      ? "Worker offline"
-                      : "Local"}
-                </span>
-              </span>
-              <Menu
-                label="Project menu"
-                hideLabel
-                icon={MoreHorizontal}
-                items={[
-                  {
-                    label: "New optimization",
-                    onClick: goHero,
-                  },
-                  project && {
-                    label: latestBaseline ? "Profile again" : "Build preview",
-                    hint: "Build and measure, no model",
-                    disabled: running || busy,
-                    onClick: () => launch("profile"),
-                  },
-                  "-",
-                  project && {
-                    label: "Run history",
-                    onClick: () => setDrawer("history"),
-                  },
-                  project && {
-                    label: "Measurements",
-                    onClick: () => setDrawer("measurements"),
-                  },
-                  {
-                    label: "Run details & logs",
-                    onClick: () => setDrawer("logs"),
-                  },
-                  project && {
-                    label: "Project source",
-                    onClick: () => setDrawer("files"),
-                  },
-                  project?.lastAcceptedRun && {
-                    label: "Export accepted patch",
-                    href: "/api/projects/" + project.id + "/patch",
-                  },
-                  "-",
-                  {
-                    label: "Model settings",
-                    hint: data.provider.configured
-                      ? data.provider.model
-                      : "Not configured",
-                    onClick: () => setModal("settings"),
-                  },
-                  {
-                    label: "Engineering workspace",
-                    href: "?project=" + (project?.id || "") + "&view=engineering",
-                  },
-                  {
-                    label: "Help & compatibility",
-                    onClick: () => setModal("help"),
-                  },
-                ]}
-              />
-            </div>
-          </header>
-          <div className="page" inert={modal || drawer ? true : undefined}>
-            {phase !== "results" ? (
-              projectJob ? (
-                <div className="live-engineering-layout">
-                  <section className="live-engineering-scene"><LiveScene project={project} run={projectJob} experiment={projectJob.experiments?.at(-1)} measuring={running} /></section>
-                  <Loading
-                  revealed={phase !== "rip"}
-                  job={projectJob}
-                  project={project}
-                  goal={mission}
-                  baselineSrc={
-                    projectJob.baseline && failedBaseline !== projectJob.id
-                      ? "/api/runs/" +
-                        projectJob.id +
-                        "/baseline/baseline-0.png"
-                      : null
-                  }
-                />
-                </div>
-              ) : previewing ? (
-                <>
-                  <Loading
-                    revealed={phase !== "rip"}
-                    preview
-                    job={previewJob}
-                    project={project}
-                    goal={mission}
-                    baselineSrc={null}
-                  />
-                  <div className="preview-dashboard">
-                    <button
-                      type="button"
-                      className="primary-button"
-                      onClick={openSampleDashboard}
-                    >
-                      Go to dashboard
-                    </button>
-                    <small>
-                      Shows a recorded sample run while this is a simulation.
-                    </small>
-                  </div>
-                </>
-              ) : (
-                <p className="results-empty">Finishing up…</p>
-              )
-            ) : (
+  const advancedWorkspace = drawer === "advanced" && timingBusy
+    ? <Note>Advanced animated previews pause while timed measurements run. Measurements, code, checks, and logs remain available above.</Note>
+    : drawer === "advanced" ? (
               <>
                 <div className="notes">
                   {(connectionError || data.worker?.alive === false) && (
@@ -1436,6 +1214,228 @@ export function App() {
                   </main>
                 </section>
               </>
+  ) : null;
+  return (
+    <div className={"app " + (phase === "hero" ? "is-hero" : "")}>
+      {resultsFixture && <RunResults {...resultsFixture} measuring={timingBusy} onClose={closeResults} />}
+      {phase === "hero" && <Slices heroRef={heroRef} />}
+      {phase === "hero" && (
+        <div inert={modal || drawer ? true : undefined}>
+          <Hero
+            ref={heroRef}
+            projects={data.projects}
+            project={project}
+            onPickProject={chooseProject}
+            onResults={dashRun ? () => setPhase("results") : undefined}
+            onSettings={() => setModal("settings")}
+            onHelp={() => setModal("help")}
+            sourceCount={files.length}
+            busy={busy}
+            running={running}
+            mission={mission}
+            onMission={updateMission}
+            providerConfigured={Boolean(data.provider.configured)}
+            onInspect={(path) => api("/inspect", { path })}
+            onOptimize={optimizeFromHero}
+            onExample={optimizeExample}
+          />
+        </div>
+      )}
+      {rip && (
+        <Rip
+          go={rip.go}
+          html={rip.html}
+          rect={rip.rect}
+          origin={rip.origin}
+          onDone={ripDone}
+        />
+      )}
+      {phase !== "hero" && (
+        <>
+          <header className="topbar" inert={modal || drawer ? true : undefined}>
+            <a
+              href="./"
+              className="wordmark"
+              aria-label="Sift"
+              onClick={(e) => {
+                e.preventDefault();
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+            >
+              sift<span>.</span>
+            </a>
+            {data.projects.length > 0 && (
+              <label className="project-picker">
+                <span className="visually-hidden">Active project</span>
+                <select
+                  value={project?.id || ""}
+                  onChange={(e) => chooseProject(e.target.value)}
+                >
+                  {data.projects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={13} aria-hidden="true" />
+              </label>
+            )}
+            {project && (
+              <span className="project-meta">
+                {discovery.framework || "Three.js"}
+                {discovery.threeVersion ? " · " + discovery.threeVersion : ""}
+              </span>
+            )}
+
+            <div className="topbar-end">
+              {phase === "results" && (
+                <button className="secondary-button" onClick={goHero}>
+                  New optimization
+                </button>
+              )}
+              {phase !== "results" && previewing && (
+                <button className="secondary-button" onClick={goHero}>
+                  Back to start
+                </button>
+              )}
+              {phase !== "results" && projectJob && (
+                <>
+                  <button
+                    className="link-button"
+                    onClick={() => setDrawer("overview")}
+                  >
+                    Details
+                  </button>
+                  <button
+                    className="secondary-button"
+                    disabled={busy}
+                    onClick={() =>
+                      act(() => api("/stop", { runId: projectJob.id }))
+                    }
+                  >
+                    <Square size={11} /> Stop
+                  </button>
+                </>
+              )}
+              <span
+                className={
+                  "connection " +
+                  (connectionError || data.worker?.alive === false
+                    ? "offline"
+                    : "")
+                }
+                role="status"
+              >
+                <i aria-hidden="true" />
+                <span>
+                  {connectionError
+                    ? "Runner offline"
+                    : data.worker?.alive === false
+                      ? "Worker offline"
+                      : "Local"}
+                </span>
+              </span>
+              {!projectJob && <button className="secondary-button" onClick={() => setDrawer("overview")}>Details</button>}
+              <Menu
+                label="Project menu"
+                hideLabel
+                icon={MoreHorizontal}
+                items={[
+                  {
+                    label: "New optimization",
+                    onClick: goHero,
+                  },
+                  project && {
+                    label: latestBaseline ? "Profile again" : "Build preview",
+                    hint: "Build and measure, no model",
+                    disabled: running || busy,
+                    onClick: () => launch("profile"),
+                  },
+                  "-",
+                  { label: "Details", onClick: () => setDrawer("overview") },
+                  "-",
+                  {
+                    label: "Model settings",
+                    hint: data.provider.configured
+                      ? data.provider.model
+                      : "Not configured",
+                    onClick: () => setModal("settings"),
+                  },
+                  {
+                    label: "Engineering workspace",
+                    href: "?project=" + (project?.id || "") + "&view=engineering",
+                  },
+                  {
+                    label: "Help & compatibility",
+                    onClick: () => setModal("help"),
+                  },
+                ]}
+              />
+            </div>
+          </header>
+          <div className="page continuous-workspace" inert={modal || drawer ? true : undefined}>
+            {(connectionError || data.worker?.alive === false) && <Note tone="error">{connectionError || "The local worker is offline. Queued jobs start when it returns."}</Note>}
+            <section className="continuous-scene" aria-label="Your project workspace">
+              <LiveScene project={project} run={projectJob || run} experiment={projectJob?.experiments?.at(-1) || resultExperiment || experiment} measuring={timingBusy} />
+            </section>
+            {phase !== "results" ? (
+              projectJob ? (
+                <div className="continuous-activity">
+                  <Loading
+                  compact
+                  preparingOptimization={autoRun.current?.projectId === project?.id && autoRun.current?.profileRunId === projectJob.id}
+                  measuring={timingBusy}
+                  revealed={phase !== "rip"}
+                  job={projectJob}
+                  project={project}
+                  goal={mission}
+                  baselineSrc={
+                    projectJob.baseline && failedBaseline !== projectJob.id
+                      ? "/api/runs/" +
+                        projectJob.id +
+                        "/baseline/baseline-0.png"
+                      : null
+                  }
+                />
+                </div>
+              ) : previewing ? (
+                <>
+                  <Loading
+                    revealed={phase !== "rip"}
+                    preview
+                    job={previewJob}
+                    project={project}
+                    goal={mission}
+                    baselineSrc={null}
+                  />
+                  <div className="preview-dashboard">
+                    <button
+                      type="button"
+                      className="primary-button"
+                      onClick={openSampleDashboard}
+                    >
+                      Open recorded sample
+                    </button>
+                    <small>
+                      Shows a recorded sample run while this is a simulation.
+                    </small>
+                  </div>
+                </>
+              ) : (
+                <p className="results-empty">{autoRun.current ? "Baseline ready. Continuing your requested optimization…" : "Reading the finished run…"}</p>
+              )
+            ) : (
+              <WorkspaceResult
+                project={project}
+                run={run}
+                experiment={resultExperiment || experiment}
+                busy={busy}
+                running={running}
+                onApply={() => setModal("apply")}
+                onDetails={() => setDrawer("overview")}
+                onOptimize={goHero}
+                onStart={() => launch("profile")}
+              />
             )}
           </div>
         </>
@@ -1558,6 +1558,8 @@ export function App() {
               <h2 id="drawer-title">
                 {
                   {
+                    overview: "Details",
+                    advanced: "Advanced workspace",
                     measurements: "Measurements",
                     logs: "Run details",
                     history: "Run history",
@@ -1577,8 +1579,22 @@ export function App() {
                 <X size={18} />
               </button>
             </header>
+            <nav className="workspace-detail-nav" aria-label="Project details">
+              {[["overview","Overview"],["measurements","Measurements"],["experiment","Code"],["evidence","Checks"],["logs","Logs"],["history","History"],["files","Source"],["advanced","Advanced"]].map(([key,label]) => <button key={key} aria-current={drawer === key ? "page" : undefined} onClick={() => setDrawer(key)}>{label}</button>)}
+            </nav>
             <div className="drawer-body">
-              {drawer === "measurements" ? (
+              {drawer === "overview" ? (
+                <>
+                  <WorkerStatus worker={data.worker} />
+                  <p className="drawer-description">The running application and the current result stay in your workspace. Open a detail above to inspect measurements, patches, checks, or logs.</p>
+                  <div className="button-row">
+                    <button className="secondary-button" onClick={() => setDrawer("experiment")}>Inspect the patch</button>
+                    <button className="secondary-button" onClick={() => setDrawer("evidence")}>Inspect verification</button>
+                    <a className="secondary-button" href={"?project=" + (project?.id || "") + "&view=engineering"}>Recording & engineering tools</a>
+                  </div>
+                  <button className="link-button" onClick={() => { setDrawer(null); setModal("settings"); }}>Model settings</button>
+                </>
+              ) : drawer === "advanced" ? advancedWorkspace : drawer === "measurements" ? (
                 <Measurements baseline={baseline} best={best} run={run} />
               ) : drawer === "logs" ? (
                 <>
@@ -1608,6 +1624,12 @@ export function App() {
                           </div>
                         ))}
                       </div>
+                      <details>
+                        <summary>Recorded agent tools and provider responses</summary>
+                        <div className="event-log">
+                          {deriveLiveActivity(run).activity.filter(event => event.tool || event.type === "agent-provider-response").map((event, index) => <div key={index} className={event.rejected ? "problem" : ""}><span>{event.role || "agent"}</span><p>{event.text}</p></div>)}
+                        </div>
+                      </details>
                       {run.buildLog && (
                         <details>
                           <summary>Production build output</summary>

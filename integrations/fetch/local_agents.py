@@ -18,7 +18,7 @@ from uagents import Agent, Context, Model
 from uagents_core.registration import AgentRegistrationPolicy
 
 ROOT = Path(__file__).resolve().parents[2]
-STATE = ROOT / ".frameshift" / "fetch"
+STATE = Path(os.environ.get("FRAMESHIFT_DATA_DIR", str(ROOT / ".frameshift"))) / "fetch"
 ROLES = ("investigator", "optimizer", "verifier")
 
 

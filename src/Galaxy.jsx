@@ -13,8 +13,9 @@ const COLORS = [
   "96,165,250",
 ];
 
-export default function Galaxy({ x = 0.62, y = 0.55, scale = 1 }) {
-  const ref = useRef(null);
+export default function Galaxy({ x = 0.62, y = 0.55, scale = 1, paused = false }) {
+  const ref = useRef(null), pauseRef = useRef(paused);
+  pauseRef.current = paused;
   useEffect(() => {
     const canvas = ref.current,
       ctx = canvas.getContext("2d");
@@ -52,7 +53,7 @@ export default function Galaxy({ x = 0.62, y = 0.55, scale = 1 }) {
     addEventListener("resize", size);
     const draw = (now) => {
       frame = requestAnimationFrame(draw);
-      if (now - last < 33) return;
+      if (pauseRef.current || now - last < 33) return;
       last = now;
       const t = reduced ? 0 : now / 1000;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);

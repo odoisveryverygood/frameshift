@@ -692,7 +692,7 @@ function App() {
         if (result.challenge)
           setChallenges((old) => [result.challenge, ...old]);
         setNotice(
-          "Challenge queued. Earl will replay the actual interaction against both versions.",
+          "Challenge queued. Sift will replay the actual interaction against both versions.",
         );
       });
       return;
@@ -757,7 +757,7 @@ function App() {
         <a
           href="#"
           className="wordmark"
-          aria-label="Earl home"
+          aria-label="Sift home"
           onClick={(e) => {
             e.preventDefault();
             setStage("diagnose");
@@ -901,7 +901,7 @@ function App() {
               <label htmlFor="earl-mission">
                 {sceneContext?.selectedId
                   ? `Ask about ${sceneContext.selected?.name || sceneContext.selectedId}`
-                  : "What should Earl investigate?"}
+                  : "What should Sift investigate?"}
               </label>
               <span className="mission-local">
                 <span className="tiny-dot" />{" "}
@@ -941,7 +941,7 @@ function App() {
                   aria-pressed={intent === "investigate"}
                   onClick={() => setIntent("investigate")}
                 >
-                  Ask Earl
+                  Ask Sift
                 </button>
                 <button
                   type="button"
@@ -1193,10 +1193,10 @@ function App() {
                   </h2>
                   <p>
                     {project ? (
-                      "Build a measured baseline, or give Earl a goal. Your running application will appear here."
+                      "Build a measured baseline, or give Sift a goal. Your running application will appear here."
                     ) : (
                       <>
-                        Earl investigates slow 3D applications,
+                        Sift investigates slow 3D applications,
                         <br />
                         experiments on their code, and checks the result.
                       </>
@@ -1474,7 +1474,7 @@ function App() {
                 <p>
                   {project
                     ? "Start with the project and the work it actually asks the browser to do."
-                    : "Start with your own code or explore a working example. Earl measures before it changes anything."}
+                    : "Start with your own code or explore a working example. Sift measures before it changes anything."}
                 </p>
               </div>
               {connectionError && (
@@ -2154,7 +2154,7 @@ function App() {
                 <span className="overline">APPLY ACCEPTED CHANGES</span>
                 <h2>Ready for your project.</h2>
                 <p>
-                  Earl will check for conflicting edits and save a backup before
+                  Sift will check for conflicting edits and save a backup before
                   writing the accepted source changes.
                 </p>
                 <code className="project-path">{project?.original}</code>
@@ -2826,7 +2826,7 @@ function Connect({ onConnect, onExample, onStlConnected, busy }) {
         <button type="button" aria-pressed={method === "project"} onClick={() => setMethod("project")} disabled={busy}>Web project</button>
       </div>
       {method === "stl" ? <StlImport busy={busy} onConnected={onStlConnected} /> : <>
-      <p>Point Earl at a trusted local Vite + Three.js project. It inspects the source and build setup before connecting.</p>
+      <p>Point Sift at a trusted local Vite + Three.js project. It inspects the source and build setup before connecting.</p>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -2969,7 +2969,7 @@ function Settings({ provider, spatialProvider, onSave, busy }) {
         </div>
         <p>
           Credentials stay in the backend’s .env.local file. Update
-          MODEL_API_KEY, SUBQ_API_KEY or META_MODEL there and restart Earl. No
+          MODEL_API_KEY, SUBQ_API_KEY or META_MODEL there and restart Sift. No
           key is sent to this screen.
         </p>
       </div>

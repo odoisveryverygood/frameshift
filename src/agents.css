@@ -352,3 +352,46 @@
 .activity-panel > *:first-child {
   border-top: 1px solid rgba(255, 255, 255, 0.7);
 }
+
+/* State labels follow persisted run evidence; orbit motion is illustrative. */
+.activity-progress small {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 12px;
+}
+.activity-agents .failed em,
+.activity-agents .failed > i,
+.planet-label.failed em,
+.planet-label.failed i {
+  color: #a63728;
+}
+.activity-agents .failed > i,
+.planet-label.failed i {
+  background: #a63728;
+}
+.activity-agents .stopped em,
+.activity-agents .skipped em,
+.activity-agents .sample em,
+.planet-label.stopped em,
+.planet-label.skipped em,
+.planet-label.sample em {
+  color: var(--muted);
+}
+.activity-agents .stopped > i,
+.activity-agents .skipped > i,
+.activity-agents .sample > i {
+  background: transparent;
+  border: 2px solid var(--muted);
+}
+.activity-log .tool-rejected {
+  color: #a63728;
+  border-left-color: #a63728;
+}
+.activity-log b {
+  font-size: inherit;
+  font-weight: 500;
+}
+.activity-agents small {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

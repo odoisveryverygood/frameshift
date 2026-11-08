@@ -95,6 +95,7 @@ function callouts(id, exp) {
 // selected agent is talking about; agents are planets along the bottom.
 export default function Stage({
   exp,
+  run,
   colors,
   reduced,
   head,
@@ -141,12 +142,14 @@ export default function Stage({
         </p>
         <ProjectModel
           project={project}
+          run={run}
+          experiment={exp}
           color={color}
           callouts={notes}
           reduced={reduced}
           measuring={measuring}
         />
-        <PlanetRow
+        {!measuring && <PlanetRow
           stages={stages}
           colors={colors}
           selected={selected}
@@ -154,7 +157,8 @@ export default function Stage({
           onArrive={arrive}
           onPick={pick}
           reduced={reduced}
-        />
+        />}
+        {measuring && <p className="not-recorded">Agent animation paused during measurement.</p>}
       </div>
 
       <aside className="sg-right">

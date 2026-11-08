@@ -1,5 +1,6 @@
 import React, { Suspense, lazy, useEffect, useState } from "react";
 import { NAMES } from "./agentNames.js";
+import { deriveLiveActivity, STATUS_LABELS } from "./live-activity.mjs";
 import "./agents.css";
 
 // three.js only loads for this screen.
@@ -15,75 +16,47 @@ const AGENTS = [
     id: "scout",
     ...NAMES.investigator,
     name: NAMES.investigator.codename,
-    subtitle: NAMES.investigator.name,
+    subtitle: "Investigator",
     role: NAMES.investigator.description,
     color: "#2f6bff",
-    types: ["build", "recovery", "investigator"],
     waiting: "Will read your scene and source and find the slowdown.",
   },
   {
     id: "gauge",
     ...NAMES.optimizer,
     name: NAMES.optimizer.codename,
-    subtitle: NAMES.optimizer.name,
+    subtitle: "Optimizer",
     role: NAMES.optimizer.description,
     color: "#7a52ff",
-    types: ["optimizer", "agent", "repair", "inconclusive"],
     waiting: "Will write one focused fix in an isolated copy.",
   },
   {
     id: "smith",
     ...NAMES.risk,
     name: NAMES.risk.codename,
-    subtitle: NAMES.risk.name,
+    subtitle: "SubQ risk assessment",
     role: NAMES.risk.description,
     color: "#e0602c",
-    types: ["verifier"],
     waiting: "Will predict what the fix could break.",
   },
   {
     id: "warden",
     ...NAMES.verifier,
     name: NAMES.verifier.codename,
-    subtitle: NAMES.verifier.name,
+    subtitle: "Deterministic verifier",
     role: NAMES.verifier.description,
     color: "#0fa58c",
-    types: [
-      "profile",
-      "benchmark",
-      "verify",
-      "challenge",
-      "complete",
-      "accepted",
-      "rejected",
-    ],
     waiting: "Will run the checks and measurements and decide.",
   },
 ];
-const owner = (type) => AGENTS.find((a) => a.types.includes(type))?.id;
-
-// Which agent is busy right now, from the run's own state.
-function activeAgent(job) {
-  if (job.status === "queued") return null;
-  const exp = job.experiments?.at(-1)?.status;
-  const last = (job.events || []).at(-1)?.type;
-  // The risk step logs a "verifier" event before the checks start.
-  if (last === "verifier" && exp !== "verifying") return "smith";
-  if (["verifying", "checking", "benchmarking"].includes(exp)) return "warden";
-  if (exp === "building") return "gauge";
-  if (exp === "reasoning") return last === "investigator" ? "scout" : "gauge";
-  if (!job.baseline) return last === "profile" ? "warden" : "scout";
-  return owner(last) || "gauge";
-}
-
-const statusText = { working: "Working", done: "Done", waiting: "Waiting" };
-
 export default function AgentField({
   job,
   project,
   baselineSrc,
   preview,
   revealed = true,
+  measuring = false,
+  preparingOptimization = false,
 }) {
   const [focus, setFocus] = useState(null);
   useEffect(() => {
@@ -92,8 +65,7 @@ export default function AgentField({
     addEventListener("keydown", key);
     return () => removeEventListener("keydown", key);
   }, [focus]);
-  const active = activeAgent(job);
-  const events = job.events || [];
+  const activity = deriveLiveActivity(job, { preview, preparingOptimization });
   const exp = job.experiments?.at(-1);
   const files = (project?.discovery?.files || [])
     .map((f) => f.path)
@@ -106,9 +78,7 @@ export default function AgentField({
   const cited = (exp?.investigation?.evidence || [])
     .map((e) => e.path)
     .filter((p, i, all) => p && all.indexOf(p) === i);
-  const risks = exp?.riskAssessment?.probabilities
-    ? Object.keys(exp.riskAssessment.probabilities)
-    : ["identity", "animation", "geometry", "timing"];
+  const risks = Object.keys(exp?.riskAssessment?.probabilities || {});
   const partsFor = (id) =>
     id === "scout"
       ? (cited.length ? cited : files)
@@ -123,44 +93,23 @@ export default function AgentField({
             ? files.slice(0, 4)
             : ["Patch", "Build", "Repair"]
         : id === "smith"
-          ? risks.map((r) => `${r} risk`)
-          : ["Draw calls", "CPU submit", "Frame time", "Picking", "Transforms"];
+          ? risks.length ? risks.map((r) => `${r} risk`) : ["Risk assessment pending"]
+          : exp?.guards?.checks?.length
+            ? exp.guards.checks.slice(0, 6).map((check, i) => `Checkpoint ${i + 1}${Number.isFinite(check.time) ? ` · ${check.time}s` : ""}`)
+            : ["Baseline", "Visual checks", "State checks", "Benchmarks"];
   const info = AGENTS.map((a) => {
-    const mine = events.filter((e) => a.types.includes(e.type));
-    const state =
-      a.id === active ? "working" : mine.length ? "done" : "waiting";
-    const task =
-      state === "working"
-        ? job.phase || mine.at(-1)?.message || a.role
-        : mine.at(-1)?.message || a.waiting;
-    return { ...a, mine, state, task, parts: partsFor(a.id) };
+    const stage = activity.stages.find((s) => s.id === a.id);
+    return { ...a, ...stage, statusLabel: STATUS_LABELS[stage.state], parts: partsFor(a.id) };
   });
   const current = info.find((a) => a.state === "working");
   const focused = info.find((a) => a.id === focus);
-  const doneCount = info.filter((a) => a.state === "done").length;
-  const progress = Math.round(
-    ((doneCount + (current ? 0.5 : 0)) / AGENTS.length) * 100,
-  );
-  const probs = exp?.riskAssessment?.probabilities;
-  const detail =
-    current?.id === "scout" && exp?.investigation?.hypothesis
-      ? exp.investigation.hypothesis
-      : current?.id === "gauge" && exp?.title
-        ? exp.title
-        : current?.id === "smith" && probs
-          ? Object.entries(probs)
-              .map(([k, v]) => `${k} ${Number(v).toFixed(2)}`)
-              .join(" · ")
-          : current?.id === "warden" && exp?.guards?.checks?.length
-            ? `${exp.guards.checks.filter((c) => c.visualPass && c.statePass && c.pickingPass !== false).length} of ${exp.guards.checks.length} checkpoints pass`
-            : current?.id === "warden" && Number.isFinite(job.baseline?.calls)
-              ? `${job.baseline.calls.toLocaleString()} draw calls · CPU ${job.baseline.submitP95?.toFixed(1)} ms`
-              : null;
+  const log = (focused ? activity.activity.filter((e) => e.stage === focused.id) : activity.activity).slice(-10).reverse();
   return (
     <div className="factory">
       <Suspense fallback={<div className="solar-scene" />}>
         <SolarScene
           agents={info}
+          paused={measuring}
           revealed={revealed}
           projectName={project?.name || "Your project"}
           focus={focus}
@@ -169,19 +118,15 @@ export default function AgentField({
       </Suspense>
       <aside className="activity-panel" aria-label="What the agents are doing">
         <div className="activity-progress">
-          <span>Rebuild progress</span>
-          <b>{progress}%</b>
-          <i style={{ width: progress + "%" }} />
+          <span>{preview ? "Illustrated sample" : "Stages completed"}</span>
+          <b>{preview ? "Sample" : `${activity.completedCount} / ${AGENTS.length}`}</b>
+          <small>{activity.summary}</small>
         </div>
         {focused && (
           <section className="activity-inside" style={{ "--c": focused.color }}>
             <span className="eyebrow">Inside {focused.name}</span>
             <p>
-              {focused.state === "working"
-                ? `Working on ${focused.parts.slice(0, 3).join(", ")}`
-                : focused.state === "done"
-                  ? `Finished: ${focused.task}`
-                  : focused.waiting}
+              {focused.statusLabel}: {focused.task}
             </p>
             <small>
               The small workers show this stage of the run; they are an
@@ -204,7 +149,7 @@ export default function AgentField({
           >
             <span className="eyebrow">Now · {current.name}</span>
             <p>{current.task}</p>
-            {detail && <small>{detail}</small>}
+            {activity.detail && <small>{activity.detail}</small>}
           </section>
         )}
         <ol className="activity-agents">
@@ -226,25 +171,22 @@ export default function AgentField({
                 <span>{a.role}</span>
                 {a.state !== "working" && <small>{a.task}</small>}
               </button>
-              <em>{statusText[a.state]}</em>
+              <em>{a.statusLabel}</em>
             </li>
           ))}
         </ol>
         <section className="activity-log">
-          <span className="eyebrow">Log</span>
+          <span className="eyebrow">{focused ? `${focused.name} · recorded activity` : "Recorded tools & events"}</span>
           <ol>
-            {events
-              .slice(-6)
-              .reverse()
-              .map((e, i) => {
-                const who = AGENTS.find((a) => a.types.includes(e.type));
-                return (
-                  <li key={events.length - i} style={{ "--c": who?.color }}>
-                    {e.message}
-                  </li>
-                );
-              })}
-            {!events.length && <li>Waiting for the first step…</li>}
+            {log.map((event, i) => {
+              const who = info.find((a) => a.id === event.stage);
+              return (
+                <li key={i} className={event.rejected ? "tool-rejected" : ""} style={{ "--c": who?.color }}>
+                  {who && <b>{who.name} · </b>}{event.text}
+                </li>
+              );
+            })}
+            {!log.length && <li>{preview ? "Sample only. No tools have run." : "No activity recorded for this stage yet."}</li>}
           </ol>
         </section>
         {baselineSrc && (
@@ -257,8 +199,8 @@ export default function AgentField({
         )}
         <p className="activity-foot">
           {preview
-            ? "Preview: nothing is running."
-            : "Each agent is one stage of this run."}
+            ? "Sample animation: no AI, builds, or measurements are running."
+            : "Argus investigates · Vulcan patches · Oracle assesses risk with SubQ · Aegis runs deterministic checks. The moving workers illustrate these stages; they are not extra AI agents."}
         </p>
       </aside>
     </div>

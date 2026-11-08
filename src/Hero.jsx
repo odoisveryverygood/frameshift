@@ -67,7 +67,10 @@ const Hero = forwardRef(function Hero(
         <div className="hero-copy">
           <span className="hero-eyebrow">Measure · Patch · Verify</span>
           <h1>Sift</h1>
-          <p>Finds what is slow in your 3D project, and proves the fix.</p>
+          <p>
+            Open your Three.js app. Investigate the slowdown, test a real
+            change, and inspect the evidence.
+          </p>
           <Intake project={project} {...intake} onSettings={onSettings} />
         </div>
         {wide && (
@@ -77,7 +80,7 @@ const Hero = forwardRef(function Hero(
         )}
       </div>
       <footer className="hero-bottom">
-        <span>Runs on your machine</span>
+        <span>Local folder or project ZIP</span>
         <span>Vite + Three.js · WebGL</span>
       </footer>
     </div>

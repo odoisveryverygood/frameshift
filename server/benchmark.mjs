@@ -16,7 +16,7 @@ export async function withPage(directory, signal, callback) {
   const abort = () => browser?.close().catch(() => {});
   try {
     browser = await chromium.launch({
-      channel: "chrome",
+      ...(process.env.CHROME_EXECUTABLE_PATH ? {executablePath:process.env.CHROME_EXECUTABLE_PATH} : {channel:"chrome"}),
       headless: true,
       args: ["--enable-webgl", "--ignore-gpu-blocklist"],
     });
@@ -83,6 +83,7 @@ export async function measure(directory, config, signal, onSample = () => {}) {
         viewport: [innerWidth, innerHeight],
         dpr: devicePixelRatio,
       }));
+      if (process.env.EARL_HOSTED === "1") Object.assign(s.hardware, {executionEnvironment:"operator-hosted-container",graphicsCaveat:"Container graphics may use software rendering; results apply to this execution environment, not every physical GPU."});
       samples.push(s);
       onSample(i, s);
     }

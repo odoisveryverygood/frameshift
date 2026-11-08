@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const DATA = process.env.FRAMESHIFT_DATA_DIR ? path.resolve(process.env.FRAMESHIFT_DATA_DIR) : path.join(ROOT, '.frameshift');
 const STAGES = new Set(['InvestigationReady', 'PatchReady', 'VerificationResult']);
 const HASH = /^[a-f0-9]{64}$/;
 
@@ -12,7 +13,7 @@ export async function createFetchBridge({ signal, timeoutMs = 10000 } = {}) {
   signal?.throwIfAborted();
   const child = spawn(path.join(ROOT, '.frameshift/fetch/venv/bin/python'),
     ['-u', path.join(ROOT, 'integrations/fetch/job_service.py')],
-    { cwd: ROOT, stdio: ['pipe', 'pipe', 'pipe'], env: { PATH: process.env.PATH || '', LANG: process.env.LANG || 'en_US.UTF-8', PYTHONDONTWRITEBYTECODE: '1' } });
+    { cwd: ROOT, stdio: ['pipe', 'pipe', 'pipe'], env: { PATH: process.env.PATH || '', LANG: process.env.LANG || 'en_US.UTF-8', PYTHONDONTWRITEBYTECODE: '1', FRAMESHIFT_DATA_DIR: DATA } });
   let stopped = false;
   let readyData;
   let resolveReady, rejectReady;
@@ -87,7 +88,7 @@ export async function createFetchBridge({ signal, timeoutMs = 10000 } = {}) {
 /** Registration evidence and process health are separate from local SDK handoffs. */
 export async function publicFetchAgentStatus() {
   const fs = await import('node:fs/promises');
-  const directory = path.join(ROOT, '.frameshift/fetch/public');
+  const directory = path.join(DATA, 'fetch/public');
   const read = async name => { try {return JSON.parse(await fs.readFile(path.join(directory,name),'utf8'));}catch{return null;} };
   const registration=await read('registration.json');
   const heartbeat=await read('heartbeat.json');

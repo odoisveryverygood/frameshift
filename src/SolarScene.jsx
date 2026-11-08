@@ -90,13 +90,14 @@ export default function SolarScene({
   projectName,
   focus,
   onFocus,
+  paused = false,
 }) {
   const box = useRef(null),
     canvas = useRef(null),
     labels = useRef({}),
     siteLabels = useRef([]),
     latest = useRef({});
-  latest.current = { agents, revealed, focus, onFocus };
+  latest.current = { agents, revealed, focus, onFocus, paused };
   useEffect(() => {
     let renderer;
     try {
@@ -547,14 +548,21 @@ export default function SolarScene({
       ];
     };
 
+    let painted = false;
     function frame(now) {
       raf = requestAnimationFrame(frame);
-      if (!canvas.current) return;
-      const dt = Math.min(0.05, (now - last) / 1000);
+      if (!canvas.current || (latest.current.paused && painted)) { last = now; return; }
+      // A paused first mount still needs a visible static solar system. Preserve
+      // the landing timer so the real transition can play once measurement ends.
+      const staticFirstFrame = latest.current.paused && !painted;
+      const savedLanding = landT;
+      if (staticFirstFrame) landT = LAND + 2;
+      const dt = staticFirstFrame ? 0 : Math.min(0.05, (now - last) / 1000);
       last = now;
       clock += dt;
       const { agents: list, revealed, focus } = latest.current;
-      if (pending.length) addPlanet(pending.shift());
+      if (staticFirstFrame) while (pending.length) addPlanet(pending.shift());
+      else if (pending.length) addPlanet(pending.shift());
 
       // Focus changes from outside (planet click, panel, Back).
       if (
@@ -833,6 +841,8 @@ export default function SolarScene({
         el.style.opacity = smooth((modeT - 0.4) / 0.6);
         el.textContent = `${s.label} · ${Math.round((Math.min(SITE_BLOCKS, s.built) / SITE_BLOCKS) * 100)}%`;
       });
+      if (staticFirstFrame) landT = savedLanding;
+      painted = true;
     }
     raf = requestAnimationFrame(frame);
     return () => {
@@ -871,11 +881,11 @@ export default function SolarScene({
           className={"planet-label " + a.state}
           style={{ "--c": a.color }}
           onClick={() => onFocus(a.id)}
-          aria-label={`Fly in to ${a.name}: ${a.role}. ${statusText[a.state]}.`}
+          aria-label={`Fly in to ${a.name}: ${a.role}. ${(a.statusLabel || statusText[a.state] || a.state)}.`}
         >
           <i aria-hidden="true" />
           {a.name}
-          <em>{statusText[a.state]}</em>
+          <em>{(a.statusLabel || statusText[a.state] || a.state)}</em>
         </button>
       ))}
       {Array.from({ length: 6 }, (_, i) => (

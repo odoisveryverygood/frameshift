@@ -1,0 +1,106 @@
+{
+  "at": "2026-11-08T00:15:26.386Z",
+  "projectId": "aace391c-425",
+  "runId": "f70874f8-3b9",
+  "experimentId": "676c15a0-aef",
+  "upload": true,
+  "staticInspectionBeforeTrust": true,
+  "explicitTrust": true,
+  "declaredDependenciesInstalled": true,
+  "profileRefreshRecovery": true,
+  "activeModelStages": true,
+  "verdict": {
+    "status": "accepted",
+    "metric": "drawCalls",
+    "improvement": 0.9980029955067399,
+    "threshold": 0.08,
+    "reason": "Draw calls decreased, correctness checks passed, and CPU submission/frame pacing stayed within their guards."
+  },
+  "policyHash": "624a7bd12d14f9aa375e66d0fafee07065880d2dcdb665d8e8ac7a8c36ecbb68",
+  "reference": {
+    "frameMedian": 16.699999999999932,
+    "frameP95": 16.800000000000068,
+    "submitMedian": 16.799999952316284,
+    "submitP95": 19.600000023841858,
+    "fps": 59.88023952095833,
+    "calls": 6009,
+    "triangles": 310966,
+    "geometries": 6009,
+    "repeatMetrics": [
+      17.899999976158142,
+      17.5,
+      20.200000047683716
+    ],
+    "samples": 3,
+    "frameCount": 180,
+    "renderer": "WebKit WebGL",
+    "hardware": {
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+      "cores": 10,
+      "viewport": [
+        960,
+        640
+      ],
+      "dpr": 1
+    },
+    "uncertainty": {
+      "repeats": 3,
+      "min": 17.5,
+      "max": 20.200000047683716,
+      "relativeSpread": 0.15083799169161866,
+      "note": "Limited repeat count; differences inside observed variability are inconclusive."
+    },
+    "gpuSupported": true,
+    "gpuP95": 4.173124
+  },
+  "candidate": {
+    "frameMedian": 16.700000000000045,
+    "frameP95": 16.799999999999955,
+    "submitMedian": 1.0999999642372131,
+    "submitP95": 1.800000011920929,
+    "fps": 59.88023952095792,
+    "calls": 12,
+    "triangles": 310966,
+    "geometries": 12,
+    "repeatMetrics": [
+      1.699999988079071,
+      2,
+      1.7000000476837158
+    ],
+    "samples": 3,
+    "frameCount": 180,
+    "renderer": "WebKit WebGL",
+    "hardware": {
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+      "cores": 10,
+      "viewport": [
+        960,
+        640
+      ],
+      "dpr": 1
+    },
+    "uncertainty": {
+      "repeats": 3,
+      "min": 1.699999988079071,
+      "max": 2,
+      "relativeSpread": 0.1764705902977385,
+      "note": "Limited repeat count; differences inside observed variability are inconclusive."
+    },
+    "gpuSupported": true,
+    "gpuP95": 2.92425
+  },
+  "checkpoints": 16,
+  "semanticObjects": 2000,
+  "pickingProbes": 80,
+  "manualCandidateInteraction": {
+    "selected": "AMR 1188",
+    "dispatchAssignment": "Packing / en route"
+  },
+  "patch": {
+    "downloadedInBrowser": true,
+    "bytes": 4244,
+    "sha256": "332d0a6fabecb2f7274998d4faaced7c69a19f72be8c6055ac33b55d3c07bfbd"
+  },
+  "originalSourceApplied": false,
+  "hostedDeploymentVerified": false
+}

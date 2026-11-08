@@ -34,9 +34,13 @@
     "three": "^0.181.0",
     "three-mesh-bvh": "^0.9.18",
     "vite": "^7.2.0",
+    "yauzl": "^3.2.0",
     "zod": "^4.1.0"
   },
   "devDependencies": {
     "prettier": "^3.9.10"
+  },
+  "engines": {
+    "node": ">=22.15.0"
   }
 }

@@ -13,25 +13,32 @@ export default function Loading({
   goal,
   preview,
   revealed,
+  measuring = false,
+  compact = false,
+  preparingOptimization = false,
 }) {
   return (
-    <section className="loading" aria-label="Sift is working" inert={inert}>
-      <Galaxy x={0.5} y={0.4} scale={0.95} />
+    <section className={"loading" + (compact ? " is-compact" : "")} aria-label="Sift is working" inert={inert}>
+      <Galaxy x={0.5} y={0.4} scale={0.95} paused={measuring} />
       <div className="loading-inner">
         <div className="loading-copy">
           <span className="eyebrow">
             {preview
               ? "Preview"
-              : job.status === "queued"
+              : preparingOptimization
+                ? "Preparing reference"
+                : job.status === "queued"
                 ? "Queued"
                 : job.kind === "optimize"
                   ? "Improving performance"
                   : "Building & measuring"}
           </span>
           <h1>
-            {job.status === "queued"
+            {preparingOptimization
+              ? "Preparing the reference"
+              : job.status === "queued"
               ? "Waiting for the local worker"
-              : "Agents at work"}
+              : job.kind === "optimize" ? "Agents at work" : "Building the reference"}
           </h1>
           <p aria-live="polite">{job.phase || "Starting…"}</p>
           {preview && (
@@ -39,7 +46,7 @@ export default function Loading({
               Nothing is running. This is how Sift looks while it works.
             </p>
           )}
-          {(job.mission || goal) && (
+          {!compact && (job.mission || goal) && (
             <blockquote>
               <span>Your goal</span>
               {job.mission || goal}
@@ -52,6 +59,8 @@ export default function Loading({
           baselineSrc={baselineSrc}
           preview={preview}
           revealed={revealed}
+          measuring={measuring}
+          preparingOptimization={preparingOptimization}
         />
       </div>
     </section>
