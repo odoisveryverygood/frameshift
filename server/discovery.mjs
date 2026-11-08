@@ -21,28 +21,81 @@ async function readJson(file, fallback = null) {
     return JSON.parse(await fs.readFile(file, "utf8"));
   } catch (e) {
     if (e.code === "ENOENT") return fallback;
-    throw new Error(`Cannot read ${path.basename(file)}: ${e.message}`);
+    throw Object.assign(
+      new Error(
+        `Cannot read ${path.basename(file)}. Use a readable file containing valid JSON.`,
+      ),
+      {
+        code:
+          path.basename(file) === "package.json"
+            ? "PACKAGE_INVALID"
+            : "CONFIG_INVALID",
+      },
+    );
   }
+}
+const record = (value) =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+function validatePackage(pkg) {
+  if (
+    !record(pkg) ||
+    ["dependencies", "devDependencies", "scripts"].some(
+      (key) =>
+        pkg[key] !== undefined &&
+        (!record(pkg[key]) ||
+          Object.values(pkg[key]).some((value) => typeof value !== "string")),
+    )
+  )
+    throw Object.assign(
+      new Error(
+        "package.json must contain an object with string-valued dependency and script maps.",
+      ),
+      { code: "PACKAGE_INVALID" },
+    );
 }
 export async function resolveProjectFolder(input) {
   if (typeof input !== "string" || !input.trim())
-    throw Error("Paste the full path to your project folder.");
+    throw Object.assign(Error("Paste the full path to your project folder."), {
+      code: "FOLDER_REQUIRED",
+    });
   const folder = input.trim();
   try {
     const root = await fs.realpath(folder);
     if (!(await fs.stat(root)).isDirectory())
-      throw Error("Choose a project folder, rather than a file.");
+      throw Object.assign(
+        Error("Choose a project folder, rather than a file."),
+        { code: "FOLDER_NOT_DIRECTORY" },
+      );
     return root;
   } catch (error) {
     if (["ENOENT", "ENOTDIR"].includes(error.code))
-      throw Error("Project folder was not found. Check the pasted path and try again.");
+      throw Object.assign(
+        Error(
+          "Project folder was not found. Check the pasted path and try again.",
+        ),
+        { code: "FOLDER_NOT_FOUND" },
+      );
     throw error;
   }
 }
 export async function discoverProject(input) {
   const root = await resolveProjectFolder(input);
   const pkg = await readJson(path.join(root, "package.json"));
-  if (!pkg) throw new Error("Choose a project folder containing package.json.");
+  if (pkg === null) {
+    // Distinguish an absent manifest from a JSON null manifest.
+    const exists = await fs
+      .stat(path.join(root, "package.json"))
+      .catch(() => null);
+    throw Object.assign(
+      new Error(
+        exists
+          ? "package.json must contain a JSON object."
+          : "Choose a project folder containing package.json.",
+      ),
+      { code: exists ? "PACKAGE_INVALID" : "PACKAGE_MISSING" },
+    );
+  }
+  validatePackage(pkg);
   const dependencies = { ...pkg.dependencies, ...pkg.devDependencies };
   const issues = [];
   const files = [];
@@ -173,7 +226,19 @@ export async function discoverProject(input) {
     await fs.access(path.join(root, "node_modules"));
     installed = true;
   } catch {}
-  const supported = Boolean(vite && hasThree && !next);
+  const webgpu = files.some((file) =>
+    file.imports.some((name) =>
+      /(?:^three\/webgpu$|WebGPURenderer)/.test(name),
+    ),
+  );
+  const supported = Boolean(vite && hasThree && !next && !webgpu);
+  if (webgpu)
+    issues.push({
+      severity: "error",
+      code: "WEBGPU_UNSUPPORTED",
+      message:
+        "WebGPU rendering was detected. Automatic profiling requires a Three.js WebGLRenderer project.",
+    });
   if (!hasThree)
     issues.push({
       severity: "error",
@@ -195,7 +260,7 @@ export async function discoverProject(input) {
       message:
         "Automatic instrumentation requires Vite. A custom configured production build and adapter can still be used.",
     });
-  if (!pkg.scripts?.build)
+  if (!pkg.scripts?.build?.trim())
     issues.push({
       severity: "error",
       code: "BUILD_SCRIPT_MISSING",
@@ -206,7 +271,7 @@ export async function discoverProject(input) {
       severity: "warning",
       code: "DEPENDENCIES_NOT_INSTALLED",
       message:
-        "Install this project’s dependencies before profiling. Earl does not install arbitrary project packages automatically.",
+        "Dependencies are not installed. After you trust and connect this project, Sift will install its declared registry packages with lifecycle scripts disabled; local workspaces may need a manual install.",
     });
   if (!entryPoints.length)
     issues.push({

@@ -1,0 +1,33 @@
+{
+  "at": "2026-11-08T00:11:41.457Z",
+  "scope": "Authored compatibility check; not arbitrary project certification",
+  "checks": [
+    {
+      "threeVersion": "0.170.0",
+      "viteVersion": "7.3.7",
+      "customAdapter": false,
+      "importStyle": "named imports",
+      "objects": 96,
+      "deterministicStep": true,
+      "movement": true,
+      "measuredFrames": 30,
+      "drawCalls": 96,
+      "runtimeErrors": []
+    },
+    {
+      "threeVersion": "0.181.x",
+      "customAdapter": false,
+      "source": "plain-three fixture",
+      "objects": 25,
+      "actualPicking": true,
+      "cameraSynchronization": true,
+      "benchmarkOverlayDisabled": true
+    },
+    {
+      "scope": "project Vite config",
+      "aliasesPreserved": true,
+      "pluginsNotDuplicated": true
+    }
+  ],
+  "hostedDeploymentTested": false
+}

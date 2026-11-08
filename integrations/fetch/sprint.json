@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "project": "Earl",
+  "as_of": "2026-11-07",
+  "scope": "Local uAgents identity bootstrap and typed transport only; no Agentverse or model integration claim.",
+  "integrations": [
+    {
+      "integration_id": "I001",
+      "sponsor": "Fetch.ai uAgents",
+      "purpose": "Three stable role identities exchange typed transport-only messages before real job integration.",
+      "docs_url": "https://github.com/fetchai/uAgents",
+      "docs_checked_at": "2026-11-07",
+      "implementation_ref": "integrations/fetch/local_agents.py; installed uagents 0.26.1 inspected directly",
+      "env_vars": [],
+      "checks": [
+        {
+          "check_id": "C001",
+          "required": true,
+          "mode": "local",
+          "status": "passed",
+          "expected": "Investigator sends typed Investigation to Optimizer; Optimizer forwards Candidate to Verifier; Verifier returns Verification; senders and run IDs match while socket connects are rejected.",
+          "observed": "Clean final run completed all three SDK message deliveries and expected checks; no model calls or project changes.",
+          "checked_at": "2026-11-07T20:20:52.145940+00:00",
+          "evidence_path": "local-smoke-evidence.json",
+          "evidence_sha256": "182527ae49d85ab2d08470132004f51e71c9a8cae25106c6603410c3d4487513"
+        },
+        {
+          "check_id": "C002",
+          "required": false,
+          "mode": "live",
+          "status": "not_run",
+          "expected": "Agentverse mailboxes connect and deliver authenticated remote role messages.",
+          "observed": "Account website setup handled separately; local-only bootstrap does not start mailbox clients or publish agents."
+        },
+        {
+          "check_id": "C003",
+          "required": false,
+          "mode": "live",
+          "status": "not_run",
+          "expected": "A real ASI model executes a bounded task.",
+          "observed": "Separate credential configuration and real Earl service handoff remain; bootstrap contains no model call."
+        }
+      ]
+    }
+  ]
+}

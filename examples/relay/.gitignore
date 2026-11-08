@@ -1,0 +1,5 @@
+node_modules/
+dist/
+.frameshift/
+.env*
+.DS_Store

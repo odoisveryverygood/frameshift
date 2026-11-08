@@ -19,11 +19,16 @@ import {
   assertVerificationContinuation,
 } from "./core.mjs";
 import { measure, measurePair, capture, verify } from "./benchmark.mjs";
-import { propose } from "./model.mjs";
+import { provider } from "./model.mjs";
+import { investigateProject } from "./investigator.mjs";
+import { assessPatchRisks, verificationConfigForRisks } from "./subq.mjs";
+import { createFetchBridge } from "./fetch-bridge.mjs";
 import { projectUpdate, promotion } from "./jobs.mjs";
 import { discoverProject, resolveProjectFolder } from "./discovery.mjs";
 import { buildInstrumented } from "./integration.mjs";
 import { proposeExperiment } from "./agent.mjs";
+import { normalizeChallenge, runChallenge } from "./challenges.mjs";
+import { spatialRevision, getFinding, recordFindingOutcome, investigateSpatial, validateSceneContext } from "./spatial.mjs";
 import { normalizeMission } from "./mission.mjs";
 import { sealVerificationPolicy, writeVerificationVerdict } from "./verifier.mjs";
 export const events = new EventEmitter();
@@ -31,6 +36,12 @@ const projectsFile = path.join(DATA, "projects.json");
 export let projects = [];
 export let runs = [];
 let active = null;
+const sponsorMode = () => process.env.EARL_SPONSOR_MODE === "1";
+async function sourceFingerprint(directory, config) {
+  const hashes = {};
+  for (const name of [...config.editableFiles].sort()) hashes[name] = digest(await fs.readFile(await safeFile(directory, name)));
+  return digest(JSON.stringify(hashes));
+}
 const digest = (s) => crypto.createHash("sha256").update(s).digest("hex");
 export const projectDir = (p) => path.join(DATA, "projects", p.id);
 export const runDir = (r) => path.join(DATA, "runs", r.id);
@@ -119,6 +130,7 @@ export async function connect(source, { example = false, name } = {}) {
     original,
     discovery,
     example,
+    spatialVersion: config.autoInstrument || await fs.stat(path.join(original,"src/earl-spatial.js")).catch(()=>null) ? "spatial-v1" : null,
     config,
     createdAt: new Date().toISOString(),
     originalHashes: {},
@@ -185,12 +197,14 @@ async function log(run, type, message) {
   run.phase = message;
   await persistRun(run);
 }
-export async function start(projectId, kind = "profile", count = 2, mission = "") {
+export async function start(projectId, kind = "profile", count = 2, mission = "", details = {}) {
   mission = normalizeMission(mission);
   await initialize();
   const project = projects.find((p) => p.id === projectId);
   if (!project) throw Error("Project not found");
-  if (!["profile", "optimize", "guard-check"].includes(kind))
+  if (project.config.previewOnly && kind !== 'profile')
+    throw Error('This project is a sampled large-STL overview. Full-file cleanup is available in the import report; optimizing or verifying the overview cannot certify the full robot.');
+  if (!["profile", "optimize", "guard-check", "challenge"].includes(kind))
     throw Error("Invalid run type");
   if (
     runs.some(
@@ -205,6 +219,7 @@ export async function start(projectId, kind = "profile", count = 2, mission = ""
       .length >= 8
   )
     throw Error("Queue is full");
+  if(details.findingId) await getFinding(project,details.findingId);
   const run = {
     id: id(),
     projectId,
@@ -217,7 +232,11 @@ export async function start(projectId, kind = "profile", count = 2, mission = ""
     events: [],
     experiments: [],
     config: structuredClone(project.config),
-    maxExperiments: Math.max(1, Math.min(5, Number(count) || 2)),
+    maxExperiments: sponsorMode() ? 1 : Math.max(1, Math.min(5, Number(count) || 2)),
+    sponsorMode: sponsorMode(),
+    ...(details.challenge ? { challenge: normalizeChallenge(details.challenge), sourceRevision: await spatialRevision(project) } : {}),
+    ...(details.findingId ? { findingId: details.findingId } : {}),
+    ...(details.sceneContext ? { sceneContext: validateSceneContext(details.sceneContext) } : {}),
     tokens: 0,
     recoveries: 0,
   };
@@ -250,7 +269,17 @@ export async function processJob(run) {
   );
   try {
     if (await fs.stat(cancel).catch(() => null)) throw Error("Run stopped");
-    await execute(project, run);
+    if (run.kind === "challenge") {
+      if (!run.challenge) throw Error("Challenge contract missing");
+      const revision = await spatialRevision(project);
+      if (revision !== run.sourceRevision) throw Error("Project changed after this challenge was recorded. Record it again.");
+      await log(run, "challenge", "Verifier: replaying your selection challenge against original and current workspace");
+      const result = await runChallenge({referenceDirectory:path.join(projectDir(project), "original-build"),candidateDirectory:path.join(projectDir(project),"best",project.config.outputDir||"dist"),challenge:run.challenge,evidenceDir:runDir(run),signal:active.controller.signal});
+      if (await spatialRevision(project) !== revision) throw Error("Project source changed during challenge verification");
+      run.challengeResult = {...result, sourceRevision:revision};
+      run.status = "completed";
+      await log(run, "challenge", `Selection challenge ${result.status}: reference ${result.observed.reference ?? "none"}, candidate ${result.observed.candidate ?? "none"}`);
+    } else await execute(project, run);
   } catch (e) {
     run.status =
       active.controller.signal.aborted ||
@@ -259,7 +288,7 @@ export async function processJob(run) {
           ? "failed"
           : "stopped"
         : "failed";
-    run.error = String(e.message).replace(/sk-[\w-]+/g, "[redacted]");
+    run.error = String(e.message).replace(/(?:sk[-_]|LLM_)[\w-]+/g, "[redacted]");
     for (const exp of run.experiments)
       if (
         !["accepted", "rejected", "inconclusive", "interrupted"].includes(
@@ -279,6 +308,11 @@ export async function processJob(run) {
   } finally {
     clearInterval(timer);
     clearTimeout(deadline);
+    await active.fetchBridge?.close();
+    if(run.findingId) {
+      const exp=run.experiments.at(-1);
+      await recordFindingOutcome(project,run.findingId,{runId:run.id,experimentId:exp?.id,status:exp?.status||run.status,reason:exp?.reason||run.error}).catch(()=>{run.historyWarning="Could not update the investigation history; inspect the saved run report.";});
+    }
     active = null;
     await persistRun(run);
   }
@@ -364,7 +398,7 @@ async function execute(project, run) {
   }
   if (run.kind === "profile") {
     run.status = "completed";
-    await log(run, "complete", "Baseline captured. Ready to optimize.");
+    await log(run, "complete", project.config.previewOnly ? "Overview measured. Full-model optimization is unavailable for this sampled preview." : "Baseline captured. Ready to optimize.");
     return;
   }
   if (run.kind === "guard-check") {
@@ -414,6 +448,11 @@ async function execute(project, run) {
     );
     return;
   }
+  if (run.sponsorMode) {
+    if (!process.env.MODEL_API_KEY || !process.env.SUBQ_API_KEY) throw Error("Sponsor mode requires MODEL_API_KEY and SUBQ_API_KEY. No fallback was used.");
+    active.fetchBridge = await createFetchBridge({ signal });
+    run.agents = { investigator: "meta", optimizer: "meta", verifier: "subquadratic-risk + deterministic-tests", transport: "local-uagents" };
+  }
   const verificationSeal = await sealVerificationPolicy(project.config, run.metric);
   assertVerificationContinuation(run.verifier, verificationSeal.hash);
   run.verifier = { version: 1, policyHash: verificationSeal.hash };
@@ -444,7 +483,35 @@ async function execute(project, run) {
         .flatMap((r) => r.experiments),
     );
     await save(path.join(projectDir(project), "strategy.json"), strategy);
+    const experimentDir = path.join(runDir(run), exp.id);
+    await fs.mkdir(experimentDir, { recursive: true });
+    const sourceHash = await sourceFingerprint(best, project.config);
+    let investigation;
+    const handoff = async (stage, attempt, candidateHash, artifactHash) => {
+      if (!active.fetchBridge) return;
+      const receipt = await active.fetchBridge.handoff({ stage, jobId: `${run.id}:${exp.id}`, attempt, sourceHash, ...(candidateHash ? { candidateHash } : {}), ...(artifactHash ? { artifactHash } : {}) });
+      exp.handoffs = [...(exp.handoffs || []), receipt];
+      await save(path.join(experimentDir, "agent-handoffs.json"), exp.handoffs);
+      if (stage === "PatchReady") await save(path.join(experimentDir, "verification-request.json"), receipt);
+      await persistRun(run);
+    };
+    if (run.sponsorMode) {
+      await log(run, "investigator", "Investigator: inspecting source and measured bottlenecks");
+      if (!run.findingId && run.sceneContext) {
+        const finding=await investigateSpatial(project,{goal:run.mission||"Investigate the selected scene for a measured, behavior-preserving optimization",context:run.sceneContext},signal);
+        run.findingId=finding.id;
+      }
+      investigation = run.findingId ? await getFinding(project, run.findingId) : await investigateProject({ workspace: best, mission: run.mission, manifest: project.discovery, metrics: run.best, config: { ...project.config, metric: run.metric }, signal,
+        onEvent: async (event) => { exp.investigatorTrace = [...(exp.investigatorTrace || []), event]; run.phase = event.message; await persistRun(run); } });
+      run.agents.investigator = investigation.provider || "meta";
+      run.agents.investigatorModel = investigation.model;
+      exp.investigation = investigation;
+      await save(path.join(experimentDir, "investigation.json"), investigation);
+      await handoff("InvestigationReady", 0);
+      await log(run, "optimizer", "Optimizer: implementing one focused change in the isolated candidate");
+    }
     const proposal = await proposeExperiment({
+      investigation,
       workspace: best,
       mission: run.mission,
       manifest: project.discovery,
@@ -494,6 +561,7 @@ async function execute(project, run) {
     });
     run.tokens += proposal.usage?.total_tokens || 0;
     if (!proposal.files.length) {
+      exp.agentOutcome = "no-candidate";
       exp.status = "inconclusive";
       exp.reason = proposal.notes || "No further safe change proposed";
       await persistRun(run);
@@ -576,8 +644,37 @@ async function execute(project, run) {
     exp.status = "building";
     await persistRun(run);
     for (let repairAttempt = 0; repairAttempt < 3; repairAttempt++) {
+      let verificationConfig = project.config;
+      let candidateSeal = verificationSeal;
+      let candidateHash;
+      let handedToVerifier = false;
+      let handoffCompleted = false;
+      let riskReady = !run.sponsorMode;
       try {
+        if (repairAttempt) {
+          delete exp.guards; delete exp.candidate; delete exp.reference; delete exp.verifier;
+          for (const name of ["guards.json", "verdict.json", "reference-metrics.json", "candidate-metrics.json", "measurement-order.json"]) await fs.unlink(path.join(experimentDir, name)).catch(error => { if (error.code !== "ENOENT") throw error; });
+        }
+        if (run.sponsorMode) {
+          if (repairAttempt) await handoff("InvestigationReady", repairAttempt);
+          candidateHash = await sourceFingerprint(candidate, project.config);
+          await handoff("PatchReady", repairAttempt, candidateHash, digest(exp.diff));
+          handedToVerifier = true;
+          await log(run, "verifier", "Verifier: assessing patch risks with Subquadratic");
+          const assessment = await assessPatchRisks({ sources, patch: exp.diff, contract: { ...project.config, mission: run.mission }, signal });
+          verificationConfig = verificationConfigForRisks({ ...project.config, metric: run.metric }, assessment);
+          riskReady = true;
+          candidateSeal = await sealVerificationPolicy(verificationConfig, run.metric);
+          exp.riskAssessment = assessment;
+          exp.verificationCheckpoints = verificationConfig.checkpoints;
+          await save(path.join(experimentDir, "risk-assessment.json"), assessment);
+          await save(path.join(experimentDir, "verification-plan.json"), { config: verificationConfig, seal: candidateSeal });
+        }
         const candidateOutput = await build(candidate, project, run);
+        exp.previewReady = true;
+        exp.previewUrl = `/candidate/${run.id}/${exp.id}/index.html?attempt=${repairAttempt}`;
+        exp.previewStatus = "testing";
+        await log(run, "candidate-ready", "Runnable candidate built. Testing; not yet verified.");
         exp.status = "verifying";
         await log(
           run,
@@ -590,27 +687,30 @@ async function execute(project, run) {
           evidence,
           "reference",
           signal,
-          project.config,
+          verificationConfig,
         );
         const candidateCapture = await capture(
           candidateOutput,
           evidence,
           "candidate",
           signal,
-          project.config,
+          verificationConfig,
           reference,
         );
+        await save(path.join(evidence, "reference-states.json"), reference);
+        await save(path.join(evidence, "candidate-states.json"), candidateCapture);
         exp.guards = await verify(
           reference,
           candidateCapture,
           evidence,
-          project.config,
+          verificationConfig,
         );
         await save(path.join(evidence, "guards.json"), exp.guards);
         if (!exp.guards.pass)
           throw Error(
             "Correctness verification failed: " +
               JSON.stringify({
+                geometry: exp.guards.geometry,
                 checks: exp.guards.checks,
                 interactions: exp.guards.interactions,
                 errors: exp.guards.errors,
@@ -625,7 +725,7 @@ async function execute(project, run) {
         const pair = await measurePair(
           directory,
           candidateOutput,
-          project.config,
+          verificationConfig,
           signal,
         );
         const referenceMetrics = pair.reference,
@@ -644,14 +744,19 @@ async function execute(project, run) {
         Object.assign(
           exp,
           await writeVerificationVerdict({
-            seal: verificationSeal,
-            config: project.config,
+            seal: candidateSeal,
+            config: verificationConfig,
             metric: run.metric,
             evidenceDir: evidence,
             referenceSourceDir: best,
             candidateSourceDir: candidate,
           }),
         );
+        if (run.sponsorMode) {
+          await handoff("VerificationResult", repairAttempt, candidateHash, digest(JSON.stringify({ status: exp.status, guards: exp.guards, candidate: exp.candidate })));
+          handoffCompleted = true;
+        }
+        exp.previewStatus = exp.status;
         if (exp.status === "accepted") {
           const previous = path.join(evidence, "previous-best");
           const journal = await promotion(
@@ -677,7 +782,17 @@ async function execute(project, run) {
         );
         break;
       } catch (e) {
-        if (signal.aborted || e.code === "VERIFICATION_POLICY_CHANGED") throw e;
+        if (run.sponsorMode && handedToVerifier && !handoffCompleted && !signal.aborted) {
+          await handoff("VerificationResult", repairAttempt, candidateHash, digest(JSON.stringify({ status: "rejected", error: String(e.message).slice(0, 1000) })));
+          handoffCompleted = true;
+        }
+        if (signal.aborted || e.code === "VERIFICATION_POLICY_CHANGED" || (run.sponsorMode && (!handedToVerifier || !riskReady))) throw e;
+        // Preserve each failed attempt before a repair replaces final evidence.
+        const attemptDir = path.join(experimentDir, `attempt-${repairAttempt}`);
+        await fs.mkdir(attemptDir, { recursive: true });
+        for (const entry of await fs.readdir(experimentDir, { withFileTypes: true })) {
+          if (entry.isFile()) await fs.copyFile(path.join(experimentDir, entry.name), path.join(attemptDir, entry.name));
+        }
         if (repairAttempt < 2) {
           exp.repairs = exp.repairs || [];
           exp.repairs.push({
@@ -692,6 +807,7 @@ async function execute(project, run) {
           );
           try {
             const repaired = await proposeExperiment({
+              investigation,
               workspace: candidate,
               mission: run.mission,
               manifest: project.discovery,

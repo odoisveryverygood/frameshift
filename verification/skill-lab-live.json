@@ -1,0 +1,1131 @@
+{
+  "at": "2026-11-07T19:47:42.581Z",
+  "mode": "live-model-and-local-browser",
+  "runId": "4c2dd350-6fe",
+  "skillId": "bea7a0e3-0a0",
+  "model": "gpt-5.4",
+  "usage": {
+    "input_tokens": 10749,
+    "input_tokens_details": {
+      "cache_write_tokens": 0,
+      "cached_tokens": 0
+    },
+    "output_tokens": 4264,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 15013
+  },
+  "cohortHash": "fc05dde3d9c75028fd5cdee4ce9a2ac6631dd9ac5f8e5edf0fce84f1678fface",
+  "codeHash": "4f5a37701cb808ffa7a7d92af292edb6a2d8d79c88d700b890a6cde84ca8e215",
+  "trainingMemoryFrom": [
+    {
+      "runId": "5aabc47b-50c",
+      "skillId": "bf9194c4-f6e",
+      "split": "training"
+    },
+    {
+      "runId": "5aabc47b-50c",
+      "skillId": "b80306e2-8b6",
+      "split": "training"
+    },
+    {
+      "runId": "e346bc48-5d3",
+      "skillId": "d3141894-009",
+      "split": "training"
+    },
+    {
+      "runId": "ec1fd49d-0dc",
+      "skillId": "87a9c55d-dbe",
+      "split": "training"
+    },
+    {
+      "runId": "ec1fd49d-0dc",
+      "skillId": "19410084-278",
+      "split": "training"
+    }
+  ],
+  "checks": [
+    "Completed adopted run",
+    "One training + two held-out applications",
+    "Training geometry stress case",
+    "Training hierarchy stress case",
+    "Eight checkpoints and real click behavior per application",
+    "Paired repeated measurements",
+    "Real PNG capture delivery",
+    "Deterministic adoption recomputation",
+    "Executable skill hash",
+    "Saved training-only generation context",
+    "Cross-origin write denial",
+    "Held-out training denial",
+    "Artifact traversal denial"
+  ],
+  "training": {
+    "fixtureId": "training-cells",
+    "name": "Orbit cells",
+    "split": "training",
+    "status": "passed",
+    "reason": "Draw calls decreased, correctness checks passed, and CPU submission/frame pacing stayed within their guards.",
+    "startedAt": "2026-11-07T19:42:30.172Z",
+    "evidenceDir": "<repository>/.frameshift/skill-lab/runs/4c2dd350-6fe/attempt-1/training/evidence",
+    "evidenceMode": "local browser; fixed authored cohort",
+    "changedFiles": [
+      "src/world.js"
+    ],
+    "sourceHashes": {
+      "reference": {
+        "src/world.js": "781f45b3666d69bb550bddd3c385541ae624243a6af5fe69c8c8b751908261c0"
+      },
+      "candidate": {
+        "src/world.js": "c1fc180da729bab9d90fa4918e2442fc13f0d3c6b4af014964edaf5762f4c1d4"
+      }
+    },
+    "notes": "Wrapped eligible createWorld factories with conservative runtime sibling-mesh instancing that preserves detached original objects for update references and copies local matrices into instance slots.",
+    "guards": {
+      "interactions": {
+        "events": 1,
+        "statePass": true,
+        "behaviorPass": true,
+        "errors": []
+      },
+      "coverage": {
+        "checkpoints": 8,
+        "semanticObjects": 196,
+        "pickingProbes": 40,
+        "replayedEvents": 1
+      },
+      "pass": true,
+      "checks": [
+        {
+          "firstTransformMismatch": null,
+          "view": 0,
+          "time": 0.17,
+          "cameraPass": true,
+          "visualDifference": 0,
+          "visualPass": true,
+          "statePass": true,
+          "objectCount": 196,
+          "pickingPass": true
+        },
+        {
+          "firstTransformMismatch": null,
+          "view": 1,
+          "time": 0.71,
+          "cameraPass": true,
+          "visualDifference": 0,
+          "visualPass": true,
+          "statePass": true,
+          "objectCount": 196,
+          "pickingPass": true
+        },
+        {
+          "firstTransformMismatch": null,
+          "view": 2,
+          "time": 1.39,
+          "cameraPass": true,
+          "visualDifference": 0,
+          "visualPass": true,
+          "statePass": true,
+          "objectCount": 196,
+          "pickingPass": true
+        },
+        {
+          "firstTransformMismatch": null,
+          "view": 3,
+          "time": 2.1,
+          "cameraPass": true,
+          "visualDifference": 0,
+          "visualPass": true,
+          "statePass": true,
+          "objectCount": 196,
+          "pickingPass": true
+        },
+        {
+          "firstTransformMismatch": null,
+          "view": 4,
+          "time": 3.14,
+          "cameraPass": true,
+          "visualDifference": 0,
+          "visualPass": true,
+          "statePass": true,
+          "objectCount": 196,
+          "pickingPass": true
+        },
+        {
+          "firstTransformMismatch": null,
+          "view": 5,
+          "time": 4.27,
+          "cameraPass": true,
+          "visualDifference": 0,
+          "visualPass": true,
+          "statePass": true,
+          "objectCount": 196,
+          "pickingPass": true
+        },
+        {
+          "firstTransformMismatch": null,
+          "view": 6,
+          "time": 5.33,
+          "cameraPass": true,
+          "visualDifference": 0,
+          "visualPass": true,
+          "statePass": true,
+          "objectCount": 196,
+          "pickingPass": true
+        },
+        {
+          "firstTransformMismatch": null,
+          "view": 7,
+          "time": 6.4,
+          "cameraPass": true,
+          "visualDifference": 0,
+          "visualPass": true,
+          "statePass": true,
+          "objectCount": 196,
+          "pickingPass": true
+        }
+      ],
+      "errors": [],
+      "selection": {
+        "expected": "cell-105",
+        "reference": "cell-105",
+        "candidate": "cell-105"
+      }
+    },
+    "baseline": {
+      "frameMedian": 16.700000000000045,
+      "frameP95": 16.799999999999955,
+      "submitMedian": 0.9000000357627869,
+      "submitP95": 2.5,
+      "fps": 59.88023952095792,
+      "calls": 196,
+      "triangles": 2352,
+      "geometries": 196,
+      "repeatMetrics": [
+        2.199999988079071,
+        1.199999988079071,
+        2.699999988079071
+      ],
+      "samples": 3,
+      "frameCount": 120,
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+      "hardware": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "cores": 10,
+        "viewport": [
+          960,
+          640
+        ],
+        "dpr": 1
+      },
+      "uncertainty": {
+        "repeats": 3,
+        "min": 1.199999988079071,
+        "max": 2.699999988079071,
+        "relativeSpread": 0.6818181855126846,
+        "note": "Limited repeat count; differences inside observed variability are inconclusive."
+      },
+      "gpuSupported": true,
+      "gpuP95": 0.799458
+    },
+    "candidate": {
+      "frameMedian": 16.699999999999932,
+      "frameP95": 16.700000000000045,
+      "submitMedian": 0.5999999642372131,
+      "submitP95": 0.800000011920929,
+      "fps": 59.88023952095833,
+      "calls": 2,
+      "triangles": 2352,
+      "geometries": 2,
+      "repeatMetrics": [
+        0.800000011920929,
+        0.800000011920929,
+        0.800000011920929
+      ],
+      "samples": 3,
+      "frameCount": 120,
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+      "hardware": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "cores": 10,
+        "viewport": [
+          960,
+          640
+        ],
+        "dpr": 1
+      },
+      "uncertainty": {
+        "repeats": 3,
+        "min": 0.800000011920929,
+        "max": 0.800000011920929,
+        "relativeSpread": 0,
+        "note": "Limited repeat count; differences inside observed variability are inconclusive."
+      },
+      "gpuSupported": true,
+      "gpuP95": 0.667291
+    },
+    "improvement": 0.9897959183673469,
+    "threshold": 0.08,
+    "completedAt": "2026-11-07T19:42:55.010Z",
+    "referenceImageUrl": "/api/lab/runs/4c2dd350-6fe/artifact?path=attempt-1%2Ftraining%2Fevidence%2Freference-0.png",
+    "candidateImageUrl": "/api/lab/runs/4c2dd350-6fe/artifact?path=attempt-1%2Ftraining%2Fevidence%2Fcandidate-0.png"
+  },
+  "trainingStress": {
+    "fixtureId": "training-cells",
+    "name": "Orbit cells",
+    "split": "training",
+    "status": "passed",
+    "reason": "Draw calls decreased, correctness checks passed, and CPU submission/frame pacing stayed within their guards.",
+    "startedAt": "2026-11-07T19:42:55.011Z",
+    "evidenceDir": "<repository>/.frameshift/skill-lab/runs/4c2dd350-6fe/attempt-1/training-geometry/evidence",
+    "evidenceMode": "local browser; fixed authored cohort",
+    "changedFiles": [
+      "src/world.js"
+    ],
+    "trainingVariant": "mutated geometry compatibility",
+    "sourceHashes": {
+      "reference": {
+        "src/world.js": "aed3e7a2132d1cfb5e274831f166f4aa0f66e751d1c374f102b663cb9e067487"
+      },
+      "candidate": {
+        "src/world.js": "08c84a466162c3ebc90bd3541e2a643fea117ac5c9ec92e698e5737ae13567fb"
+      }
+    },
+    "notes": "Wrapped eligible createWorld factories with conservative runtime sibling-mesh instancing that preserves detached original objects for update references and copies local matrices into instance slots.",
+    "guards": {
+      "interactions": {
+        "events": 1,
+        "statePass": true,
+        "behaviorPass": true,
+        "errors": []
+      },
+      "coverage": {
+        "checkpoints": 8,
+        "semanticObjects": 196,
+        "pickingProbes": 40,
+        "replayedEvents": 1
+      },
+      "pass": true,
+      "checks": [
+        {
+          "firstTransformMismatch": null,
+          "view": 0,
+          "time": 0.17,
+          "cameraPass": true,
+          "visualDifference": 0,
+          "visualPass": true,
+          "statePass": true,
+          "objectCount": 196,
+          "pickingPass": true
+        },
+        {
+          "firstTransformMismatch": null,
+          "view": 1,
+          "time": 0.71,
+          "cameraPass": true,
+          "visualDifference": 0,
+          "visualPass": true,
+          "statePass": true,
+          "objectCount": 196,
+          "pickingPass": true
+        },
+        {
+          "firstTransformMismatch": null,
+          "view": 2,
+          "time": 1.39,
+          "cameraPass": true,
+          "visualDifference": 0,
+          "visualPass": true,
+          "statePass": true,
+          "objectCount": 196,
+          "pickingPass": true
+        },
+        {
+          "firstTransformMismatch": null,
+          "view": 3,
+          "time": 2.1,
+          "cameraPass": true,
+          "visualDifference": 0,
+          "visualPass": true,
+          "statePass": true,
+          "objectCount": 196,
+          "pickingPass": true
+        },
+        {
+          "firstTransformMismatch": null,
+          "view": 4,
+          "time": 3.14,
+          "cameraPass": true,
+          "visualDifference": 0,
+          "visualPass": true,
+          "statePass": true,
+          "objectCount": 196,
+          "pickingPass": true
+        },
+        {
+          "firstTransformMismatch": null,
+          "view": 5,
+          "time": 4.27,
+          "cameraPass": true,
+          "visualDifference": 0,
+          "visualPass": true,
+          "statePass": true,
+          "objectCount": 196,
+          "pickingPass": true
+        },
+        {
+          "firstTransformMismatch": null,
+          "view": 6,
+          "time": 5.33,
+          "cameraPass": true,
+          "visualDifference": 0,
+          "visualPass": true,
+          "statePass": true,
+          "objectCount": 196,
+          "pickingPass": true
+        },
+        {
+          "firstTransformMismatch": null,
+          "view": 7,
+          "time": 6.4,
+          "cameraPass": true,
+          "visualDifference": 0,
+          "visualPass": true,
+          "statePass": true,
+          "objectCount": 196,
+          "pickingPass": true
+        }
+      ],
+      "errors": [],
+      "selection": {
+        "expected": "cell-105",
+        "reference": "cell-105",
+        "candidate": "cell-105"
+      }
+    },
+    "baseline": {
+      "frameMedian": 16.699999999999932,
+      "frameP95": 16.700000000000045,
+      "submitMedian": 1.0999999642372131,
+      "submitP95": 2.299999952316284,
+      "fps": 59.88023952095833,
+      "calls": 196,
+      "triangles": 2352,
+      "geometries": 196,
+      "repeatMetrics": [
+        2.199999988079071,
+        2,
+        2.5
+      ],
+      "samples": 3,
+      "frameCount": 120,
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+      "hardware": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "cores": 10,
+        "viewport": [
+          960,
+          640
+        ],
+        "dpr": 1
+      },
+      "uncertainty": {
+        "repeats": 3,
+        "min": 2,
+        "max": 2.5,
+        "relativeSpread": 0.2272727285042282,
+        "note": "Limited repeat count; differences inside observed variability are inconclusive."
+      },
+      "gpuSupported": true,
+      "gpuP95": 1.326375
+    },
+    "candidate": {
+      "frameMedian": 16.699999999999818,
+      "frameP95": 16.799999999999955,
+      "submitMedian": 0.5999999642372131,
+      "submitP95": 0.800000011920929,
+      "fps": 59.88023952095874,
+      "calls": 6,
+      "triangles": 2352,
+      "geometries": 6,
+      "repeatMetrics": [
+        0.8999999761581421,
+        0.800000011920929,
+        0.800000011920929
+      ],
+      "samples": 3,
+      "frameCount": 120,
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+      "hardware": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "cores": 10,
+        "viewport": [
+          960,
+          640
+        ],
+        "dpr": 1
+      },
+      "uncertainty": {
+        "repeats": 3,
+        "min": 0.800000011920929,
+        "max": 0.8999999761581421,
+        "relativeSpread": 0.12499995343387196,
+        "note": "Limited repeat count; differences inside observed variability are inconclusive."
+      },
+      "gpuSupported": true,
+      "gpuP95": 0.688125
+    },
+    "improvement": 0.9693877551020408,
+    "threshold": 0.08,
+    "completedAt": "2026-11-07T19:43:19.665Z",
+    "referenceImageUrl": "/api/lab/runs/4c2dd350-6fe/artifact?path=attempt-1%2Ftraining-geometry%2Fevidence%2Freference-0.png",
+    "candidateImageUrl": "/api/lab/runs/4c2dd350-6fe/artifact?path=attempt-1%2Ftraining-geometry%2Fevidence%2Fcandidate-0.png"
+  },
+  "trainingHierarchy": {
+    "fixtureId": "training-cells",
+    "name": "Orbit cells",
+    "split": "training",
+    "status": "passed",
+    "reason": "Draw calls decreased, correctness checks passed, and CPU submission/frame pacing stayed within their guards.",
+    "startedAt": "2026-11-07T19:43:19.666Z",
+    "evidenceDir": "<repository>/.frameshift/skill-lab/runs/4c2dd350-6fe/attempt-1/training-hierarchy/evidence",
+    "evidenceMode": "local browser; fixed authored cohort",
+    "changedFiles": [
+      "src/world.js"
+    ],
+    "trainingVariant": "moving nested parents",
+    "sourceHashes": {
+      "reference": {
+        "src/world.js": "0e7f41f30509cf3fd9c93ad7afadb12044b435313502cfe3622a9bab2f139e2b"
+      },
+      "candidate": {
+        "src/world.js": "38d2cc5e2afb0c515eedceea42b49c534ad2372dd8aaca6a52c0a4f6b5fd307b"
+      }
+    },
+    "notes": "Wrapped eligible createWorld factories with conservative runtime sibling-mesh instancing that preserves detached original objects for update references and copies local matrices into instance slots.",
+    "guards": {
+      "interactions": {
+        "events": 1,
+        "statePass": true,
+        "behaviorPass": true,
+        "errors": []
+      },
+      "coverage": {
+        "checkpoints": 8,
+        "semanticObjects": 196,
+        "pickingProbes": 40,
+        "replayedEvents": 1
+      },
+      "pass": true,
+      "checks": [
+        {
+          "firstTransformMismatch": null,
+          "view": 0,
+          "time": 0.17,
+          "cameraPass": true,
+          "visualDifference": 0,
+          "visualPass": true,
+          "statePass": true,
+          "objectCount": 196,
+          "pickingPass": true
+        },
+        {
+          "firstTransformMismatch": null,
+          "view": 1,
+          "time": 0.71,
+          "cameraPass": true,
+          "visualDifference": 0,
+          "visualPass": true,
+          "statePass": true,
+          "objectCount": 196,
+          "pickingPass": true
+        },
+        {
+          "firstTransformMismatch": null,
+          "view": 2,
+          "time": 1.39,
+          "cameraPass": true,
+          "visualDifference": 0,
+          "visualPass": true,
+          "statePass": true,
+          "objectCount": 196,
+          "pickingPass": true
+        },
+        {
+          "firstTransformMismatch": null,
+          "view": 3,
+          "time": 2.1,
+          "cameraPass": true,
+          "visualDifference": 0,
+          "visualPass": true,
+          "statePass": true,
+          "objectCount": 196,
+          "pickingPass": true
+        },
+        {
+          "firstTransformMismatch": null,
+          "view": 4,
+          "time": 3.14,
+          "cameraPass": true,
+          "visualDifference": 0,
+          "visualPass": true,
+          "statePass": true,
+          "objectCount": 196,
+          "pickingPass": true
+        },
+        {
+          "firstTransformMismatch": null,
+          "view": 5,
+          "time": 4.27,
+          "cameraPass": true,
+          "visualDifference": 0,
+          "visualPass": true,
+          "statePass": true,
+          "objectCount": 196,
+          "pickingPass": true
+        },
+        {
+          "firstTransformMismatch": null,
+          "view": 6,
+          "time": 5.33,
+          "cameraPass": true,
+          "visualDifference": 0,
+          "visualPass": true,
+          "statePass": true,
+          "objectCount": 196,
+          "pickingPass": true
+        },
+        {
+          "firstTransformMismatch": null,
+          "view": 7,
+          "time": 6.4,
+          "cameraPass": true,
+          "visualDifference": 0,
+          "visualPass": true,
+          "statePass": true,
+          "objectCount": 196,
+          "pickingPass": true
+        }
+      ],
+      "errors": [],
+      "selection": {
+        "expected": "cell-105",
+        "reference": "cell-105",
+        "candidate": "cell-105"
+      }
+    },
+    "baseline": {
+      "frameMedian": 16.700000000000045,
+      "frameP95": 16.700000000000045,
+      "submitMedian": 1.100000023841858,
+      "submitP95": 2.300000011920929,
+      "fps": 59.88023952095792,
+      "calls": 196,
+      "triangles": 2352,
+      "geometries": 196,
+      "repeatMetrics": [
+        2.300000011920929,
+        2.599999964237213,
+        2.200000047683716
+      ],
+      "samples": 3,
+      "frameCount": 120,
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+      "hardware": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "cores": 10,
+        "viewport": [
+          960,
+          640
+        ],
+        "dpr": 1
+      },
+      "uncertainty": {
+        "repeats": 3,
+        "min": 2.200000047683716,
+        "max": 2.599999964237213,
+        "relativeSpread": 0.17391300629577944,
+        "note": "Limited repeat count; differences inside observed variability are inconclusive."
+      },
+      "gpuSupported": true,
+      "gpuP95": 0.978375
+    },
+    "candidate": {
+      "frameMedian": 16.700000000000045,
+      "frameP95": 16.700000000000045,
+      "submitMedian": 0.30000001192092896,
+      "submitP95": 0.7000000476837158,
+      "fps": 59.88023952095792,
+      "calls": 2,
+      "triangles": 2352,
+      "geometries": 2,
+      "repeatMetrics": [
+        0.800000011920929,
+        0.800000011920929,
+        0.699999988079071
+      ],
+      "samples": 3,
+      "frameCount": 120,
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+      "hardware": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "cores": 10,
+        "viewport": [
+          960,
+          640
+        ],
+        "dpr": 1
+      },
+      "uncertainty": {
+        "repeats": 3,
+        "min": 0.699999988079071,
+        "max": 0.800000011920929,
+        "relativeSpread": 0.12500002793967682,
+        "note": "Limited repeat count; differences inside observed variability are inconclusive."
+      },
+      "gpuSupported": true,
+      "gpuP95": 1.865749
+    },
+    "improvement": 0.9897959183673469,
+    "threshold": 0.08,
+    "completedAt": "2026-11-07T19:43:44.607Z",
+    "referenceImageUrl": "/api/lab/runs/4c2dd350-6fe/artifact?path=attempt-1%2Ftraining-hierarchy%2Fevidence%2Freference-0.png",
+    "candidateImageUrl": "/api/lab/runs/4c2dd350-6fe/artifact?path=attempt-1%2Ftraining-hierarchy%2Fevidence%2Fcandidate-0.png"
+  },
+  "evaluations": [
+    {
+      "fixtureId": "heldout-assembly",
+      "name": "Assembly viewer",
+      "split": "heldout",
+      "status": "passed",
+      "reason": "Draw calls decreased, correctness checks passed, and CPU submission/frame pacing stayed within their guards.",
+      "startedAt": "2026-11-07T19:43:44.609Z",
+      "evidenceDir": "<repository>/.frameshift/skill-lab/runs/4c2dd350-6fe/attempt-1/heldout-assembly/evidence",
+      "evidenceMode": "local browser; fixed authored cohort",
+      "changedFiles": [
+        "src/world.js"
+      ],
+      "sourceHashes": {
+        "reference": {
+          "src/world.js": "0641472d78e81e7d7d33d766cc77fbf5abc5a2a3f8599c7a10728bc13d3bd4e6"
+        },
+        "candidate": {
+          "src/world.js": "b5d0cfd33f0966d1d3a07e8c6dcd3bef941bb8d1087f91b24be9e4ffb4e876ff"
+        }
+      },
+      "notes": "Wrapped eligible createWorld factories with conservative runtime sibling-mesh instancing that preserves detached original objects for update references and copies local matrices into instance slots.",
+      "guards": {
+        "interactions": {
+          "events": 1,
+          "statePass": true,
+          "behaviorPass": true,
+          "errors": []
+        },
+        "coverage": {
+          "checkpoints": 8,
+          "semanticObjects": 120,
+          "pickingProbes": 40,
+          "replayedEvents": 1
+        },
+        "pass": true,
+        "checks": [
+          {
+            "firstTransformMismatch": null,
+            "view": 0,
+            "time": 0.17,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 120,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 1,
+            "time": 0.71,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 120,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 2,
+            "time": 1.39,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 120,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 3,
+            "time": 2.1,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 120,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 4,
+            "time": 3.14,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 120,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 5,
+            "time": 4.27,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 120,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 6,
+            "time": 5.33,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 120,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 7,
+            "time": 6.4,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 120,
+            "pickingPass": true
+          }
+        ],
+        "errors": [],
+        "selection": {
+          "expected": "spindle-2-13",
+          "reference": "spindle-2-13",
+          "candidate": "spindle-2-13"
+        }
+      },
+      "baseline": {
+        "frameMedian": 16.699999999999932,
+        "frameP95": 16.799999999999955,
+        "submitMedian": 0.699999988079071,
+        "submitP95": 1.5999999642372131,
+        "fps": 59.88023952095833,
+        "calls": 120,
+        "triangles": 5760,
+        "geometries": 120,
+        "repeatMetrics": [
+          1.5999999642372131,
+          1.4000000357627869,
+          1.600000023841858
+        ],
+        "samples": 3,
+        "frameCount": 120,
+        "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+        "hardware": {
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+          "cores": 10,
+          "viewport": [
+            960,
+            640
+          ],
+          "dpr": 1
+        },
+        "uncertainty": {
+          "repeats": 3,
+          "min": 1.4000000357627869,
+          "max": 1.600000023841858,
+          "relativeSpread": 0.12499999534338702,
+          "note": "Limited repeat count; differences inside observed variability are inconclusive."
+        },
+        "gpuSupported": true,
+        "gpuP95": 0.740458
+      },
+      "candidate": {
+        "frameMedian": 16.700000000000045,
+        "frameP95": 16.799999999999955,
+        "submitMedian": 0.5999999642372131,
+        "submitP95": 0.9000000357627869,
+        "fps": 59.88023952095792,
+        "calls": 12,
+        "triangles": 5760,
+        "geometries": 12,
+        "repeatMetrics": [
+          0.9000000357627869,
+          0.9000000357627869,
+          1
+        ],
+        "samples": 3,
+        "frameCount": 120,
+        "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+        "hardware": {
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+          "cores": 10,
+          "viewport": [
+            960,
+            640
+          ],
+          "dpr": 1
+        },
+        "uncertainty": {
+          "repeats": 3,
+          "min": 0.9000000357627869,
+          "max": 1,
+          "relativeSpread": 0.11111106695952415,
+          "note": "Limited repeat count; differences inside observed variability are inconclusive."
+        },
+        "gpuSupported": true,
+        "gpuP95": 1.065458
+      },
+      "improvement": 0.9,
+      "threshold": 0.08,
+      "completedAt": "2026-11-07T19:44:09.172Z",
+      "referenceImageUrl": "/api/lab/runs/4c2dd350-6fe/artifact?path=attempt-1%2Fheldout-assembly%2Fevidence%2Freference-0.png",
+      "candidateImageUrl": "/api/lab/runs/4c2dd350-6fe/artifact?path=attempt-1%2Fheldout-assembly%2Fevidence%2Fcandidate-0.png"
+    },
+    {
+      "fixtureId": "heldout-carts",
+      "name": "Warehouse lanes",
+      "split": "heldout",
+      "status": "passed",
+      "reason": "Draw calls decreased, correctness checks passed, and CPU submission/frame pacing stayed within their guards.",
+      "startedAt": "2026-11-07T19:44:09.173Z",
+      "evidenceDir": "<repository>/.frameshift/skill-lab/runs/4c2dd350-6fe/attempt-1/heldout-carts/evidence",
+      "evidenceMode": "local browser; fixed authored cohort",
+      "changedFiles": [
+        "src/world.js"
+      ],
+      "sourceHashes": {
+        "reference": {
+          "src/world.js": "0365474e2afb26e1ff4cfb2320cd0c02daf193b86ba53a28652c340e21b6c691"
+        },
+        "candidate": {
+          "src/world.js": "5fcb1dad293977a5b64c38d8f1a5ca1396b7e0de5b0a121f66137033f7bc1aef"
+        }
+      },
+      "notes": "Wrapped eligible createWorld factories with conservative runtime sibling-mesh instancing that preserves detached original objects for update references and copies local matrices into instance slots.",
+      "guards": {
+        "interactions": {
+          "events": 1,
+          "statePass": true,
+          "behaviorPass": true,
+          "errors": []
+        },
+        "coverage": {
+          "checkpoints": 8,
+          "semanticObjects": 240,
+          "pickingProbes": 40,
+          "replayedEvents": 1
+        },
+        "pass": true,
+        "checks": [
+          {
+            "firstTransformMismatch": null,
+            "view": 0,
+            "time": 0.17,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 240,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 1,
+            "time": 0.71,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 240,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 2,
+            "time": 1.39,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 240,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 3,
+            "time": 2.1,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 240,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 4,
+            "time": 3.14,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 240,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 5,
+            "time": 4.27,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 240,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 6,
+            "time": 5.33,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 240,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 7,
+            "time": 6.4,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 240,
+            "pickingPass": true
+          }
+        ],
+        "errors": [],
+        "selection": {
+          "expected": "cart-2-12",
+          "reference": "cart-2-12",
+          "candidate": "cart-2-12"
+        }
+      },
+      "baseline": {
+        "frameMedian": 16.700000000000045,
+        "frameP95": 16.799999999999955,
+        "submitMedian": 1.2000000476837158,
+        "submitP95": 2.700000047683716,
+        "fps": 59.88023952095792,
+        "calls": 240,
+        "triangles": 2880,
+        "geometries": 240,
+        "repeatMetrics": [
+          3.100000023841858,
+          2.800000011920929,
+          2.700000047683716
+        ],
+        "samples": 3,
+        "frameCount": 120,
+        "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+        "hardware": {
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+          "cores": 10,
+          "viewport": [
+            960,
+            640
+          ],
+          "dpr": 1
+        },
+        "uncertainty": {
+          "repeats": 3,
+          "min": 2.700000047683716,
+          "max": 3.100000023841858,
+          "relativeSpread": 0.14285713373398298,
+          "note": "Limited repeat count; differences inside observed variability are inconclusive."
+        },
+        "gpuSupported": true,
+        "gpuP95": 1.73775
+      },
+      "candidate": {
+        "frameMedian": 16.699999999999818,
+        "frameP95": 16.799999999999955,
+        "submitMedian": 0.7999999523162842,
+        "submitP95": 1.2000000476837158,
+        "fps": 59.88023952095874,
+        "calls": 15,
+        "triangles": 2880,
+        "geometries": 15,
+        "repeatMetrics": [
+          1.300000011920929,
+          1.100000023841858,
+          1.399999976158142
+        ],
+        "samples": 3,
+        "frameCount": 120,
+        "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+        "hardware": {
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+          "cores": 10,
+          "viewport": [
+            960,
+            640
+          ],
+          "dpr": 1
+        },
+        "uncertainty": {
+          "repeats": 3,
+          "min": 1.100000023841858,
+          "max": 1.399999976158142,
+          "relativeSpread": 0.2307691919733085,
+          "note": "Limited repeat count; differences inside observed variability are inconclusive."
+        },
+        "gpuSupported": true,
+        "gpuP95": 0.674874
+      },
+      "improvement": 0.9375,
+      "threshold": 0.08,
+      "completedAt": "2026-11-07T19:44:34.057Z",
+      "referenceImageUrl": "/api/lab/runs/4c2dd350-6fe/artifact?path=attempt-1%2Fheldout-carts%2Fevidence%2Freference-0.png",
+      "candidateImageUrl": "/api/lab/runs/4c2dd350-6fe/artifact?path=attempt-1%2Fheldout-carts%2Fevidence%2Fcandidate-0.png"
+    }
+  ],
+  "decision": {
+    "adopt": true,
+    "status": "adopted",
+    "reason": "Every held-out project passed independently, no project regressed, and aggregate draw calls improved beyond 8%",
+    "improvement": 0.925,
+    "beforeCalls": 360,
+    "afterCalls": 27,
+    "heldoutProjects": 2
+  },
+  "limitations": [
+    "Authored fixtures held out from the generator, not independent customer data.",
+    "The fixed evaluation suite is reused across runs; this is not proof of generalization to all projects.",
+    "Skill versions change executable transformation logic, not model weights."
+  ]
+}

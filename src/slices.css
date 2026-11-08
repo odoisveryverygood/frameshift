@@ -1,0 +1,40 @@
+.slices {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  overflow: hidden;
+  pointer-events: none;
+}
+.slice {
+  position: absolute;
+  visibility: hidden;
+}
+.slice.shown {
+  visibility: visible;
+}
+/* Shows through the gap while a piece is lifted. */
+.slice-dark {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(80% 80% at 50% 120%, rgb(31 75 255 / 45%), transparent 70%),
+    #05060a;
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+.slice.up .slice-dark {
+  opacity: 1;
+}
+.slice-tile {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #fff;
+  transition:
+    transform 0.34s cubic-bezier(0.2, 0.9, 0.25, 1.1),
+    box-shadow 0.3s ease;
+}
+.slice-clone {
+  position: absolute;
+  pointer-events: none;
+}

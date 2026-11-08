@@ -1,6 +1,31 @@
-# Earl
+# Sift
+
+**Current integration:** [workspace flow, project compatibility and verification](docs/WORKSPACE-READINESS.md) · [operator deployment preparation](docs/HOSTED-DEPLOYMENT.md). Hosted deployment remains unverified.
+
+**All teammates: [read the complete project, sponsor and hackathon guide](TEAM-README.md).** It explains what Sift does, every agent/integration, verified evidence, track fit, demo framing, original-work boundaries and current limitations. No code knowledge is needed to start there.
+
+Formerly Earl / FrameShift. **UI teammate: start with [the Sift UI and animation handoff](docs/SIFT-UI-HANDOFF.md).** It maps the four product roles to actual workflows, API responses, scene messages, verification states, and a reproducible demo. The integrated default workspace uses Sift; legacy engineering routes retain some Earl naming.
 
 ### Better frames, with proof.
+
+**Robot STL import:** connect → **Robot STL** → choose the export units → inspect → review → open. Originals are retained locally; cleanup never invents missing mechanical parts. [STL behavior and limits](docs/STL-IMPORT.md).
+
+**New: [the repair workspace](docs/REPAIR-WORKSPACE.md).** Select a detached region, calculate a mounting alignment or review a measured-gap proposal, then export a complete STL checked by an independent geometry verifier. The exported candidate loads into the viewport automatically. Mounting intent and mechanical fit remain separate from execution checks.
+
+**New: [the spatial workspace](docs/SPATIAL-WORKSPACE.md).** Select a real object,
+ask Argon to investigate its scene and source, hand a grounded finding to Meta,
+and demonstrate a selection challenge against the original and optimized builds.
+The viewport leads; source, measurements and evidence open when needed.
+
+**Teammates: [read the updated product, agent and sponsor plan](docs/TEAM-PRODUCT-PLAN.md).**
+It includes ownership, build order, verified setup status, and how to explain each
+sponsor honestly. **Feature branches and PRs only; no direct pushes to `main`.**
+
+The next product flow is: open your 3D app → describe the slowdown → three agents
+investigate, patch and verify → compare and apply. Meta specialists, Subquadratic risk selection and Fetch local handoffs are now
+wired into the worker. See [how the agent pipeline works](docs/AGENT-PIPELINE.md)
+for setup, evidence and current limits. ASI API connectivity is separately verified.
+See [the exact setup status](integrations/SETUP-STATUS.md).
 
 Earl is a local AI performance engineer for 3D web applications. Connect an
 existing project, measure its rendering workload, let an agent investigate and
@@ -15,7 +40,7 @@ a protected browser profiler, repeatable checks, and an independent job worker.
 
 ## Quick start
 
-Requirements: **Node.js 22 or newer, npm, and Google Chrome**. A model provider
+Requirements: **Node.js 22.15 or newer, npm, and Google Chrome**. A model provider
 with function/tool calling is required for AI optimization; profiling runs locally
 without a model request.
 
@@ -38,6 +63,26 @@ For development, use `npm run dev`.
 The start command launches a separate worker and the web server. Restarting the
 web server does not cancel an executing job. `npm run worker` can start the worker
 separately; interrupted work can resume when that worker restarts.
+
+## Executable Skill Lab
+
+Open **http://127.0.0.1:4310/lab/** with Earl running. The configured model learns a
+reusable JavaScript source transformer from an authored training application and
+training-only failures. Earl runs it in a separate restricted process, checks the
+base app plus geometry/hierarchy stress cases, then freezes the code and evaluates
+it on two other applications without another model call. Both must pass independent
+behavior/performance gates before the active skill version changes.
+
+This is a bounded `createWorld(THREE, scene)` instancing family, not universal
+Three.js optimization. The authored evaluation suite is withheld from the generator
+and reused across runs. Local records retain generated code, parent versions,
+training contexts, failures, screenshots, measurements and adoption decisions.
+See [the implementation and evidence boundaries](docs/SKILL-LAB.md).
+
+```sh
+# Verify a real completed adopted run without starting another model request:
+node scripts/verify-skill-lab.mjs --run YOUR_RUN_ID
+```
 
 ## Give Earl a mission
 
@@ -86,9 +131,10 @@ must be dated and distinguished from prior work in any event submission. This
 repository's history and third-party credits preserve that distinction.
 
 The primary problem statement is **Trust but Verify**. Experiment history informs
-subsequent optimization attempts. Earl does **not** yet implement held-out adoption
-of versioned agent skills, so it should not claim the full **System That Gets Better**
-problem statement on that basis.
+subsequent optimization attempts. The executable Skill Lab adds versioned skill generation and held-out adoption
+for a bounded rendering family. Its **System That Gets Better** claim is limited
+to the measured authored cohort and training-only refinement, not model retraining
+or general-purpose self-improvement.
 
 ## The original vision
 
@@ -266,13 +312,11 @@ and dedicated VM/container runners.
 
 ## API providers
 
-Live optimization has been tested using OpenAI Responses. The provider layer also
-supports compatible Chat Completions function calls, covered by local contract tests.
-
-A Meta/Llama-hosted provider requires a compatible endpoint, model, protocol, and
-tool-calling support. Replacing only the key does not establish compatibility.
-A native provider-specific API would require its own transport adapter. No native
-Meta endpoint has been live-validated in this implementation.
+Live Meta Model API optimization and Gemini scene/repair tool calls have been
+verified locally. Subquadratic risk decisions have caused additional checks to run.
+The older configured-provider/OpenAI Responses mode and compatible Chat Completions
+transport remain available. See [the sponsor map](TEAM-README.md#4-exactly-how-each-sponsor-is-used)
+for the actual roles and limits; replacing only a key does not establish provider compatibility.
 
 Editable source, profiles, and relevant experiment history are sent to the configured
 model provider during optimization. Local profiling does not make a model request.

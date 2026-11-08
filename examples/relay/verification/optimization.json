@@ -1,0 +1,74 @@
+{
+  "at": "2026-11-07T23:15:28.858Z",
+  "mode": "live model requests and local Chrome execution",
+  "status": "completed",
+  "runId": "968d6ff0-f7f",
+  "experimentId": "4f72adf0-99a",
+  "agents": {
+    "investigator": "meta",
+    "optimizer": "meta",
+    "verifier": "subquadratic-risk + deterministic-tests",
+    "transport": "local-uagents",
+    "investigatorModel": "muse-spark-1.3"
+  },
+  "initialBaseline": {
+    "drawCalls": 6009,
+    "cpuSubmissionP95Ms": 18.5,
+    "fps": 59.88023952095874,
+    "gpuP95Ms": 5.196375,
+    "gpuSupported": true
+  },
+  "pairedReference": {
+    "drawCalls": 6009,
+    "cpuSubmissionP95Ms": 18.30000001192093,
+    "fps": 59.88023952095874,
+    "gpuP95Ms": 5.44575,
+    "gpuSupported": true
+  },
+  "candidate": {
+    "drawCalls": 12,
+    "cpuSubmissionP95Ms": 1.5,
+    "fps": 59.88023952095792,
+    "gpuP95Ms": 2.95925,
+    "gpuSupported": true
+  },
+  "independentVerdict": {
+    "status": "accepted",
+    "metric": "drawCalls",
+    "improvement": 0.9980029955067399,
+    "threshold": 0.08,
+    "reason": "Draw calls decreased, correctness checks passed, and CPU submission/frame pacing stayed within their guards."
+  },
+  "coverage": {
+    "checkpoints": 16,
+    "recordedEvents": 0,
+    "limitations": [
+      "Passing checks establishes only the sampled scenes and interactions.",
+      "Browser application state is observed through instrumentation; this is not a hostile-code security proof.",
+      "CPU submission timing and frame pacing are not GPU utilization."
+    ]
+  },
+  "policyHash": "c1dc5917554115ac3e55cd9e203ae78f8baf94acd0126e6b317eebecc6850699",
+  "sourceFingerprints": {
+    "reference": {
+      "src/fleet.js": "213797de19c2358bb90058d65adba02fcd4efec18beb2eca2e44a20b2ee754c5"
+    },
+    "candidate": {
+      "src/fleet.js": "99f69854b20aa6bac0a8b1df78fd30df27ce0285af35afa29f7cd794cab4deba"
+    }
+  },
+  "interactiveCandidateChecks": [
+    "all 2,000 identities and moving routes remain in the accepted candidate",
+    "actual pointer selection resolves the correct instanced robot",
+    "dispatch completes in the optimized candidate",
+    "zero browser runtime errors"
+  ],
+  "originalSourceUnchanged": true,
+  "limitations": [
+    "Authored kinematic simulator, not physical robot dynamics or customer validation.",
+    "Configured 16 checkpoints and picking probes do not establish correctness of every possible interaction.",
+    "Three benchmark repeats on one local machine. CPU submission time is not GPU utilization. FPS stayed near 60.",
+    "An earlier investigation attempt failed its seven-round limit; the included backend compatibility patch permits a bounded correction before retrying."
+  ],
+  "originalSourceSha256": "213797de19c2358bb90058d65adba02fcd4efec18beb2eca2e44a20b2ee754c5"
+}

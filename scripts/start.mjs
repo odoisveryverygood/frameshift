@@ -8,6 +8,15 @@ fs.mkdirSync(DATA, { recursive: true });
 let shuttingDown = false;
 let restartTimer;
 let shortFailures = 0;
+let checkingWorker = false;
+// Also watch a worker inherited from an earlier starter; it may exit during restart.
+const healthMonitor = setInterval(async () => {
+  if (shuttingDown || checkingWorker) return;
+  checkingWorker = true;
+  try { if (!(await workerStatus()).alive) launchWorker(); }
+  catch { /* The bounded worker log/restart path reports launch errors. */ }
+  finally { checkingWorker = false; }
+}, 2500);
 
 function launchWorker() {
   if (shuttingDown) return;
@@ -64,6 +73,7 @@ const web = spawn(process.execPath, [path.join(ROOT, "server/index.mjs")], {
 function shutdown(signal) {
   shuttingDown = true;
   clearTimeout(restartTimer);
+  clearInterval(healthMonitor);
   web.kill(signal);
 }
 for (const signal of ["SIGINT", "SIGTERM"])
@@ -71,11 +81,13 @@ for (const signal of ["SIGINT", "SIGTERM"])
 web.on("error", (error) => {
   shuttingDown = true;
   clearTimeout(restartTimer);
+  clearInterval(healthMonitor);
   console.error(`Earl could not start: ${error.message}`);
   process.exitCode = 1;
 });
 web.on("exit", (code, signal) => {
   shuttingDown = true;
   clearTimeout(restartTimer);
+  clearInterval(healthMonitor);
   process.exit(code ?? (signal ? 1 : 0));
 });

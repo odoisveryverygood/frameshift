@@ -1,0 +1,47 @@
+{
+  "at": "2026-11-07T19:40:08.681Z",
+  "runId": "e346bc48-5d3",
+  "skillId": "d3141894-009",
+  "training": "passed",
+  "heldout": [
+    {
+      "fixtureId": "heldout-assembly",
+      "status": "failed",
+      "reason": "Appearance, transforms, object identity, or actual click behavior changed",
+      "coverage": {
+        "checkpoints": 8,
+        "semanticObjects": 120,
+        "pickingProbes": 40,
+        "replayedEvents": 1
+      },
+      "selection": {
+        "expected": "spindle-2-13",
+        "reference": "spindle-2-13",
+        "candidate": "spindle-2-13"
+      }
+    },
+    {
+      "fixtureId": "heldout-carts",
+      "status": "passed",
+      "reason": "Draw calls decreased, correctness checks passed, and CPU submission/frame pacing stayed within their guards.",
+      "coverage": {
+        "checkpoints": 8,
+        "semanticObjects": 240,
+        "pickingProbes": 40,
+        "replayedEvents": 1
+      },
+      "selection": {
+        "expected": "cart-2-12",
+        "reference": "cart-2-12",
+        "candidate": "cart-2-12"
+      }
+    }
+  ],
+  "decision": {
+    "adopt": false,
+    "status": "rolled-back",
+    "reason": "Candidate did not independently pass the fixed correctness and performance gates on heldout-assembly"
+  },
+  "adoptedSkillId": null,
+  "notes": "Actual live-generated candidate passed training and warehouse, failed assembly; no skill was adopted. Not a deliberately seeded failure."
+}

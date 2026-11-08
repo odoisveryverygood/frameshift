@@ -22,3 +22,14 @@ test("local connection rejects ambiguous folders, unknown options and invalid po
     assert.throws(() => parseOptions(["--port", port]), /port/i);
   }
 });
+
+test("local connection trims pasted paths and supports a machine-readable result", () => {
+  const options = parseOptions(
+    [" \n./my app \n", "--json", "--no-browser"],
+    "/workspace",
+  );
+  assert.equal(options.project, path.resolve("/workspace/my app"));
+  assert.equal(options.json, true);
+  assert.equal(options.browser, false);
+  assert.throws(() => parseOptions(["  "]), /nonempty/);
+});

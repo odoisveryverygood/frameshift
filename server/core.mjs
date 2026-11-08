@@ -4,11 +4,12 @@ import crypto from "node:crypto";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { isolatedCommand } from "./isolation.mjs";
+import { projectModules } from "./project-dependencies.mjs";
 export const ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "..",
 );
-export const DATA = path.join(ROOT, ".frameshift");
+export const DATA = process.env.FRAMESHIFT_DATA_DIR ? path.resolve(process.env.FRAMESHIFT_DATA_DIR) : path.join(ROOT, ".frameshift");
 export const id = () => crypto.randomUUID().slice(0, 12);
 export async function json(file, fallback) {
   try {
@@ -125,12 +126,7 @@ export async function copyProject(source, destination) {
 }
 export async function dependencies(workspace, original) {
   const dest = path.join(workspace, "node_modules");
-  let modules = path.join(original, "node_modules");
-  try {
-    await fs.access(modules);
-  } catch {
-    modules = path.join(ROOT, "node_modules");
-  }
+  const modules = await projectModules(original, {root: ROOT, data: DATA});
   const stat = await fs.lstat(dest).catch(() => null);
   if (stat?.isSymbolicLink()) await fs.unlink(dest);
   await fs.mkdir(dest, { recursive: true });

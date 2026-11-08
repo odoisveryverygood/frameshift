@@ -1,0 +1,24 @@
+{
+  "status": "passed",
+  "at": "2026-11-07T23:09:54.941Z",
+  "mode": "local headless Chrome, 960×640, DPR 1",
+  "checks": [
+    "2,000 unique semantic identities, moving paths, deterministic replay",
+    "locate and actual pointer selection of robot 1188",
+    "dispatch assignment transitions to delivered at its route destination time",
+    "pause and resume controls affect the running simulation",
+    "reset clears selection and assignments",
+    "no browser runtime errors or external network dependencies"
+  ],
+  "baseline": {
+    "calls": 6009,
+    "submitP95": 18,
+    "fps": 59.88023952095874,
+    "triangles": 310966
+  },
+  "limits": [
+    "Authored kinematic simulator, not customer validation or physical robot dynamics.",
+    "Baseline measurement only; no AI optimization claim from this check.",
+    "CPU submission time is not GPU utilization."
+  ]
+}

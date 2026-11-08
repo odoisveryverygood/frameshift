@@ -1,0 +1,68 @@
+import React from "react";
+import AgentField from "./AgentField.jsx";
+import Galaxy from "./Galaxy.jsx";
+import "./loading.css";
+
+// Shown while a run is live: the goal, what the run is doing now, and the four
+// agents (the stages of the run) working on the project.
+export default function Loading({
+  job,
+  project,
+  baselineSrc,
+  inert,
+  goal,
+  preview,
+  revealed,
+  measuring = false,
+  compact = false,
+  preparingOptimization = false,
+}) {
+  return (
+    <section className={"loading" + (compact ? " is-compact" : "")} aria-label="Sift is working" inert={inert}>
+      <Galaxy x={0.5} y={0.4} scale={0.95} paused={measuring} />
+      <div className="loading-inner">
+        <div className="loading-copy">
+          <span className="eyebrow">
+            {preview
+              ? "Preview"
+              : preparingOptimization
+                ? "Preparing reference"
+                : job.status === "queued"
+                ? "Queued"
+                : job.kind === "optimize"
+                  ? "Improving performance"
+                  : "Building & measuring"}
+          </span>
+          <h1>
+            {preparingOptimization
+              ? "Preparing the reference"
+              : job.status === "queued"
+              ? "Waiting for the local worker"
+              : job.kind === "optimize" ? "Agents at work" : "Building the reference"}
+          </h1>
+          <p aria-live="polite">{job.phase || "Starting…"}</p>
+          {preview && (
+            <p className="loading-preview">
+              Nothing is running. This is how Sift looks while it works.
+            </p>
+          )}
+          {!compact && (job.mission || goal) && (
+            <blockquote>
+              <span>Your goal</span>
+              {job.mission || goal}
+            </blockquote>
+          )}
+        </div>
+        <AgentField
+          job={job}
+          project={project}
+          baselineSrc={baselineSrc}
+          preview={preview}
+          revealed={revealed}
+          measuring={measuring}
+          preparingOptimization={preparingOptimization}
+        />
+      </div>
+    </section>
+  );
+}

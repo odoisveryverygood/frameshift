@@ -11,13 +11,20 @@
     "test": "node --test tests/*.test.mjs",
     "verify": "node scripts/verify.mjs",
     "worker": "node server/worker.mjs",
-    "sdk:verify": "node sdk/verify.mjs"
+    "demo:repair": "node scripts/create-repair-demo.mjs",
+    "sdk:verify": "node sdk/verify.mjs",
+    "fetch:setup": "node scripts/setup-fetch-agent.mjs",
+    "fetch:agent": ".frameshift/fetch/venv/bin/python -u integrations/fetch/sift_agent.py",
+    "fetch:identity": ".frameshift/fetch/venv/bin/python integrations/fetch/sift_agent.py --identity",
+    "fetch:test": ".frameshift/fetch/venv/bin/python -m unittest discover -s integrations/fetch -p test_sift_tools.py -v"
   },
   "dependencies": {
+    "cobe": "2.0.1",
     "diff": "^8.0.0",
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
     "lucide-react": "^0.468.0",
+    "ml-matrix": "^6.15.1",
     "pixelmatch": "^7.1.0",
     "playwright-core": "^1.56.0",
     "pngjs": "^7.0.0",
@@ -25,10 +32,15 @@
     "react-dom": "^19.2.0",
     "spectorjs": "^0.9.33",
     "three": "^0.181.0",
+    "three-mesh-bvh": "^0.9.18",
     "vite": "^7.2.0",
+    "yauzl": "^3.2.0",
     "zod": "^4.1.0"
   },
   "devDependencies": {
     "prettier": "^3.9.10"
+  },
+  "engines": {
+    "node": ">=22.15.0"
   }
 }

@@ -19,17 +19,12 @@ export async function buildInstrumented(
     root: workspace,
     base: "./",
     configFile: false,
-    plugins: [
-      ...((loaded?.config.plugins || [])
-        .flat(Infinity)
-        .some((p) => p?.name === "frameshift-observer")
-        ? []
-        : [
-            frameShiftPlugin({
-              onInstrument: (id) => onLog("Instrumented " + path.basename(id)),
-            }),
-          ]),
-    ],
+    // mergeConfig already carries the project's plugins. Adding them again
+    // executes React/Vue/custom transforms twice and can break valid projects.
+    plugins: (loaded?.config.plugins || []).flat(Infinity)
+      .some((p) => p?.name === "frameshift-observer") ? [] : [frameShiftPlugin({
+        onInstrument: (id) => onLog("Instrumented " + path.basename(id)),
+      })],
     build: { outDir: config.outputDir || "dist", emptyOutDir: true },
     logLevel: "warn",
   });

@@ -1,0 +1,20 @@
+{
+  "name": "relay-robotics-simulator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build --base=./",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "node --test tests/*.test.js",
+    "connect": "node scripts/connect.mjs"
+  },
+  "dependencies": {
+    "three": "0.181.2",
+    "vite": "7.3.7"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

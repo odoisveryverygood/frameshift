@@ -1,13 +1,28 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { ROOT } from "./core.mjs";
+// Only safe metadata leaves this function; credentials stay on the backend.
 export function provider() {
-  return {
-    configured: Boolean(process.env.OPENAI_API_KEY),
+  const meta = process.env.EARL_SPONSOR_MODE === "1" || process.env.EARL_MODEL_PROVIDER === "meta";
+  return meta ? {
+    name: "meta", configured: Boolean(process.env.MODEL_API_KEY),
+    model: process.env.META_MODEL || "muse-spark-1.3",
+    baseUrl: "https://api.meta.ai/v1", protocol: "responses",
+  } : {
+    name: "configured", configured: Boolean(process.env.OPENAI_API_KEY),
     model: process.env.OPENAI_MODEL || "gpt-5.4-mini",
     baseUrl: process.env.OPENAI_BASE_URL || "https://api.openai.com/v1",
     protocol: process.env.LLM_API_PROTOCOL || "responses",
   };
+}
+export function providerApiKey() {
+  return provider().name === "meta" ? process.env.MODEL_API_KEY : process.env.OPENAI_API_KEY;
+}
+export function redactProviderError(value) {
+  let result = String(value).replace(/(?:sk[-_][\w-]+|LLM_[\w-]+)/g, "[redacted]");
+  for (const key of [process.env.OPENAI_API_KEY, process.env.MODEL_API_KEY, process.env.SUBQ_API_KEY, process.env.ASI_ONE_API_KEY, process.env.GEMINI_API_KEY])
+    if (key) result = result.split(key).join("[redacted]");
+  return result;
 }
 const schema = {
   type: "object",
@@ -99,7 +114,7 @@ export async function propose({
     {
       method: "POST",
       headers: {
-        Authorization: "Bearer " + process.env.OPENAI_API_KEY,
+        Authorization: "Bearer " + providerApiKey(),
         "Content-Type": "application/json",
       },
       signal: AbortSignal.any(
@@ -114,10 +129,7 @@ export async function propose({
       "Model request failed (" +
         response.status +
         "): " +
-        String(body.error?.message || "Unknown provider error").replace(
-          /sk-[\w-]+/g,
-          "[redacted]",
-        ),
+        redactProviderError(body.error?.message || "Unknown provider error"),
     );
   const content =
     body.choices?.[0]?.message?.content ||
@@ -147,6 +159,7 @@ export async function propose({
     ...proposal,
     usage: body.usage,
     model: p.model,
+    provider: p.name,
     responseId: body.id,
   };
 }

@@ -16,7 +16,7 @@ export async function withPage(directory, signal, callback) {
   const abort = () => browser?.close().catch(() => {});
   try {
     browser = await chromium.launch({
-      channel: "chrome",
+      ...(process.env.CHROME_EXECUTABLE_PATH ? {executablePath:process.env.CHROME_EXECUTABLE_PATH} : {channel:"chrome"}),
       headless: true,
       args: ["--enable-webgl", "--ignore-gpu-blocklist"],
     });
@@ -83,6 +83,7 @@ export async function measure(directory, config, signal, onSample = () => {}) {
         viewport: [innerWidth, innerHeight],
         dpr: devicePixelRatio,
       }));
+      if (process.env.EARL_HOSTED === "1") Object.assign(s.hardware, {executionEnvironment:"operator-hosted-container",graphicsCaveat:"Container graphics may use software rendering; results apply to this execution environment, not every physical GPU."});
       samples.push(s);
       onSample(i, s);
     }
@@ -154,7 +155,9 @@ export async function capture(
         path: path.join(artifactDir, `${prefix}-${index}.png`),
       });
     }
-    return { states, errors };
+    const geometry = await page.evaluate(async () => typeof window.__frameshift.meshFingerprint === "function" ? await window.__frameshift.meshFingerprint() : null);
+    if(config.requireMeshFingerprint && !geometry) throw Error("This imported mesh requires protected geometry fingerprints.");
+    return { states, errors, geometry };
   });
   const events = config.scenario?.events || [];
   if (events.length) {
@@ -198,6 +201,13 @@ export async function capture(
     );
   }
   return result;
+}
+export function compareGeometryEvidence(reference, candidate, required = false) {
+  if (!reference && !candidate && !required) return {checked:false,pass:true,scope:"Geometry fingerprints are not exposed by this application"};
+  const stable=value=>Array.isArray(value)?value.map(stable):value&&typeof value==='object'?Object.fromEntries(Object.keys(value).sort().map(key=>[key,stable(value[key])])):value;
+  const valid=value=>value?.version===1 && Array.isArray(value.components) && value.components.length>0;
+  const pass=valid(reference)&&valid(candidate)&&JSON.stringify(stable(reference))===JSON.stringify(stable(candidate));
+  return {checked:true,pass,scope:"Protected per-shell world-space triangle fingerprints at the captured state",reason:pass?"Actual mesh geometry and identities match":"Missing or changed mesh geometry, triangle coverage or shell identity"};
 }
 export async function verify(reference, candidate, artifactDir, config) {
   const checks = [];
@@ -280,8 +290,10 @@ export async function verify(reference, candidate, artifactDir, config) {
         ],
       }
     : null;
+  const geometry = compareGeometryEvidence(reference.geometry,candidate.geometry,Boolean(config.requireMeshFingerprint));
   return {
     interactions,
+    geometry,
     coverage: {
       checkpoints: reference.states.length,
       semanticObjects: reference.states[0]?.items.length,
@@ -289,6 +301,7 @@ export async function verify(reference, candidate, artifactDir, config) {
       replayedEvents: interactions?.events || 0,
     },
     pass:
+      geometry.pass &&
       checks.every((c) => c.visualPass && c.statePass && c.cameraPass) &&
       !candidate.errors.length &&
       (!interactions ||

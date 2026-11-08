@@ -1,0 +1,836 @@
+{
+  "split": "training",
+  "trainingFiles": {
+    "src/world.js": "// Training application: animated individual cells. Optimize without changing their identities.\nexport function createWorld(THREE, scene) {\n  const cells = [];\n  for (let i = 0; i < 196; i++) {\n    const cell = new THREE.Mesh(\n      new THREE.BoxGeometry(0.62, 0.62, 0.62),\n      new THREE.MeshStandardMaterial({ color: i % 2 ? 0x507a70 : 0x6379a8, roughness: 0.6 })\n    );\n    cell.name = \"cell-\" + i;\n    cell.userData.semanticId = cell.name;\n    cell.position.set(i % 14 - 6.5, 0, Math.floor(i / 14) - 6.5);\n    scene.add(cell);\n    cells.push(cell);\n  }\n  return {\n    update(time) {\n      for (let i = 0; i < cells.length; i++) {\n        cells[i].rotation.y = time * 0.4 + i * 0.1;\n        cells[i].position.y = Math.sin(time * 1.2 + i * 0.3) * 0.12;\n      }\n    }\n  };\n}\n",
+    "training-cases/geometry.js": "// Training application: animated individual cells. Optimize without changing their identities.\nfunction __earlTrainingBase(THREE, scene) {\n  const cells = [];\n  for (let i = 0; i < 196; i++) {\n    const cell = new THREE.Mesh(\n      new THREE.BoxGeometry(0.62, 0.62, 0.62),\n      new THREE.MeshStandardMaterial({ color: i % 2 ? 0x507a70 : 0x6379a8, roughness: 0.6 })\n    );\n    cell.name = \"cell-\" + i;\n    cell.userData.semanticId = cell.name;\n    cell.position.set(i % 14 - 6.5, 0, Math.floor(i / 14) - 6.5);\n    scene.add(cell);\n    cells.push(cell);\n  }\n  return {\n    update(time) {\n      for (let i = 0; i < cells.length; i++) {\n        cells[i].rotation.y = time * 0.4 + i * 0.1;\n        cells[i].position.y = Math.sin(time * 1.2 + i * 0.3) * 0.12;\n      }\n    }\n  };\n}\n\nexport function createWorld(THREE, scene) {\n  const world = __earlTrainingBase(THREE, scene);\n  const meshes = [];\n  scene.traverse(object => { if (object.isMesh) meshes.push(object); });\n  for (let index = 0; index < meshes.length; index++) {\n    meshes[index].geometry.scale([0.72, 1, 1.28][index % 3], 1, 1);\n  }\n  return world;\n}\n",
+    "training-cases/hierarchy.js": "// Training application: animated individual cells. Optimize without changing their identities.\nfunction __earlTrainingBase(THREE, scene) {\n  const cells = [];\n  for (let i = 0; i < 196; i++) {\n    const cell = new THREE.Mesh(\n      new THREE.BoxGeometry(0.62, 0.62, 0.62),\n      new THREE.MeshStandardMaterial({ color: i % 2 ? 0x507a70 : 0x6379a8, roughness: 0.6 })\n    );\n    cell.name = \"cell-\" + i;\n    cell.userData.semanticId = cell.name;\n    cell.position.set(i % 14 - 6.5, 0, Math.floor(i / 14) - 6.5);\n    scene.add(cell);\n    cells.push(cell);\n  }\n  return {\n    update(time) {\n      for (let i = 0; i < cells.length; i++) {\n        cells[i].rotation.y = time * 0.4 + i * 0.1;\n        cells[i].position.y = Math.sin(time * 1.2 + i * 0.3) * 0.12;\n      }\n    }\n  };\n}\n\nexport function createWorld(THREE, scene) {\n  const outer = new THREE.Group();\n  outer.position.set(0.3, 0.2, -0.25);\n  const inner = new THREE.Group();\n  inner.position.set(-0.1, 0.15, 0.2);\n  outer.add(inner);\n  scene.add(outer);\n  const world = __earlTrainingBase(THREE, inner);\n  const update = world.update;\n  world.update = function(time) {\n    const result = update.call(this, time);\n    outer.rotation.y = Math.sin(time * 0.2) * 0.09;\n    inner.rotation.x = Math.cos(time * 0.4) * 0.05;\n    return result;\n  };\n  return world;\n}\n"
+  },
+  "feedback": [
+    {
+      "split": "training",
+      "status": "failed",
+      "reason": "Skill notes must be text",
+      "metrics": {}
+    },
+    {
+      "split": "training",
+      "status": "failed",
+      "reason": "Appearance, transforms, object identity, or actual click behavior changed",
+      "metrics": {},
+      "guards": {
+        "interactions": {
+          "events": 1,
+          "statePass": false,
+          "behaviorPass": true,
+          "errors": []
+        },
+        "coverage": {
+          "checkpoints": 8,
+          "semanticObjects": 196,
+          "pickingProbes": 40,
+          "replayedEvents": 1
+        },
+        "pass": false,
+        "checks": [
+          {
+            "firstTransformMismatch": {
+              "expected": [
+                "cell-1",
+                0.98592,
+                0,
+                -0.16721,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0.16721,
+                0,
+                0.98592,
+                0,
+                -5.5,
+                0.05795,
+                -6.5,
+                1
+              ],
+              "actual": [
+                "cell-0",
+                0.99769,
+                0,
+                -0.06795,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0.06795,
+                0,
+                0.99769,
+                0,
+                -6.5,
+                0.02431,
+                -6.5,
+                1
+              ]
+            },
+            "view": 0,
+            "time": 0.17,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": false,
+            "objectCount": 392,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": {
+              "expected": [
+                "cell-1",
+                0.92717,
+                0,
+                -0.37463,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0.37463,
+                0,
+                0.92717,
+                0,
+                -5.5,
+                0.10963,
+                -6.5,
+                1
+              ],
+              "actual": [
+                "cell-0",
+                0.95994,
+                0,
+                -0.2802,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0.2802,
+                0,
+                0.95994,
+                0,
+                -6.5,
+                0.09031,
+                -6.5,
+                1
+              ]
+            },
+            "view": 1,
+            "time": 0.71,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": false,
+            "objectCount": 392,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": {
+              "expected": [
+                "cell-1",
+                0.79244,
+                0,
+                -0.60995,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0.60995,
+                0,
+                0.79244,
+                0,
+                -5.5,
+                0.11066,
+                -6.5,
+                1
+              ],
+              "actual": [
+                "cell-0",
+                0.84937,
+                0,
+                -0.52779,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0.52779,
+                0,
+                0.84937,
+                0,
+                -6.5,
+                0.11943,
+                -6.5,
+                1
+              ]
+            },
+            "view": 2,
+            "time": 1.39,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": false,
+            "objectCount": 392,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": {
+              "expected": [
+                "cell-1",
+                0.58979,
+                0,
+                -0.80756,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0.80756,
+                0,
+                0.58979,
+                0,
+                -5.5,
+                0.03793,
+                -6.5,
+                1
+              ],
+              "actual": [
+                "cell-0",
+                0.66746,
+                0,
+                -0.74464,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0.74464,
+                0,
+                0.66746,
+                0,
+                -6.5,
+                0.06988,
+                -6.5,
+                1
+              ]
+            },
+            "view": 3,
+            "time": 2.1,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": false,
+            "objectCount": 392,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": {
+              "expected": [
+                "cell-1",
+                0.21315,
+                0,
+                -0.97702,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0.97702,
+                0,
+                0.21315,
+                0,
+                -5.5,
+                -0.09594,
+                -6.5,
+                1
+              ],
+              "actual": [
+                "cell-0",
+                0.30962,
+                0,
+                -0.95086,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0.95086,
+                0,
+                0.30962,
+                0,
+                -6.5,
+                -0.07035,
+                -6.5,
+                1
+              ]
+            },
+            "view": 4,
+            "time": 3.14,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": false,
+            "objectCount": 392,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": {
+              "expected": [
+                "cell-1",
+                -0.23499,
+                0,
+                -0.972,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0.972,
+                0,
+                -0.23499,
+                0,
+                -5.5,
+                -0.09088,
+                -6.5,
+                1
+              ],
+              "actual": [
+                "cell-0",
+                -0.13677,
+                0,
+                -0.9906,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0.9906,
+                0,
+                -0.13677,
+                0,
+                -6.5,
+                -0.10998,
+                -6.5,
+                1
+              ]
+            },
+            "view": 5,
+            "time": 4.27,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": false,
+            "objectCount": 392,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": {
+              "expected": [
+                "cell-1",
+                -0.61407,
+                0,
+                -0.78925,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0.78925,
+                0,
+                -0.61407,
+                0,
+                -5.5,
+                0.04814,
+                -6.5,
+                1
+              ],
+              "actual": [
+                "cell-0",
+                -0.53221,
+                0,
+                -0.84662,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0.84662,
+                0,
+                -0.53221,
+                0,
+                -6.5,
+                0.01351,
+                -6.5,
+                1
+              ]
+            },
+            "view": 6,
+            "time": 5.33,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": false,
+            "objectCount": 392,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": {
+              "expected": [
+                "cell-1",
+                -0.88626,
+                0,
+                -0.46319,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0.46319,
+                0,
+                -0.88626,
+                0,
+                -5.5,
+                0.11905,
+                -6.5,
+                1
+              ],
+              "actual": [
+                "cell-0",
+                -0.83559,
+                0,
+                -0.54936,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0.54936,
+                0,
+                -0.83559,
+                0,
+                -6.5,
+                0.11819,
+                -6.5,
+                1
+              ]
+            },
+            "view": 7,
+            "time": 6.4,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": false,
+            "objectCount": 392,
+            "pickingPass": true
+          }
+        ],
+        "errors": [],
+        "selection": {
+          "expected": "cell-105",
+          "reference": "cell-105",
+          "candidate": "cell-105"
+        }
+      }
+    },
+    {
+      "split": "training",
+      "status": "passed",
+      "reason": "Draw calls decreased, correctness checks passed, and CPU submission/frame pacing stayed within their guards.",
+      "metrics": {
+        "baseline": {
+          "frameMedian": 16.699999999999932,
+          "frameP95": 16.799999999999955,
+          "submitMedian": 2.099999964237213,
+          "submitP95": 2.900000035762787,
+          "fps": 59.88023952095833,
+          "calls": 196,
+          "triangles": 2352,
+          "geometries": 196,
+          "repeatMetrics": [
+            2.600000023841858,
+            2.900000035762787,
+            3
+          ],
+          "samples": 3,
+          "frameCount": 120,
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+          "hardware": {
+            "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+            "cores": 10,
+            "viewport": [
+              960,
+              640
+            ],
+            "dpr": 1
+          },
+          "uncertainty": {
+            "repeats": 3,
+            "min": 2.600000023841858,
+            "max": 3,
+            "relativeSpread": 0.13793102456046355,
+            "note": "Limited repeat count; differences inside observed variability are inconclusive."
+          },
+          "gpuSupported": true,
+          "gpuP95": 1.002416
+        },
+        "candidate": {
+          "frameMedian": 16.700000000000045,
+          "frameP95": 16.700000000000045,
+          "submitMedian": 0.5,
+          "submitP95": 0.7000000476837158,
+          "fps": 59.88023952095792,
+          "calls": 2,
+          "triangles": 2352,
+          "geometries": 2,
+          "repeatMetrics": [
+            0.800000011920929,
+            0.699999988079071,
+            0.6000000238418579
+          ],
+          "samples": 3,
+          "frameCount": 120,
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+          "hardware": {
+            "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+            "cores": 10,
+            "viewport": [
+              960,
+              640
+            ],
+            "dpr": 1
+          },
+          "uncertainty": {
+            "repeats": 3,
+            "min": 0.6000000238418579,
+            "max": 0.800000011920929,
+            "relativeSpread": 0.2857142735500723,
+            "note": "Limited repeat count; differences inside observed variability are inconclusive."
+          },
+          "gpuSupported": true,
+          "gpuP95": 0.657583
+        }
+      },
+      "guards": {
+        "interactions": {
+          "events": 1,
+          "statePass": true,
+          "behaviorPass": true,
+          "errors": []
+        },
+        "coverage": {
+          "checkpoints": 8,
+          "semanticObjects": 196,
+          "pickingProbes": 40,
+          "replayedEvents": 1
+        },
+        "pass": true,
+        "checks": [
+          {
+            "firstTransformMismatch": null,
+            "view": 0,
+            "time": 0.17,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 196,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 1,
+            "time": 0.71,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 196,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 2,
+            "time": 1.39,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 196,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 3,
+            "time": 2.1,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 196,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 4,
+            "time": 3.14,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 196,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 5,
+            "time": 4.27,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 196,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 6,
+            "time": 5.33,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 196,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 7,
+            "time": 6.4,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 196,
+            "pickingPass": true
+          }
+        ],
+        "errors": [],
+        "selection": {
+          "expected": "cell-105",
+          "reference": "cell-105",
+          "candidate": "cell-105"
+        }
+      }
+    },
+    {
+      "split": "training",
+      "status": "failed",
+      "reason": "page.evaluate: ReferenceError: __sid is not defined\n    at w.raycast (http://127.0.0.1:52588/assets/index-BDIDw9J0.js:3947:74680)\n    at wl (http://127.0.0.1:52588/assets/index-BDIDw9J0.js:40:212358)\n    at gh.intersectObjects (http://127.0.0.1:52588/assets/index-BDIDw9J0.js:40:212213)\n    at Il (http://127.0.0.1:52588/assets/index-BDIDw9J0.js:1:3469)\n    at http://127.0.0.1:52588/assets/index-BDIDw9J0.js:1:6482\n    at Array.map (<anonymous>)\n    at Object.cd [as step] (http://127.0.0.1:52588/assets/index-BDIDw9J0.js:1:6469)\n    at eval (eval at evaluate (:370:30), <anonymous>:1:41)\n    at UtilityScript.evaluate (<anonymous>:372:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)",
+      "metrics": {}
+    },
+    {
+      "split": "training",
+      "status": "passed",
+      "reason": "Draw calls decreased, correctness checks passed, and CPU submission/frame pacing stayed within their guards.",
+      "metrics": {
+        "baseline": {
+          "frameMedian": 16.699999999999932,
+          "frameP95": 16.799999999999955,
+          "submitMedian": 1.199999988079071,
+          "submitP95": 2.200000047683716,
+          "fps": 59.88023952095833,
+          "calls": 196,
+          "triangles": 2352,
+          "geometries": 196,
+          "repeatMetrics": [
+            2.300000011920929,
+            2.199999988079071,
+            2.300000011920929
+          ],
+          "samples": 3,
+          "frameCount": 120,
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+          "hardware": {
+            "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+            "cores": 10,
+            "viewport": [
+              960,
+              640
+            ],
+            "dpr": 1
+          },
+          "uncertainty": {
+            "repeats": 3,
+            "min": 2.199999988079071,
+            "max": 2.300000011920929,
+            "relativeSpread": 0.04347827101024197,
+            "note": "Limited repeat count; differences inside observed variability are inconclusive."
+          },
+          "gpuSupported": true,
+          "gpuP95": 0.961374
+        },
+        "candidate": {
+          "frameMedian": 16.699999999999932,
+          "frameP95": 16.700000000000045,
+          "submitMedian": 0.6000000238418579,
+          "submitP95": 0.800000011920929,
+          "fps": 59.88023952095833,
+          "calls": 2,
+          "triangles": 2352,
+          "geometries": 2,
+          "repeatMetrics": [
+            0.800000011920929,
+            0.800000011920929,
+            0.9000000357627869
+          ],
+          "samples": 3,
+          "frameCount": 120,
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+          "hardware": {
+            "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+            "cores": 10,
+            "viewport": [
+              960,
+              640
+            ],
+            "dpr": 1
+          },
+          "uncertainty": {
+            "repeats": 3,
+            "min": 0.800000011920929,
+            "max": 0.9000000357627869,
+            "relativeSpread": 0.12500002793967682,
+            "note": "Limited repeat count; differences inside observed variability are inconclusive."
+          },
+          "gpuSupported": true,
+          "gpuP95": 0.696833
+        }
+      },
+      "guards": {
+        "interactions": {
+          "events": 1,
+          "statePass": true,
+          "behaviorPass": true,
+          "errors": []
+        },
+        "coverage": {
+          "checkpoints": 8,
+          "semanticObjects": 196,
+          "pickingProbes": 40,
+          "replayedEvents": 1
+        },
+        "pass": true,
+        "checks": [
+          {
+            "firstTransformMismatch": null,
+            "view": 0,
+            "time": 0.17,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 196,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 1,
+            "time": 0.71,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 196,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 2,
+            "time": 1.39,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 196,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 3,
+            "time": 2.1,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 196,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 4,
+            "time": 3.14,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 196,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 5,
+            "time": 4.27,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 196,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 6,
+            "time": 5.33,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 196,
+            "pickingPass": true
+          },
+          {
+            "firstTransformMismatch": null,
+            "view": 7,
+            "time": 6.4,
+            "cameraPass": true,
+            "visualDifference": 0,
+            "visualPass": true,
+            "statePass": true,
+            "objectCount": 196,
+            "pickingPass": true
+          }
+        ],
+        "errors": [],
+        "selection": {
+          "expected": "cell-105",
+          "reference": "cell-105",
+          "candidate": "cell-105"
+        }
+      }
+    }
+  ],
+  "parentSkill": {
+    "name": "three_createWorld_wrapper_conservative_instancing_v4",
+    "description": "Conservatively rewrites modules exporting createWorld(THREE, scene) into a wrapper around the original factory. The wrapper preserves the original initialization and update logic, then inspects the created scene graph at runtime and batches only repeated sibling opaque meshes with fully compatible geometry data and render-relevant material properties into THREE.InstancedMesh. It detaches original meshes from the rendered graph but keeps the objects alive for existing update references, copies each original world transform back into instance matrices after every update, preserves stable semantic identities from userData.semanticId or name, and patches instanced raycast results to map hit.instanceId back onto the original mesh object rather than fabricating a replacement. It is conservative, skips unsupported shapes and materials, avoids package/build/test files, and returns no changes when prerequisites are not matched.",
+    "code": "function transform(files) {\n  const changed = [];\n\n  function findMatchingBrace(s, openIndex) {\n    let depth = 0;\n    let inStr = null;\n    let esc = false;\n    let lineComment = false;\n    let blockComment = false;\n    for (let i = openIndex; i < s.length; i++) {\n      const ch = s[i];\n      const nx = s[i + 1];\n      if (lineComment) {\n        if (ch === '\\n') lineComment = false;\n        continue;\n      }\n      if (blockComment) {\n        if (ch === '*' && nx === '/') {\n          blockComment = false;\n          i++;\n        }\n        continue;\n      }\n      if (inStr) {\n        if (esc) esc = false;\n        else if (ch === '\\\\') esc = true;\n        else if (ch === inStr) inStr = null;\n        continue;\n      }\n      if (ch === '/' && nx === '/') {\n        lineComment = true;\n        i++;\n        continue;\n      }\n      if (ch === '/' && nx === '*') {\n        blockComment = true;\n        i++;\n        continue;\n      }\n      if (ch === '\"' || ch === \"'\" || ch === '`') {\n        inStr = ch;\n        continue;\n      }\n      if (ch === '{') depth++;\n      else if (ch === '}') {\n        depth--;\n        if (depth === 0) return i;\n      }\n    }\n    return -1;\n  }\n\n  function parseCreateWorld(src) {\n    const re = /export\\s+function\\s+createWorld\\s*\\(\\s*([A-Za-z_$][\\w$]*)\\s*,\\s*([A-Za-z_$][\\w$]*)\\s*\\)\\s*\\{/m;\n    const m = re.exec(src);\n    if (!m) return null;\n    const braceIndex = src.indexOf('{', m.index);\n    if (braceIndex < 0) return null;\n    const endBrace = findMatchingBrace(src, braceIndex);\n    if (endBrace < 0) return null;\n    return {\n      start: m.index,\n      end: endBrace + 1,\n      threeParam: m[1],\n      sceneParam: m[2],\n      body: src.slice(braceIndex + 1, endBrace)\n    };\n  }\n\n  function makeWrapper(threeName, sceneName) {\n    const origName = '__earlOriginalCreateWorld__';\n    const stateName = '__earlInstancingState__';\n    return '' +\n      'function ' + origName + '(' + threeName + ', ' + sceneName + ') {' +\n      '  return (function(){' +\n      '    ' + '/*__EARL_ORIGINAL_BODY__*/' +\n      '  }).call(this);' +\n      '}\\n\\n' +\n      'export function createWorld(' + threeName + ', ' + sceneName + ') {\\n' +\n      '  const __earlWorld__ = ' + origName + '(' + threeName + ', ' + sceneName + ');\\n' +\n      '  const ' + stateName + ' = (function() {\\n' +\n      '    const __MeshCtor__ = ' + threeName + ' && ' + threeName + '.Mesh;\\n' +\n      '    const __InstancedMeshCtor__ = ' + threeName + ' && ' + threeName + '.InstancedMesh;\\n' +\n      '    const __Matrix4Ctor__ = ' + threeName + ' && ' + threeName + '.Matrix4;\\n' +\n      '    if (!__MeshCtor__ || !__InstancedMeshCtor__ || !__Matrix4Ctor__) return null;\\n' +\n      '    if (!' + sceneName + ' || typeof ' + sceneName + '.traverse !== \"function\") return null;\\n' +\n      '    function __isOpaqueMaterial__(mat) {\\n' +\n      '      if (!mat || Array.isArray(mat)) return false;\\n' +\n      '      if (mat.transparent === true) return false;\\n' +\n      '      if (typeof mat.opacity === \"number\" && mat.opacity < 1) return false;\\n' +\n      '      if (typeof mat.alphaTest === \"number\" && mat.alphaTest > 0) return false;\\n' +\n      '      return true;\\n' +\n      '    }\\n' +\n      '    function __valueSig__(v) {\\n' +\n      '      if (v == null) return String(v);\\n' +\n      '      const t = typeof v;\\n' +\n      '      if (t === \"number\" || t === \"boolean\" || t === \"string\") return String(v);\\n' +\n      '      if (Array.isArray(v)) {\\n' +\n      '        let out = \"[\";\\n' +\n      '        for (let i = 0; i < v.length; i++) out += (i ? \",\" : \"\") + __valueSig__(v[i]);\\n' +\n      '        return out + \"]\";\\n' +\n      '      }\\n' +\n      '      if (v && typeof v.getHexString === \"function\") return \"color:\" + v.getHexString();\\n' +\n      '      if (v && typeof v.toArray === \"function\") return \"arr:\" + v.toArray([]).join(\",\");\\n' +\n      '      if (v && typeof v.uuid === \"string\" && v.constructor && v.constructor.name) return \"ref:\" + v.constructor.name + \":\" + v.uuid;\\n' +\n      '      return null;\\n' +\n      '    }\\n' +\n      '    function __materialKey__(mat) {\\n' +\n      '      if (!mat || !mat.type) return null;\\n' +\n      '      const props = [\"type\",\"color\",\"roughness\",\"metalness\",\"emissive\",\"emissiveIntensity\",\"map\",\"normalMap\",\"roughnessMap\",\"metalnessMap\",\"aoMap\",\"side\",\"flatShading\",\"wireframe\",\"vertexColors\",\"fog\",\"toneMapped\",\"depthTest\",\"depthWrite\"];\\n' +\n      '      let out = \"\";\\n' +\n      '      for (let i = 0; i < props.length; i++) {\\n' +\n      '        const k = props[i];\\n' +\n      '        const sig = __valueSig__(mat[k]);\\n' +\n      '        if (sig !== null) out += k + \"=\" + sig + \";\";\\n' +\n      '      }\\n' +\n      '      return out;\\n' +\n      '    }\\n' +\n      '    function __appendArrayData__(arr, out) {\\n' +\n      '      if (!arr || typeof arr.length !== \"number\") { out.push(\"na\"); return; }\\n' +\n      '      const len = arr.length;\\n' +\n      '      out.push(String(len));\\n' +\n      '      for (let i = 0; i < len; i++) out.push(String(arr[i]));\\n' +\n      '    }\\n' +\n      '    function __geometryKey__(geo) {\\n' +\n      '      if (!geo || !geo.attributes) return null;\\n' +\n      '      const out = [String(geo.type || \"Geometry\")];\\n' +\n      '      const names = [];\\n' +\n      '      for (const k in geo.attributes) names.push(k);\\n' +\n      '      names.sort();\\n' +\n      '      out.push(\"attrs\", String(names.length));\\n' +\n      '      for (let i = 0; i < names.length; i++) {\\n' +\n      '        const n = names[i];\\n' +\n      '        const a = geo.attributes[n];\\n' +\n      '        if (!a || !a.array) return null;\\n' +\n      '        out.push(n, String(a.itemSize), a.normalized ? \"1\" : \"0\", String(a.count), a.array && a.array.constructor ? String(a.array.constructor.name || \"\") : \"\");\\n' +\n      '        __appendArrayData__(a.array, out);\\n' +\n      '      }\\n' +\n      '      const idx = geo.index;\\n' +\n      '      if (idx) {\\n' +\n      '        if (!idx.array) return null;\\n' +\n      '        out.push(\"idx\", String(idx.count), idx.array && idx.array.constructor ? String(idx.array.constructor.name || \"\") : \"\");\\n' +\n      '        __appendArrayData__(idx.array, out);\\n' +\n      '      } else {\\n' +\n      '        out.push(\"idx\", \"0\");\\n' +\n      '      }\\n' +\n      '      const groups = Array.isArray(geo.groups) ? geo.groups : [];\\n' +\n      '      out.push(\"groups\", String(groups.length));\\n' +\n      '      for (let i = 0; i < groups.length; i++) {\\n' +\n      '        const g = groups[i] || {};\\n' +\n      '        out.push(String(g.start), String(g.count), String(g.materialIndex));\\n' +\n      '      }\\n' +\n      '      return out.join(\"|\");\\n' +\n      '    }\\n' +\n      '    const __groups__ = Object.create(null);\\n' +\n      '    let __nextParentId__ = 1;\\n' +\n      '    function __parentId__(parent) {\\n' +\n      '      if (!parent) return 0;\\n' +\n      '      if (parent.__earlInstancingParentId__ == null) parent.__earlInstancingParentId__ = __nextParentId__++;\\n' +\n      '      return parent.__earlInstancingParentId__;\\n' +\n      '    }\\n' +\n      '    ' + sceneName + '.updateMatrixWorld(true);\\n' +\n      '    ' + sceneName + '.traverse(function(__obj__) {\\n' +\n      '      if (!(__obj__ instanceof __MeshCtor__)) return;\\n' +\n      '      if (__obj__ instanceof __InstancedMeshCtor__) return;\\n' +\n      '      if (!__obj__.parent) return;\\n' +\n      '      if (!__obj__.geometry || !__isOpaqueMaterial__(__obj__.material)) return;\\n' +\n      '      const __gk__ = __geometryKey__(__obj__.geometry);\\n' +\n      '      const __mk__ = __materialKey__(__obj__.material);\\n' +\n      '      if (!__gk__ || !__mk__) return;\\n' +\n      '      const __key__ = __parentId__(__obj__.parent) + \"|\" + __gk__ + \"|\" + __mk__;\\n' +\n      '      let __group__ = __groups__[__key__];\\n' +\n      '      if (!__group__) __group__ = __groups__[__key__] = { parent: __obj__.parent, geometry: __obj__.geometry, material: __obj__.material, meshes: [] };\\n' +\n      '      __group__.meshes.push(__obj__);\\n' +\n      '    });\\n' +\n      '    const __batches__ = [];\\n' +\n      '    const __tmpMatrix__ = new __Matrix4Ctor__();\\n' +\n      '    const __tmpParentInverse__ = new __Matrix4Ctor__();\\n' +\n      '    for (const __k__ in __groups__) {\\n' +\n      '      const __group__ = __groups__[__k__];\\n' +\n      '      if (!__group__ || __group__.meshes.length < 2) continue;\\n' +\n      '      const __inst__ = new __InstancedMeshCtor__(__group__.geometry, __group__.material, __group__.meshes.length);\\n' +\n      '      __inst__.userData = __inst__.userData || {};\\n' +\n      '      __inst__.userData.semanticIds = [];\\n' +\n      '      __inst__.userData.originalObjects = [];\\n' +\n      '      __inst__.frustumCulled = false;\\n' +\n      '      __group__.parent.updateMatrixWorld(true);\\n' +\n      '      __tmpParentInverse__.copy(__group__.parent.matrixWorld).invert();\\n' +\n      '      for (let __i__ = 0; __i__ < __group__.meshes.length; __i__++) {\\n' +\n      '        const __mesh__ = __group__.meshes[__i__];\\n' +\n      '        __mesh__.updateMatrixWorld(true);\\n' +\n      '        __tmpMatrix__.copy(__tmpParentInverse__).multiply(__mesh__.matrixWorld);\\n' +\n      '        __inst__.setMatrixAt(__i__, __tmpMatrix__);\\n' +\n      '        __inst__.userData.semanticIds[__i__] = __mesh__.userData && __mesh__.userData.semanticId != null ? __mesh__.userData.semanticId : (__mesh__.name || null);\\n' +\n      '        __inst__.userData.originalObjects[__i__] = __mesh__;\\n' +\n      '      }\\n' +\n      '      __inst__.instanceMatrix.needsUpdate = true;\\n' +\n      '      __inst__.raycast = function(__raycaster__, __intersects__) {\\n' +\n      '        const __before__ = __intersects__.length;\\n' +\n      '        __InstancedMeshCtor__.prototype.raycast.call(this, __raycaster__, __intersects__);\\n' +\n      '        for (let __j__ = __before__; __j__ < __intersects__.length; __j__++) {\\n' +\n      '          const __hit__ = __intersects__[__j__];\\n' +\n      '          if (__hit__ && __hit__.object === this && __hit__.instanceId != null) {\\n' +\n      '            const __sidLocal__ = this.userData && this.userData.semanticIds ? this.userData.semanticIds[__hit__.instanceId] : undefined;\\n' +\n      '            const __origLocal__ = this.userData && this.userData.originalObjects ? this.userData.originalObjects[__hit__.instanceId] : null;\\n' +\n      '            __hit__.semanticId = __sidLocal__;\\n' +\n      '            __hit__.objectSemanticId = __sidLocal__;\\n' +\n      '            if (__origLocal__) __hit__.object = __origLocal__;\\n' +\n      '          }\\n' +\n      '        }\\n' +\n      '      };\\n' +\n      '      __group__.parent.add(__inst__);\\n' +\n      '      for (let __r__ = 0; __r__ < __group__.meshes.length; __r__++) __group__.parent.remove(__group__.meshes[__r__]);\\n' +\n      '      __batches__.push({ parent: __group__.parent, inst: __inst__, meshes: __group__.meshes });\\n' +\n      '    }\\n' +\n      '    if (!__batches__.length) return null;\\n' +\n      '    return { batches: __batches__, tmpMatrix: __tmpMatrix__, tmpParentInverse: __tmpParentInverse__ };\\n' +\n      '  })();\\n' +\n      '  if (!' + stateName + ' || !__earlWorld__ || typeof __earlWorld__.update !== \"function\") return __earlWorld__;\\n' +\n      '  const __earlPrevUpdate__ = __earlWorld__.update;\\n' +\n      '  __earlWorld__.update = function() {\\n' +\n      '    const __result__ = __earlPrevUpdate__.apply(this, arguments);\\n' +\n      '    const __batches__ = ' + stateName + '.batches;\\n' +\n      '    const __tmpMatrix__ = ' + stateName + '.tmpMatrix;\\n' +\n      '    const __tmpParentInverse__ = ' + stateName + '.tmpParentInverse;\\n' +\n      '    ' + sceneName + '.updateMatrixWorld(true);\\n' +\n      '    for (let __bi__ = 0; __bi__ < __batches__.length; __bi__++) {\\n' +\n      '      const __batch__ = __batches__[__bi__];\\n' +\n      '      __batch__.parent.updateMatrixWorld(true);\\n' +\n      '      __tmpParentInverse__.copy(__batch__.parent.matrixWorld).invert();\\n' +\n      '      for (let __i__ = 0; __i__ < __batch__.meshes.length; __i__++) {\\n' +\n      '        const __mesh__ = __batch__.meshes[__i__];\\n' +\n      '        __mesh__.updateMatrixWorld(true);\\n' +\n      '        __tmpMatrix__.copy(__tmpParentInverse__).multiply(__mesh__.matrixWorld);\\n' +\n      '        __batch__.inst.setMatrixAt(__i__, __tmpMatrix__);\\n' +\n      '      }\\n' +\n      '      __batch__.inst.instanceMatrix.needsUpdate = true;\\n' +\n      '    }\\n' +\n      '    return __result__;\\n' +\n      '  };\\n' +\n      '  return __earlWorld__;\\n' +\n      '}\\n';\n  }\n\n  for (const entry of Object.entries(files)) {\n    const path = entry[0];\n    const src = entry[1];\n    if (typeof src !== 'string') continue;\n    if (!/\\.(js|mjs|ts)$/.test(path)) continue;\n    if (/(^|\\/)(package|build|dist|coverage|test|tests|spec|sdk)(\\/|$)/i.test(path)) continue;\n    const parsed = parseCreateWorld(src);\n    if (!parsed) continue;\n    const wrapperTemplate = makeWrapper(parsed.threeParam, parsed.sceneParam);\n    const wrapper = wrapperTemplate.replace('/*__EARL_ORIGINAL_BODY__*/', parsed.body);\n    const next = src.slice(0, parsed.start) + wrapper + src.slice(parsed.end);\n    if (next !== src) changed.push({ path: path, content: next });\n  }\n\n  return {\n    files: changed,\n    notes: changed.length ? 'Wrapped matching createWorld factory modules with conservative runtime InstancedMesh batching that preserves original update references and raycast identity mapping.' : 'No eligible exported createWorld(THREE, scene) factory modules found for conservative instancing.'\n  };\n}"
+  }
+}
